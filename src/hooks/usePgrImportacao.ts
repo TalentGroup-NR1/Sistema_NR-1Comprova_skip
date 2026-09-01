@@ -148,12 +148,20 @@ export function useIniciarImportacaoPgr() {
       // o polling abaixo aguarda o resultado sem bloquear o preflight).
       supabase.functions
         .invoke("pgr-importar", { body: { importacao_id: importacao.id } })
-        .catch(async (fnErr) => {
-          console.warn("[usePgrImportacao] Edge Function error (background):", fnErr);
-          // Se a função falhar completamente (CORS, crash, 500, timeout), atualiza o DB para não ficar travado
+        .then(async ({ error: fnErr }) => {
+          if (fnErr) {
+            console.warn("[usePgrImportacao] Edge Function HTTP error (background):", fnErr);
+            await (supabase as any)
+              .from("pgr_importacoes")
+              .update({ status: "erro", erro_mensagem: `Erro na execução da análise: ${fnErr.message ?? JSON.stringify(fnErr)}` })
+              .eq("id", importacao.id);
+          }
+        })
+        .catch(async (netErr) => {
+          console.warn("[usePgrImportacao] Edge Function Network error (background):", netErr);
           await (supabase as any)
             .from("pgr_importacoes")
-            .update({ status: "erro", erro_mensagem: `Erro na execução da análise: ${fnErr.message ?? String(fnErr)}` })
+            .update({ status: "erro", erro_mensagem: `Erro de rede/CORS: ${netErr.message ?? String(netErr)}` })
             .eq("id", importacao.id);
         });
 
