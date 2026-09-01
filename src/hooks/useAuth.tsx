@@ -1,0 +1,238 @@
+import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import type { ReactNode } from 'react';
+import { User, Session } from '@supabase/supabase-js';
+import type { AuthError } from '@supabase/supabase-js';
+import { supabase } from '@/integrations/supabase/client';
+
+export type AppRole = 'admin_master' | 'admin_empresa' | 'analista_rh' | 'gestor_departamento' | 'colaborador';
+
+export type AppRoleAny = AppRole | 'super_admin';
+
+type AuthContextValue = {
+  user: User | null;
+  session: Session | null;
+  loading: boolean;
+  role: AppRole | null;
+  roles: AppRoleAny[];
+  companyId: string | null;
+  mustChangePassword: boolean;
+  isBlocked: boolean;
+  blockReason: string | null;
+  isAdminMaster: boolean;
+  isAdminEmpresa: boolean;
+  isAdmin: boolean;
+  isSuperAdmin: boolean;
+  isAuthenticated: boolean;
+  signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>;
+  signOut: () => Promise<{ error: AuthError | null }>;
+  refreshUserData: () => Promise<void>;
+  clearMustChangePassword: () => void;
+};
+
+const AuthContext = createContext<AuthContextValue | null>(null);
+
+function useProvideAuth(): AuthContextValue {
+  const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [role, setRole] = useState<AppRole | null>(null);
+  const [companyId, setCompanyId] = useState<string | null>(null);
+  const [mustChangePassword, setMustChangePassword] = useState(false);
+  const [isBlocked, setIsBlocked] = useState(false);
+  const [blockReason, setBlockReason] = useState<string | null>(null);
+  const [roles, setRoles] = useState<AppRoleAny[]>([]);
+
+  // Refs to prevent duplicate fetches and track state
+  const isFetchingRef = useRef(false);
+  const lastFetchedUserIdRef = useRef<string | null>(null);
+
+  const fetchUserData = useCallback(async (userId: string) => {
+    // Avoid duplicate calls for the same user
+    if (isFetchingRef.current || lastFetchedUserIdRef.current === userId) {
+      console.log('[useAuth] Skipping duplicate fetch for:', userId);
+      return;
+    }
+    
+    isFetchingRef.current = true;
+    console.log('[useAuth] Fetching user data for:', userId);
+    
+    try {
+      // Fetch role using secure RPC function (bypasses RLS)
+      const { data: roleData, error: roleError } = await supabase.rpc('get_my_role');
+
+      if (roleError) {
+        console.error('[useAuth] Error fetching role via RPC:', roleError.message, roleError.code);
+        setRole(null);
+      } else if (roleData) {
+        console.log('[useAuth] Role found:', roleData);
+        setRole(roleData as AppRole);
+      } else {
+        console.warn('[useAuth] No role found for user:', userId);
+        setRole(null);
+      }
+
+      // Fetch all roles (a user can have more than one, e.g. super_admin + admin_master)
+      const { data: allRoles } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', userId);
+      setRoles(((allRoles ?? []).map(r => r.role) as AppRoleAny[]));
+
+      // Fetch company_id, must_change_password, and is_active from profile
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('company_id, must_change_password, is_active')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      if (profileError) {
+        console.error('[useAuth] Error fetching profile:', profileError.message, profileError.code);
+      }
+
+      if (profileData) {
+        console.log('[useAuth] Profile found - company_id:', profileData.company_id, 'must_change_password:', profileData.must_change_password);
+        
+        // Check if user is blocked (is_active = false)
+        if (profileData.is_active === false) {
+          setIsBlocked(true);
+          setBlockReason('colaborador_desligado');
+          // Sign out the blocked user
+          await supabase.auth.signOut();
+          return;
+        }
+        
+        setCompanyId(profileData.company_id);
+        setMustChangePassword(profileData.must_change_password ?? false);
+        setIsBlocked(false);
+        setBlockReason(null);
+      } else {
+        console.warn('[useAuth] No profile found for user:', userId);
+      }
+      
+      lastFetchedUserIdRef.current = userId;
+    } finally {
+      isFetchingRef.current = false;
+    }
+  }, []);
+
+  useEffect(() => {
+    // Set up auth state listener FIRST
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        console.log('[useAuth] Auth event:', event);
+        
+        // For TOKEN_REFRESHED without session, ignore to prevent flicker
+        if (event === 'TOKEN_REFRESHED' && !session) {
+          console.log('[useAuth] TOKEN_REFRESHED without session, ignoring...');
+          return;
+        }
+        
+        // For SIGNED_OUT, clear everything
+        if (event === 'SIGNED_OUT') {
+          setSession(null);
+          setUser(null);
+          setRole(null);
+          setRoles([]);
+          setCompanyId(null);
+          setMustChangePassword(false);
+          setIsBlocked(false);
+          setBlockReason(null);
+          lastFetchedUserIdRef.current = null;
+          return;
+        }
+        
+        // For other events, only update if there's a session
+        if (session) {
+          // Skip re-setting state if it's the same user already loaded
+          // (prevents flicker from repeated SIGNED_IN / INITIAL_SESSION events on tab focus)
+          if (lastFetchedUserIdRef.current === session.user.id) {
+            console.log('[useAuth] Same user already loaded, skipping state update');
+            return;
+          }
+
+          setSession(session);
+          setUser(session.user);
+
+          // Defer fetching with setTimeout to avoid deadlocks
+          setTimeout(() => {
+            fetchUserData(session.user.id);
+          }, 0);
+        }
+      }
+    );
+
+    // THEN check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      if (session?.user) {
+        fetchUserData(session.user.id);
+      }
+      setLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
+  }, [fetchUserData]);
+
+  // Method to manually refresh user data (e.g., after password change)
+  const refreshUserData = useCallback(async () => {
+    if (user?.id) {
+      await fetchUserData(user.id);
+    }
+  }, [user?.id, fetchUserData]);
+
+  // Method to clear the mustChangePassword flag locally
+  const clearMustChangePassword = useCallback(() => {
+    setMustChangePassword(false);
+  }, []);
+
+  // signUp removed - user creation is admin-only via edge functions
+
+  const signIn = async (email: string, password: string) => {
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+    return { error };
+  };
+
+  const signOut = async () => {
+    const { error } = await supabase.auth.signOut();
+    return { error };
+  };
+
+  return {
+    user,
+    session,
+    loading,
+    role,
+    roles,
+    companyId,
+    mustChangePassword,
+    isBlocked,
+    blockReason,
+    isAdminMaster: role === 'admin_master',
+    isAdminEmpresa: role === 'admin_empresa',
+    isAdmin: role === 'admin_master' || role === 'admin_empresa',
+    isSuperAdmin: roles.includes('super_admin'),
+    isAuthenticated: !!session,
+    signIn,
+    signOut,
+    refreshUserData,
+    clearMustChangePassword,
+  };
+}
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const value = useProvideAuth();
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
+
+// Consumer hook used across the app (single shared auth state via provider)
+export function useAuth(): AuthContextValue {
+  const ctx = useContext(AuthContext);
+  if (!ctx) {
+    throw new Error('useAuth must be used within <AuthProvider>.');
+  }
+  return ctx;
+}
