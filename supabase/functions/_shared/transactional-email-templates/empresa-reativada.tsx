@@ -11,9 +11,9 @@ function EmpresaReativadaEmail({
   brandName = 'NR-1 Pronto',
   logoUrl,
   primaryColor,
-  siteUrl = 'https://nr-1pronto.com.br',
+  siteUrl = 'https://nr1pronto.com.br',
   companyName,
-  loginUrl = 'https://nr-1pronto.com.br/auth',
+  loginUrl = 'https://nr1pronto.com.br/auth',
 }: Props) {
   return (
     <BaseEmail
@@ -46,7 +46,7 @@ export const template = {
   previewData: {
     brandName: 'NR-1 Pronto',
     companyName: 'Empresa Exemplo LTDA',
-    loginUrl: 'https://nr-1pronto.com.br/auth',
+    loginUrl: 'https://nr1pronto.com.br/auth',
   },
 }
 

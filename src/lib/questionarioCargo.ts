@@ -110,7 +110,7 @@ Exemplos de atividade:
 • Como faz? Buscando nos arquivos os currículos recebidos e em sites específicos.
 • Para que é feito? Para selecionar candidatos dentro do perfil e iniciar os contatos.`;
 
-/** Modelo padrão baseado no Questionário de Análise de Cargos (Talent Group). */
+/** Modelo padrão baseado no Questionário de Análise de Cargos (NR1-Pronto). */
 export function modeloPadraoSecoes(): QSecao[] {
   const p = (
     titulo: string,

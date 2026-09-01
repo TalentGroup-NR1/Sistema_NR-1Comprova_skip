@@ -282,7 +282,7 @@ Deno.serve(async (req) => {
             templateData: {
               adminName: data.admin_nome,
               companyName: data.brand_name || data.razao_social,
-              loginUrl: `${Deno.env.get('APP_ORIGIN') || 'https://nr-1pronto.com.br'}/auth`,
+              loginUrl: `${Deno.env.get('APP_ORIGIN') || 'https://nr1pronto.com.br'}/auth`,
             },
           }),
         },

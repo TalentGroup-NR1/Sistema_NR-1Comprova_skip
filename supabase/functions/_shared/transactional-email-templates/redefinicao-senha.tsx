@@ -12,9 +12,9 @@ function RedefinicaoSenhaEmail({
   brandName = 'NR-1 Pronto',
   logoUrl,
   primaryColor,
-  siteUrl = 'https://nr-1pronto.com.br',
+  siteUrl = 'https://nr1pronto.com.br',
   recipientName,
-  resetUrl = 'https://nr-1pronto.com.br/atualizar-senha',
+  resetUrl = 'https://nr1pronto.com.br/atualizar-senha',
   expirationHours = 1,
 }: Props) {
   return (
@@ -45,7 +45,7 @@ export const template = {
   previewData: {
     brandName: 'NR-1 Pronto',
     recipientName: 'Maria Silva',
-    resetUrl: 'https://nr-1pronto.com.br/atualizar-senha#token=exemplo',
+    resetUrl: 'https://nr1pronto.com.br/atualizar-senha#token=exemplo',
     expirationHours: 1,
   },
 }

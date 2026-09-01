@@ -121,7 +121,7 @@ export function BrandingSection({ company }: BrandingSectionProps) {
         </h3>
         <p className="text-xs text-muted-foreground">
           Nome, logo e cor exibidos no login, na barra lateral e na aba do navegador.
-          Se ficarem em branco, o padrão Talent Group é usado.
+          Se ficarem em branco, o padrão NR1-Pronto é usado.
         </p>
 
         <div className="grid gap-3">

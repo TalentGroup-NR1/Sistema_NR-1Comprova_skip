@@ -266,10 +266,14 @@ function PlanoAcaoEditor({
 
 // ────────── Card de Histórico ──────────
 function HistoricoCard({ importacao }: { importacao: PgrImportacao }) {
-  const cfg = STATUS_CONFIG[importacao.status];
-  const Icon = cfg.icon;
-  const totalRiscos = importacao.riscos?.length ?? importacao.extracao_raw?.riscos?.length ?? 0;
-  const totalAcoes = importacao.plano_acao?.length ?? importacao.extracao_raw?.plano_acao?.length ?? 0;
+  const cfg = STATUS_CONFIG[importacao.status as keyof typeof STATUS_CONFIG] || STATUS_CONFIG.erro;
+  const Icon = cfg.icon || AlertCircle;
+  
+  const rawRiscos = Array.isArray(importacao.riscos) ? importacao.riscos : Array.isArray(importacao.extracao_raw?.riscos) ? importacao.extracao_raw.riscos : [];
+  const rawPlano = Array.isArray(importacao.plano_acao) ? importacao.plano_acao : Array.isArray(importacao.extracao_raw?.plano_acao) ? importacao.extracao_raw.plano_acao : [];
+  
+  const totalRiscos = rawRiscos.length;
+  const totalAcoes = rawPlano.length;
   const excluir = useExcluirImportacaoPgr();
 
   return (
@@ -279,7 +283,7 @@ function HistoricoCard({ importacao }: { importacao: PgrImportacao }) {
         <div className="min-w-0">
           <div className="font-medium text-sm truncate">{importacao.arquivo_nome}</div>
           <div className="text-xs text-muted-foreground">
-            {format(new Date(importacao.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}
+            {importacao.created_at ? format(new Date(importacao.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR }) : "Data não disponível"}
             {importacao.status === "confirmado" && ` · ${totalRiscos} riscos · ${totalAcoes} ações`}
           </div>
           {importacao.status === "erro" && importacao.erro_mensagem && (
@@ -324,16 +328,20 @@ function PainelRevisao({
   onConfirmar: (dados: { dadosEmpresa: DadosEmpresaPgr; riscos: RiscoExtraido[]; planoAcao: AcaoExtraida[] }) => void;
   isPending: boolean;
 }) {
-  const raw = importacao.extracao_raw as ExtracaoRaw;
+  const raw = (importacao.extracao_raw || {}) as ExtracaoRaw;
   const [dadosEmpresa, setDadosEmpresa] = useState<DadosEmpresaPgr>(raw?.dados_empresa ?? {
     nome: null, cnpj: null, responsavel_tecnico: null, cargo_responsavel: null, data_elaboracao: null, validade: null,
   });
-  const [riscos, setRiscos] = useState<RiscoExtraido[]>(raw?.riscos ?? []);
-  const [planoAcao, setPlanoAcao] = useState<AcaoExtraida[]>(raw?.plano_acao ?? []);
+  
+  const initialRiscos = Array.isArray(raw?.riscos) ? raw.riscos : [];
+  const initialPlano = Array.isArray(raw?.plano_acao) ? raw.plano_acao : [];
+  
+  const [riscos, setRiscos] = useState<RiscoExtraido[]>(initialRiscos);
+  const [planoAcao, setPlanoAcao] = useState<AcaoExtraida[]>(initialPlano);
   const [secao, setSecao] = useState<"empresa" | "riscos" | "plano">("empresa");
 
-  const totalPreenchido = riscos.filter((r) => r.nome).length;
-  const totalAcoes = planoAcao.filter((a) => a.medida).length;
+  const totalPreenchido = riscos.filter((r) => r?.nome).length;
+  const totalAcoes = planoAcao.filter((a) => a?.medida).length;
 
   return (
     <div className="space-y-6">

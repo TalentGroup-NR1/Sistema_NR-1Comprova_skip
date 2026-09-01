@@ -71,7 +71,7 @@ export function AuthForm() {
         toast({
           variant: 'destructive',
           title: 'Empresa suspensa',
-          description: 'Empresa suspensa. Contate suporte@nr-1pronto.com.br',
+          description: 'Empresa suspensa. Contate suporte@nr1pronto.com.br',
         });
         return;
       }
@@ -179,11 +179,11 @@ export function AuthForm() {
                   <FormControl>
                     <div className="relative">
                       <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        placeholder="seu@email.com"
-                        className="pl-10"
-                        {...field}
-                      />
+                        <Input
+                          placeholder="seu@email.com"
+                          className="pl-10 border-0 border-b-2 border-slate-200 rounded-none bg-transparent focus-visible:ring-0 focus-visible:border-[hsl(216_64%_48%)] shadow-none h-12"
+                          {...field}
+                        />
                     </div>
                   </FormControl>
                   <FormMessage />
@@ -200,12 +200,12 @@ export function AuthForm() {
                   <FormControl>
                     <div className="relative">
                       <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        type={showPassword ? 'text' : 'password'}
-                        placeholder="••••••"
-                        className="pl-10 pr-10"
-                        {...field}
-                      />
+                        <Input
+                          type={showPassword ? 'text' : 'password'}
+                          placeholder="••••••"
+                          className="pl-10 pr-10 border-0 border-b-2 border-slate-200 rounded-none bg-transparent focus-visible:ring-0 focus-visible:border-[hsl(216_64%_48%)] shadow-none h-12"
+                          {...field}
+                        />
                       <button
                         type="button"
                         tabIndex={-1}
@@ -231,7 +231,7 @@ export function AuthForm() {
               </button>
             </div>
 
-            <Button type="submit" className="w-full" disabled={isLoading}>
+            <Button type="submit" className="w-full h-12 text-[16px] font-semibold bg-gradient-to-r from-[hsl(216_64%_28%)] to-[hsl(216_64%_40%)] hover:opacity-90 shadow-lg rounded-xl transition-all mt-4" disabled={isLoading}>
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Entrar
             </Button>

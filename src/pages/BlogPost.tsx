@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { getBlogSignedUrl, usePostBySlug } from "@/hooks/useBlogPosts";
 import { sanitizeRichText } from "@/lib/sanitize";
 
-const SITE_URL = "https://nr-1pronto.com.br";
+const SITE_URL = "https://nr1pronto.com.br";
 
 function setMeta(selector: string, attr: string, value: string) {
   let el = document.head.querySelector<HTMLMetaElement | HTMLLinkElement>(selector);
@@ -71,7 +71,7 @@ const BlogPostPage = () => {
       description,
       datePublished: post.published_at,
       dateModified: post.updated_at,
-      author: { "@type": "Organization", name: post.author_name || "Talent Group" },
+      author: { "@type": "Organization", name: post.author_name || "NR1-Pronto" },
       publisher: { "@type": "Organization", name: "NR-1 Pronto" },
       mainEntityOfPage: url,
       articleSection: post.category,
@@ -115,7 +115,7 @@ const BlogPostPage = () => {
               {post.title}
             </h1>
             <p className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
-              <span>{post.author_name || "Talent Group"}</span>
+              <span>{post.author_name || "NR1-Pronto"}</span>
               {post.published_at && (
                 <span>
                   ·{" "}

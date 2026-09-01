@@ -33,11 +33,12 @@ export function useAdminNotifications(limit = 20) {
   // Realtime: novas solicitações chegam sem refresh
   useEffect(() => {
     if (!isSuperAdmin) return;
+    
     const channel = supabase
-      .channel('admin_notifications_stream')
+      .channel(`admin_notifications_stream_${Date.now()}_${Math.random().toString(36).substring(7)}`)
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'admin_notifications' },
+        { event: '*', schema: 'public', table: 'admin_notifications' },
         () => {
           qc.invalidateQueries({ queryKey: ADMIN_NOTIFICATIONS_KEY });
           qc.invalidateQueries({ queryKey: ['contact-requests'] });

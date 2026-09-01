@@ -23,7 +23,7 @@ export function LandingHeader() {
           <span className="flex flex-col leading-tight">
             <span className="text-xs font-extrabold text-brand-red sm:text-sm">NR-1 Pronto</span>
             <span className="text-[10px] font-normal text-white/50 sm:text-xs">
-              powered by Talent Group
+              powered by NR1-Pronto
             </span>
           </span>
         </Link>

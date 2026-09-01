@@ -14,8 +14,8 @@ interface RequestBody {
 // Hard-coded allowlist of trusted origins for links embedded in emails.
 // NEVER interpolate caller-supplied URLs into outbound emails (phishing risk).
 const ALLOWED_APP_ORIGINS = [
-  "https://nr-1pronto.com.br",
-  "https://www.nr-1pronto.com.br",
+  "https://nr1pronto.com.br",
+  "https://www.nr1pronto.com.br",
   "https://app.talentred.com.br",
   "http://localhost:5173",
   "http://localhost:8080",

@@ -275,7 +275,7 @@ export function ComunicadoFlyerDetail({ comunicado, isAdmin = false }: Comunicad
     ? format(new Date(comunicado.data_publicacao), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })
     : '';
 
-  const logoUrl = `${window.location.origin}/images/talent-group-logo.png`;
+  const logoUrl = `${window.location.origin}/images/nr1-pronto-logo.png`;
 
   return (
     <div className="space-y-4">
@@ -331,7 +331,7 @@ export function ComunicadoFlyerDetail({ comunicado, isAdmin = false }: Comunicad
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
               <img
                 src={logoUrl}
-                alt="Talent Group"
+                alt="NR1-Pronto"
                 style={{ height: '45px', objectFit: 'contain', filter: 'brightness(0) invert(1)' }}
               />
             </div>
@@ -447,7 +447,7 @@ export function ComunicadoFlyerDetail({ comunicado, isAdmin = false }: Comunicad
             background: '#f9fafb',
           }}>
             <span style={{ fontSize: '11px', color: '#9ca3af', fontWeight: '500' }}>
-              Gerado via Talent Group System
+              Gerado via NR1-Pronto
             </span>
             <span style={{ fontSize: '11px', color: '#9ca3af' }}>
               {formattedDate}

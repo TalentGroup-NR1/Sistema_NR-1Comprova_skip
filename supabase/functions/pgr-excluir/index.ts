@@ -16,8 +16,8 @@ function maskName(emailOrId: string): string {
 const buildCorsHeaders = (req: Request) => {
   const origin = req.headers.get("origin") || "";
   const allowedOrigins = [
-    "https://nr-1pronto.com.br",
-    "https://www.nr-1pronto.com.br"
+    "https://nr1pronto.com.br",
+    "https://www.nr1pronto.com.br"
   ];
   const isLocalhost = /^https?:\/\/localhost(:\d+)?$/.test(origin);
   const allowOrigin = (isLocalhost || allowedOrigins.includes(origin)) ? origin : allowedOrigins[0];

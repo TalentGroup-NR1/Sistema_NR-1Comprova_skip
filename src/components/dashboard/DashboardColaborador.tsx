@@ -265,7 +265,7 @@ export function DashboardColaborador() {
         isBirthday={greetingState.isBirthday}
         isWorkAnniversary={greetingState.isWorkAnniversary}
         yearsAtCompany={greetingState.yearsAtCompany}
-        companyName="TALENT GROUP"
+        companyName="NR1-Pronto"
         companyLogo={company?.logo_url}
         eventDate={greetingState.eventDate}
       />

@@ -41,7 +41,7 @@ export function BaseEmail({
   brandName = 'NR-1 Pronto',
   logoUrl,
   primaryColor = '#C8102E',
-  siteUrl = 'https://nr-1pronto.com.br',
+  siteUrl = 'https://nr1pronto.com.br',
   preview,
   heading,
   ctaLabel,

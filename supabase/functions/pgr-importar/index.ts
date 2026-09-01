@@ -14,8 +14,8 @@ const MAX_FILE_SIZE_BYTES = 10 * 1_048_576; // 10 MB
 
 /** Origens de produção permitidas (lista estrita). */
 const PRODUCTION_ORIGINS = [
-  "https://nr-1pronto.com.br",
-  "https://www.nr-1pronto.com.br",
+  "https://nr1pronto.com.br",
+  "https://www.nr1pronto.com.br",
 ];
 
 /** Em dev: aceita qualquer localhost independente da porta (5173, 8080, 8081, 3000…). */

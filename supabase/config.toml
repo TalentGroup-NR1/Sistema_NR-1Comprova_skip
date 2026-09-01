@@ -1,7 +1,7 @@
 project_id = "eocoderzvnycieaesjsv"
 
 [auth]
-site_url = "https://nr-1pronto.com.br"
+site_url = "https://nr1pronto.com.br"
 
 [auth.email]
 site_name = "Talent Group - NR1-Pronto"

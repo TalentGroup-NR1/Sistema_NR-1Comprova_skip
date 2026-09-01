@@ -16,55 +16,55 @@ export default function Auth() {
   }, [isAuthenticated, loading, navigate]);
 
   return (
-    <div className="min-h-screen flex">
-      {/* Left panel - branding */}
-      <div className="hidden lg:flex lg:w-[55%] relative overflow-hidden items-center justify-center"
+    <div className="min-h-screen flex font-['Inter',sans-serif]">
+      {/* Left panel - Branding (60%) */}
+      <div className="hidden lg:flex lg:w-[60%] relative overflow-hidden items-center justify-start p-16"
         style={{
-          background: 'linear-gradient(135deg, hsl(220 50% 12%) 0%, hsl(220 45% 18%) 40%, hsl(210 40% 24%) 100%)',
+          background: 'linear-gradient(135deg, hsl(211 53% 11%) 0%, hsl(216 64% 18%) 100%)',
         }}
       >
-        {/* Subtle geometric pattern */}
-        <div className="absolute inset-0 opacity-[0.04]"
+        {/* Graphic elements: Crosses pattern & abstract shapes */}
+        <div className="absolute inset-0 opacity-[0.05]"
           style={{
-            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+            backgroundImage: `url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M19 19V5h2v14h14v2H21v14h-2V21H5v-2h14z' fill='%23ffffff' fill-opacity='1' fill-rule='evenodd'/%3E%3C/svg%3E")`,
           }}
         />
+        {/* Abstract circles */}
+        <div className="absolute top-[-10%] left-[-10%] w-96 h-96 rounded-full bg-white/5 blur-3xl" />
+        <div className="absolute bottom-[-20%] right-[-10%] w-[30rem] h-[30rem] rounded-full bg-[hsl(216_64%_48%)]/10 blur-3xl" />
 
-        {/* Accent line */}
-        <div className="absolute left-0 top-0 bottom-0 w-1.5" style={{ background: 'linear-gradient(180deg, hsl(38 45% 55%) 0%, hsl(38 50% 65%) 50%, hsl(38 45% 55%) 100%)' }} />
-
-        <div className="relative z-10 max-w-lg px-16 text-center">
-          <img
-            src={branding.logoUrl}
-            alt={branding.brandName}
-            className="h-24 mx-auto mb-10 drop-shadow-2xl"
-          />
-          <h1 className="text-4xl font-bold text-white tracking-tight leading-tight mb-4">
-            {branding.brandName}
+        <div className="relative z-10 max-w-2xl px-8 xl:px-16 animate-fade-up flex flex-col items-center text-center" style={{ animationDuration: '0.8s' }}>
+          <div className="bg-white/95 px-8 py-6 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] mb-12 backdrop-blur-md transition-transform duration-700 hover:-translate-y-1">
+            <img
+              src={branding.logoUrl}
+              alt={branding.brandName}
+              className="h-24 sm:h-32 drop-shadow-sm"
+            />
+          </div>
+          
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-white tracking-tight leading-[1.4] mb-8 drop-shadow-lg max-w-xl mx-auto">
+            A plataforma de gestão de pessoas que dá vida ao seu PGR.
           </h1>
-          <div className="w-16 h-1 mx-auto mb-6 rounded-full" style={{ background: 'hsl(38 45% 60%)' }} />
-          <p className="text-lg leading-relaxed" style={{ color: 'hsl(220 20% 72%)' }}>
-            Plataforma completa para gestão estratégica de pessoas, desenvolvimento de talentos e performance organizacional.
-          </p>
-
-          {/* Bottom decorative badges */}
-          <div className="mt-12 flex items-center justify-center gap-6">
-            {['Desempenho', 'Desenvolvimento', 'Bem-estar'].map((label) => (
-              <div key={label} className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full" style={{ background: 'hsl(38 45% 60%)' }} />
-                <span className="text-sm font-medium" style={{ color: 'hsl(220 20% 65%)' }}>{label}</span>
+          
+          {/* Badges moved to directly below the title */}
+          <div className="flex flex-wrap justify-center items-center gap-4 mb-8">
+            {['Gestão Viva', 'Trabalho Real', 'PGR Inteligente'].map((label) => (
+              <div key={label} className="flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-xl border border-white/10 shadow-sm transition-colors hover:bg-white/20">
+                <div className="w-2 h-2 rounded-full" style={{ background: 'hsl(216 64% 48%)' }} />
+                <span className="text-sm font-semibold text-white/95 tracking-wide">{label}</span>
               </div>
             ))}
           </div>
-        </div>
 
-        {/* Bottom gradient fade */}
-        <div className="absolute bottom-0 left-0 right-0 h-32" style={{ background: 'linear-gradient(to top, hsl(220 50% 8% / 0.5), transparent)' }} />
+          <p className="text-lg sm:text-xl font-light leading-[1.7] tracking-wide max-w-lg mx-auto" style={{ color: 'hsl(220 20% 80%)' }}>
+            Conectamos a rotina real dos colaboradores à conformidade da NR-1, transformando dados operacionais e a escuta de riscos psicossociais em uma gestão preventiva viva, inteligente e auditável.
+          </p>
+        </div>
       </div>
 
-      {/* Right panel - login form */}
-      <div className="flex-1 flex items-center justify-center p-6 sm:p-10 bg-background">
-        <div className="w-full max-w-md">
+      {/* Right panel - Login form (40%) */}
+      <div className="flex-1 flex items-center justify-center p-6 sm:p-14 bg-slate-50">
+        <div className="w-full max-w-md bg-white rounded-[24px] shadow-[0_8px_30px_rgb(0,0,0,0.06)] p-8 sm:p-14 relative overflow-hidden border border-slate-100">
           {/* Mobile logo */}
           <div className="lg:hidden text-center mb-10">
             <img
@@ -87,7 +87,7 @@ export default function Auth() {
 
 
           <p className="text-xs text-muted-foreground text-center mt-8">
-            © {new Date().getFullYear()} Talent Group. Todos os direitos reservados.
+            © {new Date().getFullYear()} NR1-Pronto. Todos os direitos reservados.
           </p>
         </div>
       </div>

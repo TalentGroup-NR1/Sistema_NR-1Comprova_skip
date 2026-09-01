@@ -22,7 +22,7 @@ export function LandingFooter() {
               />
               <span className="flex flex-col leading-tight">
                 <span className="text-sm font-extrabold text-brand-red">NR-1 Pronto</span>
-                <span className="text-xs text-white/50">powered by Talent Group</span>
+                <span className="text-xs text-white/50">powered by NR1-Pronto</span>
               </span>
             </div>
 
@@ -51,7 +51,7 @@ export function LandingFooter() {
               href={LANDING_LINKEDIN}
               target="_blank"
               rel="noopener noreferrer"
-              aria-label="LinkedIn da Talent Group"
+              aria-label="LinkedIn da NR1-Pronto"
               className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-white/20 text-white/70 transition-colors hover:border-brand-red hover:text-white"
             >
               <Linkedin className="h-4 w-4" />
@@ -60,7 +60,7 @@ export function LandingFooter() {
               href={LANDING_INSTAGRAM}
               target="_blank"
               rel="noopener noreferrer"
-              aria-label="Instagram da Talent Group"
+              aria-label="Instagram da NR1-Pronto"
               className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-white/20 text-white/70 transition-colors hover:border-brand-red hover:text-white"
             >
               <Instagram className="h-4 w-4" />
@@ -69,7 +69,7 @@ export function LandingFooter() {
         </div>
 
         <p className="mt-10 border-t border-white/10 pt-6 text-xs text-white/50">
-          © 2026 Talent Group Consultoria de R&amp;S Ltda. CNPJ: {LANDING_CNPJ}
+          © 2026 NR1-Pronto Consultoria de R&amp;S Ltda. CNPJ: {LANDING_CNPJ}
         </p>
       </div>
     </footer>

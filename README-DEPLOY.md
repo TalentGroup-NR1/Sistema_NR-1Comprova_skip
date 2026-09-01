@@ -2,7 +2,7 @@
 
 **Data:** 01/09/2026  
 **Supabase Project Ref:** `alneozvrsuwszlkisbyo`  
-**Domínio Oficial de Produção:** `https://nr-1pronto.com.br`
+**Domínio Oficial de Produção:** `https://nr1pronto.com.br`
 
 ---
 
@@ -10,7 +10,7 @@
 
 | Secret | Status | Observação |
 |---|---|---|
-| `APP_ORIGIN` | ✅ Configurado | `https://nr-1pronto.com.br` |
+| `APP_ORIGIN` | ✅ Configurado | `https://nr1pronto.com.br` |
 | `WEBHOOK_SECRET` | ✅ Configurado | Chave aleatória segura gerada para validação de webhooks |
 | `CRON_SECRET` | ✅ Configurado | Chave aleatória segura para proteção dos crons |
 | `RESEND_API_KEY` | ⚠️ **PENDENTE** | **Configuração adiada em ~2 semanas a pedido do cliente.** As funções de e-mail sobem normalmente e aguardam a chave antes de enviar mensagens reais. |

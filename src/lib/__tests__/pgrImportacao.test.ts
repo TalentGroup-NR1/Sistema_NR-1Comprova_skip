@@ -5,8 +5,8 @@ import { describe, it, expect } from "vitest";
 // ────────────────────────────────────────────────────────────
 
 const PRODUCTION_ORIGINS = [
-  "https://nr-1pronto.com.br",
-  "https://www.nr-1pronto.com.br",
+  "https://nr1pronto.com.br",
+  "https://www.nr1pronto.com.br",
 ];
 const LOCALHOST_REGEX = /^https?:\/\/localhost(:\d+)?$/;
 
@@ -103,14 +103,14 @@ describe("pgr-importar: CORS Preflight", () => {
     });
   });
 
-  it("deve permitir o domínio de produção https://nr-1pronto.com.br", () => {
-    const h = buildCorsHeaders("https://nr-1pronto.com.br");
-    expect(h["Access-Control-Allow-Origin"]).toBe("https://nr-1pronto.com.br");
+  it("deve permitir o domínio de produção https://nr1pronto.com.br", () => {
+    const h = buildCorsHeaders("https://nr1pronto.com.br");
+    expect(h["Access-Control-Allow-Origin"]).toBe("https://nr1pronto.com.br");
   });
 
-  it("deve permitir www.nr-1pronto.com.br", () => {
-    const h = buildCorsHeaders("https://www.nr-1pronto.com.br");
-    expect(h["Access-Control-Allow-Origin"]).toBe("https://www.nr-1pronto.com.br");
+  it("deve permitir www.nr1pronto.com.br", () => {
+    const h = buildCorsHeaders("https://www.nr1pronto.com.br");
+    expect(h["Access-Control-Allow-Origin"]).toBe("https://www.nr1pronto.com.br");
   });
 
   it("deve bloquear origem não permitida (ex.: domínio malicioso)", () => {

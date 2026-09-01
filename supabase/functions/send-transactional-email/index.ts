@@ -6,10 +6,10 @@ import { TEMPLATES } from '../_shared/transactional-email-templates/registry.ts'
 
 // Configuration baked in at scaffold time
 const SITE_NAME = "nr-1pronto"
-// SENDER_DOMAIN is the verified sender subdomain FQDN (e.g., "notify.nr-1pronto.com.br").
-const SENDER_DOMAIN = Deno.env.get("SENDER_DOMAIN") || "notify.nr-1pronto.com.br"
-// FROM_DOMAIN is the domain shown in the From: header (e.g., "nr-1pronto.com.br").
-const FROM_DOMAIN = Deno.env.get("FROM_DOMAIN") || "nr-1pronto.com.br"
+// SENDER_DOMAIN is the verified sender subdomain FQDN (e.g., "notify.nr1pronto.com.br").
+const SENDER_DOMAIN = Deno.env.get("SENDER_DOMAIN") || "notify.nr1pronto.com.br"
+// FROM_DOMAIN is the domain shown in the From: header (e.g., "nr1pronto.com.br").
+const FROM_DOMAIN = Deno.env.get("FROM_DOMAIN") || "nr1pronto.com.br"
 
 // Generate a cryptographically random 32-byte hex token
 function generateToken(): string {

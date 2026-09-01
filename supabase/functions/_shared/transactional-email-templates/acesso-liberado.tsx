@@ -30,17 +30,17 @@ export const template = {
   displayName: 'Acesso Liberado',
   previewData: {
     siteName: 'NR-1 Pronto',
-    siteUrl: 'https://nr-1pronto.com.br',
+    siteUrl: 'https://nr1pronto.com.br',
     recipientName: 'Maria Silva',
     companyName: 'Talent Group',
-    confirmationUrl: 'https://nr-1pronto.com.br/atualizar-senha#token=exemplo',
+    confirmationUrl: 'https://nr1pronto.com.br/atualizar-senha#token=exemplo',
     expirationHours: 24,
   },
 }
 
 function AcessoLiberadoEmail({
   siteName = 'NR-1 Pronto',
-  siteUrl = 'https://nr-1pronto.com.br',
+  siteUrl = 'https://nr1pronto.com.br',
   recipientName = 'Colaborador',
   companyName = 'sua empresa',
   logoUrl,

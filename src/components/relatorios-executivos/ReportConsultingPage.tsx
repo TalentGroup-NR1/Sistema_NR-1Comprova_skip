@@ -47,7 +47,7 @@ export function ReportConsultingPage({ parecerHtml, companyName, year }: Props) 
         <div className="flex justify-between items-end">
           <div>
             <p className="text-xs font-semibold" style={{ color: TALENT_NAVY }}>
-              TALENT GROUP — GESTÃO ATIVA
+              NR1-Pronto — GESTÃO ATIVA
             </p>
             <p className="text-xs" style={{ color: TALENT_GRAY }}>
               Consultoria em Recursos Humanos

@@ -5,8 +5,8 @@ import { maskEmail } from "../_shared/mask.ts";
 // Allowed origins for CORS - restrict to your application domain
 const allowedOrigins = [
   Deno.env.get('APP_ORIGIN') || '',
-  'https://nr-1pronto.com.br',
-  'https://www.nr-1pronto.com.br',
+  'https://nr1pronto.com.br',
+  'https://www.nr1pronto.com.br',
   'http://localhost:5173',
   'http://localhost:8080',
 ].filter(Boolean);
@@ -168,7 +168,7 @@ serve(async (req) => {
     const logoUrl = (colaborador.companies as { name?: string; logo_url?: string } | null)?.logo_url;
 
     // Generate new recovery link (invalidates previous ones for this user)
-    const redirectTo = `${Deno.env.get('APP_ORIGIN') || 'https://nr-1pronto.com.br'}/atualizar-senha`;
+    const redirectTo = `${Deno.env.get('APP_ORIGIN') || 'https://nr1pronto.com.br'}/atualizar-senha`;
     const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
       type: 'recovery',
       email: colaborador.email_pessoal,
@@ -197,7 +197,7 @@ serve(async (req) => {
           idempotencyKey,
           templateData: {
             siteName: 'Talent Group',
-            siteUrl: Deno.env.get('APP_ORIGIN') || 'https://nr-1pronto.com.br',
+            siteUrl: Deno.env.get('APP_ORIGIN') || 'https://nr1pronto.com.br',
             recipientName: colaborador.full_name,
             companyName: companyName || 'sua empresa',
             logoUrl: logoUrl || undefined,

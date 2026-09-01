@@ -16,8 +16,8 @@ const UpdateUserSchema = z.object({
 // Allowed origins for CORS - restrict to your application domain
 const allowedOrigins = [
   Deno.env.get('APP_ORIGIN') || '',
-  'https://nr-1pronto.com.br',
-  'https://www.nr-1pronto.com.br',
+  'https://nr1pronto.com.br',
+  'https://www.nr1pronto.com.br',
   'http://localhost:5173',
   'http://localhost:8080',
 ].filter(Boolean);

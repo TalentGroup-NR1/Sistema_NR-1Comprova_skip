@@ -12,10 +12,10 @@ function EmpresaSuspensaEmail({
   brandName = 'NR-1 Pronto',
   logoUrl,
   primaryColor,
-  siteUrl = 'https://nr-1pronto.com.br',
+  siteUrl = 'https://nr1pronto.com.br',
   companyName,
   reason,
-  supportEmail = 'suporte@nr-1pronto.com.br',
+  supportEmail = 'suporte@nr1pronto.com.br',
 }: Props) {
   return (
     <BaseEmail

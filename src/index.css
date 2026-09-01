@@ -32,11 +32,11 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222 47% 11%;
 
-    /* Primary / Accent — Talent Red #DC2626 */
-    --primary: 0 72% 51%;
+    /* Primary / Accent — NR1-Pronto Red #DC2626 */
+    --primary: 216 64% 28%;
     --primary-foreground: 0 0% 100%;
-    --primary-hover: 0 74% 42%; /* #B91C1C */
-    --primary-pressed: 0 74% 38%;
+    --primary-hover: 216 64% 23%; /* #B91C1C */
+    --primary-pressed: 216 64% 18%;
     --primary-muted: 0 93% 94%; /* #FEE2E2 */
 
     /* Secondary */
@@ -49,7 +49,7 @@
     --muted-foreground: 215 19% 35%; /* #475569 Slate 600 */
 
     /* Accent (same as primary brand) */
-    --accent: 0 72% 51%;
+    --accent: 216 64% 28%;
     --accent-foreground: 0 0% 100%;
 
     /* States */
@@ -70,10 +70,10 @@
     --border: 214 32% 91%;
     --border-subtle: 214 32% 94%;
     --input: 214 32% 91%;
-    --ring: 0 72% 51%;
+    --ring: 216 64% 28%;
 
     /* Focus */
-    --focus-ring: 0 72% 51%;
+    --focus-ring: 216 64% 28%;
     --focus-ring-offset: 0 0% 100%;
 
     /* Radius */
@@ -110,25 +110,25 @@
     /* Sidebar — off-white quente aprovado */
     --sidebar-background: 36 22% 96%; /* #F8F6F3 */
     --sidebar-foreground: 222 47% 11%;
-    --sidebar-primary: 0 72% 51%; /* Talent Red */
+    --sidebar-primary: 216 64% 28%; /* NR1-Pronto Red */
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 33 17% 92%; /* #EEECE8 hover */
     --sidebar-accent-foreground: 222 47% 11%;
     --sidebar-border: 32 19% 89%;
-    --sidebar-ring: 0 72% 51%;
+    --sidebar-ring: 216 64% 28%;
     --sidebar-muted: 215 19% 35%;
     --sidebar-icon: 215 20% 65%;
     --sidebar-hover: 33 17% 92%;
     --sidebar-active: 34 14% 93%;
-    --sidebar-active-text: 0 72% 51%; /* texto vermelho no item ativo */
+    --sidebar-active-text: 2 76% 55%; /* texto vermelho no item ativo */
 
     /* ===== Identidade Talent Group — landing NR-1 Pronto ===== */
-    --brand-navy: 220 73% 7%;         /* #050e20 */
-    --brand-navy-soft: 219 66% 13%;   /* #0b1a35 */
-    --brand-blue: 216 64% 28%;        /* #1a3e75 */
+    --brand-navy: 211 53% 11%;         /* #050e20 */
+    --brand-navy-soft: 211 53% 15%;   /* #0b1a35 */
+    --brand-blue: 211 53% 11%;        /* #1a3e75 */
     --brand-blue-light: 215 57% 39%;  /* #2b5a9e */
-    --brand-red: 358 79% 47%;         /* #D71920 */
-    --brand-gray-dark: 345 6% 13%;    /* #231F20 */
+    --brand-red: 216 64% 28%;         /* #D71920 */
+    --brand-gray-dark: 200 18% 26%;    /* #231F20 */
     --brand-offwhite: 60 20% 98%;     /* #FAFAF9 */
     --brand-mist: 210 40% 96%;        /* #F1F5F9 */
 

@@ -1,6 +1,6 @@
 # NR1-Pronto — Arquitetura de Gateway & Proteção Cloudflare (WAF/CDN)
 
-**Domínio Oficial:** `https://nr-1pronto.com.br`  
+**Domínio Oficial:** `https://nr1pronto.com.br`  
 **Registrar:** Registro.br  
 **Frontend Origin:** Vercel  
 **Backend Origin:** Supabase (`alneozvrsuwszlkisbyo.supabase.co`)
@@ -10,7 +10,7 @@
 ## 1. Configuração de Nameservers (Registro.br)
 
 1. Acesse o painel do [Registro.br](https://registro.br).
-2. Selecione o domínio **`nr-1pronto.com.br`**.
+2. Selecione o domínio **`nr1pronto.com.br`**.
 3. Na seção **DNS / Servidores de Nome**, altere para os nameservers atribuídos pela sua conta Cloudflare:
    - **Servidor 1:** `<ns1>.ns.cloudflare.com`
    - **Servidor 2:** `<ns2>.ns.cloudflare.com`
@@ -20,11 +20,11 @@
 
 ## 2. Registros DNS no Cloudflare (Proxy Ativo 🟧)
 
-Na aba **DNS -> Records** da zona `nr-1pronto.com.br`, configure os apontamentos apontando para a Vercel com **Proxy status = Proxied**:
+Na aba **DNS -> Records** da zona `nr1pronto.com.br`, configure os apontamentos apontando para a Vercel com **Proxy status = Proxied**:
 
 | Tipo | Nome | Conteúdo / Destino | Proxy Status | TTL |
 |---|---|---|---|---|
-| **A** | `@` (ou `nr-1pronto.com.br`) | `216.198.79.1` (ou `76.76.21.21`) | 🟧 **Proxied** | Auto |
+| **A** | `@` (ou `nr1pronto.com.br`) | `216.198.79.1` (ou `76.76.21.21`) | 🟧 **Proxied** | Auto |
 | **CNAME** | `www` | `cname.vercel-dns.com` | 🟧 **Proxied** | Auto |
 
 ---
@@ -89,7 +89,7 @@ Na aba **SSL/TLS**:
 
 1. **Validação de Proxy e Certificado**:
    ```bash
-   curl -I https://nr-1pronto.com.br
+   curl -I https://nr1pronto.com.br
    ```
    *Resultado esperado:* Cabeçalhos contendo `server: cloudflare`, `cf-ray` e status `200 OK` ou `301/308` para HTTPS.
 
@@ -98,4 +98,4 @@ Na aba **SSL/TLS**:
    - *Resultado esperado:* As primeiras requisições passam e a 6ª retorna código `429 Too Many Requests` emitida pela borda do Cloudflare.
 
 3. **Navegação e Autenticação no Frontend**:
-   - Acesse `https://nr-1pronto.com.br`, realize o fluxo de login e confirme na aba Network que as requisições fluem sem bloqueio de CORS.
+   - Acesse `https://nr1pronto.com.br`, realize o fluxo de login e confirme na aba Network que as requisições fluem sem bloqueio de CORS.

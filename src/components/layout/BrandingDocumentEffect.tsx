@@ -10,7 +10,7 @@ export function BrandingDocumentEffect() {
 
   useEffect(() => {
     if (brandName) {
-      document.title = `${brandName} — Talent Group`;
+      document.title = `${brandName} — NR1-Pronto`;
     }
     if (faviconUrl) {
       let link = document.querySelector<HTMLLinkElement>("link[rel='icon']");
