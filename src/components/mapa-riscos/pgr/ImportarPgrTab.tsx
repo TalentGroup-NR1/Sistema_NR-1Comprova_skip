@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { Upload, FileText, CheckCircle, AlertCircle, Loader2, ChevronDown, ChevronUp, Shield, Clock, User, AlertTriangle } from "lucide-react";
+import { Upload, FileText, CheckCircle, AlertCircle, Loader2, ChevronDown, ChevronUp, Shield, Clock, User, AlertTriangle, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -15,6 +15,7 @@ import {
   useIniciarImportacaoPgr,
   useConfirmarImportacaoPgr,
   usePgrImportacoes,
+  useExcluirImportacaoPgr,
   type PgrImportacao,
   type RiscoExtraido,
   type AcaoExtraida,
@@ -269,6 +270,7 @@ function HistoricoCard({ importacao }: { importacao: PgrImportacao }) {
   const Icon = cfg.icon;
   const totalRiscos = importacao.riscos?.length ?? importacao.extracao_raw?.riscos?.length ?? 0;
   const totalAcoes = importacao.plano_acao?.length ?? importacao.extracao_raw?.plano_acao?.length ?? 0;
+  const excluir = useExcluirImportacaoPgr();
 
   return (
     <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-card p-3">
@@ -287,10 +289,27 @@ function HistoricoCard({ importacao }: { importacao: PgrImportacao }) {
           )}
         </div>
       </div>
-      <Badge className={`${cfg.color} shrink-0 flex items-center gap-1 text-xs`}>
-        <Icon className={`h-3 w-3 ${cfg.spin ? "animate-spin" : ""}`} />
-        {cfg.label}
-      </Badge>
+      <div className="flex items-center gap-3 shrink-0">
+        <Badge className={`${cfg.color} flex items-center gap-1 text-xs`}>
+          <Icon className={`h-3 w-3 ${cfg.spin ? "animate-spin" : ""}`} />
+          {cfg.label}
+        </Badge>
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          className="h-8 w-8 text-muted-foreground hover:text-red-600 hover:bg-red-50"
+          onClick={() => {
+            if (confirm("Tem certeza que deseja excluir esta importação? Esta ação não pode ser desfeita.")) {
+              excluir.mutateAsync(importacao.id)
+                .then(() => toast.success("Importação excluída com sucesso."))
+                .catch(err => toast.error(err.message ?? "Erro ao excluir importação."));
+            }
+          }}
+          title="Excluir importação"
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      </div>
     </div>
   );
 }

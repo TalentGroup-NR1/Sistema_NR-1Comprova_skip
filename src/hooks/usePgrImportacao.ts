@@ -215,3 +215,27 @@ export function useConfirmarImportacaoPgr() {
     },
   });
 }
+
+// ──────────────────────────────────────────────────────────────
+// Excluir importação (via Edge Function)
+// ──────────────────────────────────────────────────────────────
+export function useExcluirImportacaoPgr() {
+  const { user } = useAuth();
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (importacaoId: string) => {
+      if (!user?.id) throw new Error("Não autenticado.");
+      
+      const { data, error: fnErr } = await supabase.functions.invoke("pgr-excluir", {
+        body: { importacao_id: importacaoId }
+      });
+      
+      const actualError = fnErr || (data && data.error ? new Error(data.error) : null);
+      if (actualError) throw actualError;
+
+      return data;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["pgr-importacoes"] }),
+  });
+}

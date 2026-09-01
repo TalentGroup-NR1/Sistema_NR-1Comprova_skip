@@ -66,6 +66,15 @@ function validarArquivoPdf(nome: string, tamanho: number): { ok: boolean; erro?:
 }
 
 // ────────────────────────────────────────────────────────────
+// Funções puras de autorização (pgr-excluir)
+// ────────────────────────────────────────────────────────────
+function canDeleteImportacao(callerRoles: string[], callerCompanyId: string | null, importacaoCompanyId: string): boolean {
+  if (callerRoles.includes("admin_master")) return true;
+  if (!callerRoles.some(r => ["admin_empresa", "analista_rh"].includes(r))) return false;
+  return callerCompanyId === importacaoCompanyId;
+}
+
+// ────────────────────────────────────────────────────────────
 // TESTES
 // ────────────────────────────────────────────────────────────
 

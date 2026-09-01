@@ -198,20 +198,27 @@ serve(async (req) => {
     const hasServiceKey = !!Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     console.log(`[pgr-importar][${requestId}] hasServiceKey: ${hasServiceKey}`);
 
-    const { data: roleRow, error: roleErr } = await supabaseAdmin
-      .from("user_roles").select("role").eq("user_id", caller.id).maybeSingle();
+    const { data: roleRows, error: roleErr } = await supabaseAdmin
+      .from("user_roles").select("role").eq("user_id", caller.id);
     
     if (roleErr) {
-      console.error(`[pgr-importar][${requestId}] Erro ao buscar role em user_roles:`, roleErr);
+      console.error(`[pgr-importar][${requestId}] Erro ao buscar roles em user_roles:`, roleErr);
     }
     
-    const callerRole = caller.user_metadata?.role || caller.app_metadata?.role || roleRow?.role as string | undefined;
+    const dbRoles = roleRows?.map(r => r.role) || [];
+    const jwtRole = caller.user_metadata?.role || caller.app_metadata?.role;
+    if (jwtRole) dbRoles.push(jwtRole);
+
     const allowedRoles = ["admin_master", "admin_empresa", "analista_rh"];
-    if (!callerRole || !allowedRoles.includes(callerRole)) {
-      const errMsg = roleErr ? `Database Error: ${roleErr.message}` : `role is ${callerRole}`;
+    const hasAllowedRole = dbRoles.some(r => allowedRoles.includes(r));
+
+    if (!hasAllowedRole) {
+      const errMsg = roleErr ? `Database Error: ${roleErr.message}` : `roles are [${dbRoles.join(",")}]`;
       console.warn(`[pgr-importar][${requestId}] Forbidden: ${errMsg}`);
       return new Response(JSON.stringify({ error: `Forbidden: ${errMsg}` }), { status: 200, headers: jsonHeaders });
     }
+
+    const callerRole = dbRoles.find(r => allowedRoles.includes(r)) || dbRoles[0]; // pick the valid one for later logging
 
     // ── Parse payload ─────────────────────────────────────────
     const rawBody = await req.json().catch(() => null);
