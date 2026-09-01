@@ -195,8 +195,13 @@ serve(async (req) => {
     console.log(`[pgr-importar][${requestId}] Caller: ${maskName(caller.email ?? caller.id)}`);
 
     // ── Role check ────────────────────────────────────────────
-    const { data: roleRow } = await supabaseAdmin
-      .from("user_roles").select("role").eq("user_id", caller.id).maybeSingle();
+    const { data: roleRow, error: roleErr } = await supabaseAdmin
+      .from("profiles").select("role").eq("user_id", caller.id).maybeSingle();
+    
+    if (roleErr) {
+      console.error(`[pgr-importar][${requestId}] Erro ao buscar role:`, roleErr);
+    }
+    
     const callerRole = roleRow?.role as string | undefined;
     const allowedRoles = ["admin_master", "admin_empresa", "analista_rh"];
     if (!callerRole || !allowedRoles.includes(callerRole)) {
