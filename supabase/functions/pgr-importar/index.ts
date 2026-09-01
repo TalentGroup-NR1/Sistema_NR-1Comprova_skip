@@ -180,7 +180,7 @@ serve(async (req) => {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
       console.warn(`[pgr-importar][${requestId}] Missing or invalid Authorization header`);
-      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: jsonHeaders });
+      return new Response(JSON.stringify({ error: "Unauthorized: Missing header" }), { status: 200, headers: jsonHeaders });
     }
 
     const supabaseUser = createClient(supabaseUrl, supabaseAnonKey, {
@@ -189,7 +189,7 @@ serve(async (req) => {
     const { data: userData, error: userErr } = await supabaseUser.auth.getUser();
     if (userErr || !userData?.user) {
       console.warn(`[pgr-importar][${requestId}] Auth failed: ${userErr?.message ?? "no user"}`);
-      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: jsonHeaders });
+      return new Response(JSON.stringify({ error: `Unauthorized: ${userErr?.message}` }), { status: 200, headers: jsonHeaders });
     }
     const caller = userData.user;
     console.log(`[pgr-importar][${requestId}] Caller: ${maskName(caller.email ?? caller.id)}`);
@@ -201,7 +201,7 @@ serve(async (req) => {
     const allowedRoles = ["admin_master", "admin_empresa", "analista_rh"];
     if (!callerRole || !allowedRoles.includes(callerRole)) {
       console.warn(`[pgr-importar][${requestId}] Forbidden role: ${callerRole}`);
-      return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: jsonHeaders });
+      return new Response(JSON.stringify({ error: `Forbidden: role is ${callerRole}` }), { status: 200, headers: jsonHeaders });
     }
 
     // ── Parse payload ─────────────────────────────────────────
@@ -209,7 +209,7 @@ serve(async (req) => {
     const parsed = RequestSchema.safeParse(rawBody);
     if (!parsed.success) {
       console.warn(`[pgr-importar][${requestId}] Invalid payload:`, parsed.error.flatten());
-      return new Response(JSON.stringify({ error: "Invalid payload", details: parsed.error.flatten() }), { status: 400, headers: jsonHeaders });
+      return new Response(JSON.stringify({ error: `Invalid payload: ${JSON.stringify(parsed.error.flatten())}` }), { status: 200, headers: jsonHeaders });
     }
     const { importacao_id } = parsed.data;
     console.log(`[pgr-importar][${requestId}] Processing importacao_id=${importacao_id}`);
@@ -219,7 +219,7 @@ serve(async (req) => {
       .from("pgr_importacoes").select("*").eq("id", importacao_id).single();
     if (fetchErr || !importacao) {
       console.error(`[pgr-importar][${requestId}] Importação não encontrada: ${fetchErr?.message}`);
-      return new Response(JSON.stringify({ error: "Importação não encontrada" }), { status: 404, headers: jsonHeaders });
+      return new Response(JSON.stringify({ error: `Importação não encontrada: ${fetchErr?.message}` }), { status: 200, headers: jsonHeaders });
     }
 
     // ── Tenant isolation ──────────────────────────────────────
@@ -228,7 +228,7 @@ serve(async (req) => {
         .from("profiles").select("company_id").eq("user_id", caller.id).maybeSingle();
       if (!profileRow?.company_id || profileRow.company_id !== importacao.company_id) {
         console.warn(`[pgr-importar][${requestId}] Tenant mismatch for caller ${maskName(caller.email ?? caller.id)}`);
-        return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: jsonHeaders });
+        return new Response(JSON.stringify({ error: "Forbidden: Tenant mismatch" }), { status: 200, headers: jsonHeaders });
       }
     }
 
@@ -242,7 +242,7 @@ serve(async (req) => {
       const msg = `Falha ao baixar arquivo do storage: ${dlError?.message ?? "sem dados"}`;
       console.error(`[pgr-importar][${requestId}] ${msg}`);
       await supabaseAdmin.from("pgr_importacoes").update({ status: "erro", erro_mensagem: msg }).eq("id", importacao_id);
-      return new Response(JSON.stringify({ error: "Falha ao acessar o arquivo enviado." }), { status: 422, headers: jsonHeaders });
+      return new Response(JSON.stringify({ error: msg }), { status: 200, headers: jsonHeaders });
     }
 
     // ── Size check (10MB) ─────────────────────────────────────
@@ -250,7 +250,7 @@ serve(async (req) => {
       const msg = `Arquivo excede o limite de 10MB (${(fileData.size / 1_048_576).toFixed(1)}MB).`;
       console.warn(`[pgr-importar][${requestId}] ${msg}`);
       await supabaseAdmin.from("pgr_importacoes").update({ status: "erro", erro_mensagem: msg }).eq("id", importacao_id);
-      return new Response(JSON.stringify({ error: "Arquivo excede o limite máximo de 10MB." }), { status: 413, headers: jsonHeaders });
+      return new Response(JSON.stringify({ error: msg }), { status: 200, headers: jsonHeaders });
     }
 
     const arrayBuffer = await fileData.arrayBuffer();
@@ -314,9 +314,10 @@ serve(async (req) => {
   } catch (err) {
     console.error(`[pgr-importar][${requestId}] Unexpected error:`, err);
     const errorMsg = err instanceof Error ? err.message : "Erro desconhecido";
+    // Retorna 200 com payload de erro para o supabase-js client não esconder o erro
     return new Response(
       JSON.stringify({ error: errorMsg }),
-      { status: 500, headers: jsonHeaders }
+      { status: 200, headers: jsonHeaders }
     );
   }
 });
