@@ -106,7 +106,7 @@ Toda Edge Function DEVE:
 ## Segredos
 
 - `SUPABASE_SERVICE_ROLE_KEY` **jamais** no frontend.
-- `CRON_SECRET`, `LOVABLE_API_KEY`: apenas em Edge Functions via `Deno.env.get()`.
+- `CRON_SECRET`, `OPENAI_API_KEY`: apenas em Edge Functions via `Deno.env.get()`.
 
 ---
 

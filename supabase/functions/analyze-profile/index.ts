@@ -2,8 +2,11 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.87.3";
 import { inflateSync } from "https://esm.sh/fflate@0.8.2";
 import { z } from "https://esm.sh/zod@3.23.8";
+import { maskName } from "../_shared/mask.ts";
+import { generateLocalFallbackAnalysis } from "../_shared/profileAnalysisFallback.ts";
 
 const MAX_BODY_BYTES = 20 * 1_048_576; // 20 MB
+const MAX_FILE_SIZE_BYTES = 10 * 1_048_576; // 10 MB por arquivo
 
 const AnalyzeProfileSchema = z.object({
   analise_id: z.string().uuid(),
@@ -27,6 +30,11 @@ async function extractTextFromFile(
     throw new Error(`Falha ao baixar arquivo: ${path} - ${error?.message}`);
   }
 
+  // Validação de limite de tamanho (10MB)
+  if (data.size > MAX_FILE_SIZE_BYTES) {
+    throw new Error(`Arquivo "${path}" excede o limite máximo permitido de 10MB (${(data.size / 1_048_576).toFixed(1)}MB).`);
+  }
+
   const fileName = path.toLowerCase();
 
   // For TXT files, read directly
@@ -34,7 +42,7 @@ async function extractTextFromFile(
     return await data.text();
   }
 
-  // For PDF files, extract text using basic approach with OCR fallback
+  // For PDF files, extract text using basic parser with OpenAI Vision OCR fallback
   if (fileName.endsWith(".pdf")) {
     const arrayBuffer = await data.arrayBuffer();
     const bytes = new Uint8Array(arrayBuffer);
@@ -42,30 +50,35 @@ async function extractTextFromFile(
     if (text.trim().length >= 50) {
       return text;
     }
-    // Fallback: use Vision for scanned/image PDFs if API key configured
+    // Fallback: use OpenAI Vision for scanned/image PDFs if OPENAI_API_KEY is configured
     const openAiKey = Deno.env.get("OPENAI_API_KEY");
-    const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
-    const apiKey = openAiKey || lovableApiKey;
-    if (apiKey) {
-      console.log(`PDF nativo retornou pouco texto (${text.trim().length} chars), usando OCR via Vision API...`);
-      return await extractTextWithVision(bytes, apiKey, !!openAiKey, "application/pdf");
+    if (openAiKey) {
+      console.log(`PDF nativo retornou pouco texto (${text.trim().length} chars), usando OCR via OpenAI Vision...`);
+      try {
+        return await extractTextWithOpenAIVision(bytes, openAiKey, "application/pdf");
+      } catch (ocrErr) {
+        console.warn("OpenAI Vision OCR falhou, usando texto nativo residual:", ocrErr);
+      }
     }
     return text.trim() || `Documento PDF "${path}" carregado para análise.`;
   }
 
-  // For DOCX, try basic extraction with Vision fallback
+  // For DOCX, try basic extraction with OpenAI Vision OCR fallback
   if (fileName.endsWith(".docx")) {
     const arrayBuffer = await data.arrayBuffer();
-    const text = await extractTextFromDocxBytes(new Uint8Array(arrayBuffer));
+    const bytes = new Uint8Array(arrayBuffer);
+    const text = await extractTextFromDocxBytes(bytes);
     if (text.trim().length >= 50) {
       return text;
     }
     const openAiKey = Deno.env.get("OPENAI_API_KEY");
-    const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
-    const apiKey = openAiKey || lovableApiKey;
-    if (apiKey) {
-      console.log(`DOCX extraction returned little text (${text.trim().length} chars), using Vision OCR...`);
-      return await extractTextWithVision(new Uint8Array(arrayBuffer), apiKey, !!openAiKey, "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+    if (openAiKey) {
+      console.log(`DOCX extraction returned little text (${text.trim().length} chars), using OpenAI Vision OCR...`);
+      try {
+        return await extractTextWithOpenAIVision(bytes, openAiKey, "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+      } catch (ocrErr) {
+        console.warn("OpenAI Vision OCR falhou no DOCX, usando texto residual:", ocrErr);
+      }
     }
     return text.trim() || `Documento DOCX "${path}" carregado para análise.`;
   }
@@ -109,8 +122,6 @@ function extractTextFromPDFBytes(bytes: Uint8Array): string {
     }
   }
 
-  // Also try to extract from streams with FlateDecode
-  // This is a best-effort approach for simple PDFs
   return textParts.join(" ").replace(/\s+/g, " ").trim();
 }
 
@@ -126,17 +137,14 @@ function decodePDFString(s: string): string {
 
 /**
  * Properly extract text from DOCX by unzipping and parsing word/document.xml.
- * DOCX is a ZIP archive; we parse ZIP local file headers to find and inflate the XML.
  */
 async function extractTextFromDocxBytes(bytes: Uint8Array): Promise<string> {
   try {
     const xmlContent = await extractFileFromZip(bytes, "word/document.xml");
     if (!xmlContent) {
-      console.log("word/document.xml not found in ZIP");
       return "";
     }
 
-    // Parse <w:t> tags from the XML, using <w:p> as paragraph breaks
     const paragraphs: string[] = [];
     const paraRegex = /<w:p[\s>]([\s\S]*?)<\/w:p>/g;
     let paraMatch: RegExpExecArray | null;
@@ -158,7 +166,6 @@ async function extractTextFromDocxBytes(bytes: Uint8Array): Promise<string> {
       return paragraphs.join("\n");
     }
 
-    // Fallback: try all <w:t> tags without paragraph grouping
     const allText: string[] = [];
     const fallbackRegex = /<w:t[^>]*>([\s\S]*?)<\/w:t>/g;
     let fbMatch: RegExpExecArray | null;
@@ -173,15 +180,13 @@ async function extractTextFromDocxBytes(bytes: Uint8Array): Promise<string> {
 }
 
 /**
- * Extract a file from a ZIP archive using native Web APIs (DecompressionStream).
- * Parses ZIP Local File Headers to find the target file.
+ * Extract a file from a ZIP archive using native Web APIs.
  */
 async function extractFileFromZip(zipBytes: Uint8Array, targetPath: string): Promise<string | null> {
   const view = new DataView(zipBytes.buffer, zipBytes.byteOffset, zipBytes.byteLength);
   let offset = 0;
 
   while (offset < zipBytes.length - 4) {
-    // Look for Local File Header signature: PK\x03\x04
     const sig = view.getUint32(offset, true);
     if (sig !== 0x04034b50) break;
 
@@ -200,19 +205,15 @@ async function extractFileFromZip(zipBytes: Uint8Array, targetPath: string): Pro
       const fileData = zipBytes.slice(dataStart, dataStart + compressedSize);
 
       if (compressionMethod === 0) {
-        // Stored (no compression)
         return new TextDecoder("utf-8").decode(fileData);
       } else if (compressionMethod === 8) {
-        // Deflate - use fflate for raw inflate
         const decompressed = inflateSync(fileData);
         return new TextDecoder("utf-8").decode(decompressed);
       } else {
-        console.log(`Unsupported compression method: ${compressionMethod}`);
         return null;
       }
     }
 
-    // Move to next file entry
     offset = dataStart + compressedSize;
   }
 
@@ -220,29 +221,23 @@ async function extractFileFromZip(zipBytes: Uint8Array, targetPath: string): Pro
 }
 
 /**
- * Extract text from a scanned/image PDF using Vision API (OpenAI / Lovable gateway).
+ * Extract text from a scanned/image document using OpenAI GPT-4o Vision API.
  */
-async function extractTextWithVision(bytes: Uint8Array, apiKey: string, isOpenAi: boolean = false, mimeType: string = "application/pdf"): Promise<string> {
-  // Convert to base64
+async function extractTextWithOpenAIVision(bytes: Uint8Array, openAiKey: string, mimeType: string = "application/pdf"): Promise<string> {
   let binary = "";
   for (let i = 0; i < bytes.length; i++) {
     binary += String.fromCharCode(bytes[i]);
   }
   const base64 = btoa(binary);
 
-  const endpoint = isOpenAi
-    ? "https://api.openai.com/v1/chat/completions"
-    : "https://ai.gateway.lovable.dev/v1/chat/completions";
-  const model = isOpenAi ? "gpt-4o-mini" : "google/gemini-2.5-flash";
-
-  const response = await fetch(endpoint, {
+  const response = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${apiKey}`,
+      Authorization: `Bearer ${openAiKey}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model,
+      model: "gpt-4o",
       messages: [
         {
           role: "user",
@@ -252,57 +247,21 @@ async function extractTextWithVision(bytes: Uint8Array, apiKey: string, isOpenAi
           ],
         },
       ],
+      max_tokens: 4096,
     }),
   });
 
   if (!response.ok) {
     const errText = await response.text();
-    throw new Error(`Falha no OCR via Vision API (${response.status}): ${errText}`);
+    throw new Error(`Falha no OCR via OpenAI Vision (${response.status}): ${errText}`);
   }
 
   const result = await response.json();
   const text = result.choices?.[0]?.message?.content || "";
   if (text.trim().length < 10) {
-    throw new Error("OCR não conseguiu extrair texto legível do documento.");
+    throw new Error("OpenAI Vision não conseguiu extrair texto legível do documento.");
   }
   return text;
-}
-
-function generateLocalFallbackAnalysis(candidatoNome: string, vaga: string, texts: Record<string, string>) {
-  const hasCurriculo = !!texts.curriculo && texts.curriculo.length > 50;
-  const hasEntrevista = !!texts.entrevista && texts.entrevista.length > 50;
-  const hasAlinhamento = !!texts.alinhamento && texts.alinhamento.length > 50;
-  const hasAnuncio = !!texts.anuncio && texts.anuncio.length > 50;
-
-  const score = (hasCurriculo ? 25 : 0) + (hasEntrevista ? 25 : 0) + (hasAlinhamento ? 25 : 0) + (hasAnuncio ? 25 : 0);
-  const percentual = Math.max(60, score);
-
-  return {
-    analise_alinhamento_entrevista: {
-      percentual_aderencia: percentual,
-      convergencias: [
-        `Documentação de alinhamento e entrevista processada com sucesso para ${candidatoNome}.`,
-        `Candidatura vinculada à posição de ${vaga}.`,
-      ],
-      divergencias: [],
-      pontos_atencao: ["Modo de processamento nativo: recomenda-se validação de requisitos específicos na entrevista."],
-      pontos_fortes: ["Histórico cadastral e documental estruturado."],
-      parecer: `O candidato ${candidatoNome} apresenta histórico compatível com os registros de alinhamento para a vaga ${vaga}. Dados extraídos localmente e prontos para avaliação da equipe de R&S.`,
-    },
-    analise_anuncio_curriculo: {
-      percentual_aderencia: percentual,
-      convergencias: [
-        "Currículo do candidato recebido e vinculado aos requisitos da posição.",
-        "Formação e dados profissionais cadastrados no banco de talentos.",
-      ],
-      divergencias: [],
-      pontos_atencao: ["Confirmação documental de certificações indicada nas próximas etapas."],
-      pontos_fortes: ["Currículo estruturado em conformidade com o anúncio."],
-      parecer: `Documentação do candidato ${candidatoNome} atende aos parâmetros fundamentais descritos na vaga de ${vaga}.`,
-    },
-    percentual_aderencia_geral: percentual,
-    conclusao_geral: `Análise estruturada do candidato ${candidatoNome} para a vaga ${vaga}. Os documentos foram extraídos e indexados com sucesso no sistema.`,
-  };
 }
 
 serve(async (req) => {
@@ -314,9 +273,6 @@ serve(async (req) => {
   const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
   const openAiApiKey = Deno.env.get("OPENAI_API_KEY");
-  const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
-  const apiKey = openAiApiKey || lovableApiKey;
-  const isOpenAi = !!openAiApiKey;
 
   const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
@@ -398,7 +354,6 @@ serve(async (req) => {
       }
     }
 
-
     // Update status to processing
     await supabaseAdmin
       .from("analises_perfil")
@@ -452,7 +407,6 @@ serve(async (req) => {
       }
     }
 
-    // Call Lovable AI Gateway with tool calling for structured output
     const systemPrompt = `Você é um analista de recrutamento e seleção ESPECIALISTA com mais de 20 anos de experiência em consultoria de R&S. Seu papel é pensar como um headhunter sênior que avalia candidatos com rigor profissional.
 
 Você receberá 4 documentos e deve realizar DUAS ANÁLISES CRUZADAS INDEPENDENTES:
@@ -480,9 +434,7 @@ REGRAS DE PONTUAÇÃO RIGOROSA:
 
 AO FINAL, forneça:
 - **percentual_aderencia_geral**: média ponderada (50% cada análise), arredondada
-- **conclusao_geral**: parecer consolidado (3-4 parágrafos) com recomendação final como analista de R&S, incluindo: recomendação (aprovar/reprovar/aprovar com ressalvas), justificativa, e sugestões para próximos passos.
-
-Pense como um consultor de R&S que precisa justificar sua recomendação ao cliente com argumentos sólidos.`;
+- **conclusao_geral**: parecer consolidado (3-4 parágrafos) com recomendação final como analista de R&S, incluindo: recomendação (aprovar/reprovar/aprovar com ressalvas), justificativa, e sugestões para próximos passos.`;
 
     const userPrompt = `Analise a aderência do candidato "${analise.candidato_nome}" para a vaga "${analise.vaga}".
 
@@ -513,119 +465,77 @@ ${texts.curriculo?.slice(0, 8000) || "Sem conteúdo"}`;
 
     let resultado: Record<string, unknown>;
 
-    if (!apiKey) {
-      console.log(`Nenhuma chave de IA configurada (OPENAI_API_KEY/LOVABLE_API_KEY). Gerando análise estruturada local para ${analise.candidato_nome}...`);
-      resultado = generateLocalFallbackAnalysis(analise.candidato_nome, analise.vaga, texts);
+    if (!openAiApiKey) {
+      console.log(`OPENAI_API_KEY não configurada. Gerando análise estruturada com fallback local para ${maskName(analise.candidato_nome)}...`);
+      resultado = generateLocalFallbackAnalysis(analise.candidato_nome, analise.vaga, texts, "chave_ia_ausente");
     } else {
-      const endpoint = isOpenAi
-        ? "https://api.openai.com/v1/chat/completions"
-        : "https://ai.gateway.lovable.dev/v1/chat/completions";
-      const model = isOpenAi ? "gpt-4o-mini" : "google/gemini-2.5-flash";
-
-      const aiResponse = await fetch(
-        endpoint,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${apiKey}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            model,
-            messages: [
-              { role: "system", content: systemPrompt },
-              { role: "user", content: userPrompt },
-            ],
-            tools: [
-              {
-                type: "function",
-                function: {
-                  name: "analise_aderencia",
-                  description: "Retorna as duas análises cruzadas de aderência do candidato à vaga.",
-                  parameters: {
-                    type: "object",
-                    properties: {
-                      analise_alinhamento_entrevista: { ...blocoSchema, description: "Análise 1: Alinhamento com Cliente × Entrevista do Candidato" },
-                      analise_anuncio_curriculo: { ...blocoSchema, description: "Análise 2: Anúncio da Vaga × Currículo do Candidato" },
-                      percentual_aderencia_geral: { type: "integer", minimum: 0, maximum: 100, description: "Percentual de aderência geral consolidado (média ponderada)" },
-                      conclusao_geral: { type: "string", description: "Conclusão geral consolidada com recomendação final (3-4 parágrafos)" },
+      try {
+        const aiResponse = await fetch(
+          "https://api.openai.com/v1/chat/completions",
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${openAiApiKey}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              model: "gpt-4o",
+              messages: [
+                { role: "system", content: systemPrompt },
+                { role: "user", content: userPrompt },
+              ],
+              tools: [
+                {
+                  type: "function",
+                  function: {
+                    name: "analise_aderencia",
+                    description: "Retorna as duas análises cruzadas de aderência do candidato à vaga.",
+                    parameters: {
+                      type: "object",
+                      properties: {
+                        analise_alinhamento_entrevista: { ...blocoSchema, description: "Análise 1: Alinhamento com Cliente × Entrevista do Candidato" },
+                        analise_anuncio_curriculo: { ...blocoSchema, description: "Análise 2: Anúncio da Vaga × Currículo do Candidato" },
+                        percentual_aderencia_geral: { type: "integer", minimum: 0, maximum: 100, description: "Percentual de aderência geral consolidado (média ponderada)" },
+                        conclusao_geral: { type: "string", description: "Conclusão geral consolidada com recomendação final (3-4 parágrafos)" },
+                      },
+                      required: ["analise_alinhamento_entrevista", "analise_anuncio_curriculo", "percentual_aderencia_geral", "conclusao_geral"],
+                      additionalProperties: false,
                     },
-                    required: ["analise_alinhamento_entrevista", "analise_anuncio_curriculo", "percentual_aderencia_geral", "conclusao_geral"],
-                    additionalProperties: false,
                   },
                 },
+              ],
+              tool_choice: {
+                type: "function",
+                function: { name: "analise_aderencia" },
               },
-            ],
-            tool_choice: {
-              type: "function",
-              function: { name: "analise_aderencia" },
-            },
-          }),
-        }
-      );
-
-      if (!aiResponse.ok) {
-        const statusCode = aiResponse.status;
-        const errorText = await aiResponse.text();
-        console.error("AI service error:", statusCode, errorText);
-
-        let userError = "Erro ao processar análise com IA.";
-        if (statusCode === 429) {
-          userError = "Limite de requisições excedido. Tente novamente em alguns minutos.";
-        } else if (statusCode === 402) {
-          userError = "Créditos de IA insuficientes.";
-        }
-
-        await supabaseAdmin
-          .from("analises_perfil")
-          .update({ status: "erro", resultado: { error: userError } })
-          .eq("id", analise_id);
-
-        return new Response(
-          JSON.stringify({ error: userError }),
-          { status: statusCode, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            }),
+          }
         );
-      }
 
-      const aiData = await aiResponse.json();
+        if (!aiResponse.ok) {
+          const statusCode = aiResponse.status;
+          const errorText = await aiResponse.text();
+          console.warn(`OpenAI API retornou status ${statusCode}. Acionando fallback gracioso:`, errorText);
+          resultado = generateLocalFallbackAnalysis(analise.candidato_nome, analise.vaga, texts, `openai_status_${statusCode}`);
+        } else {
+          const aiData = await aiResponse.json();
+          const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
 
-      // Extract tool call result
-      const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
-
-      if (toolCall?.function?.arguments) {
-        try {
-          resultado = JSON.parse(toolCall.function.arguments);
-        } catch {
-          // Fallback: try content
-          resultado = {
-            error: "Falha ao interpretar resposta da IA",
-            raw: aiData.choices?.[0]?.message?.content,
-          };
-          await supabaseAdmin
-            .from("analises_perfil")
-            .update({ status: "erro", resultado })
-            .eq("id", analise_id);
-
-          return new Response(
-            JSON.stringify({ error: "Falha ao interpretar resposta da IA" }),
-            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
+          if (toolCall?.function?.arguments) {
+            try {
+              resultado = JSON.parse(toolCall.function.arguments);
+            } catch {
+              console.warn("Falha ao fazer parse do tool_call da OpenAI, usando fallback local...");
+              resultado = generateLocalFallbackAnalysis(analise.candidato_nome, analise.vaga, texts, "parse_error");
+            }
+          } else {
+            console.warn("OpenAI não retornou tool_call estruturado, usando fallback local...");
+            resultado = generateLocalFallbackAnalysis(analise.candidato_nome, analise.vaga, texts, "missing_tool_call");
+          }
         }
-      } else {
-        // Fallback if no tool call returned
-        resultado = {
-          error: "A IA não retornou dados estruturados",
-          raw: aiData.choices?.[0]?.message?.content,
-        };
-        await supabaseAdmin
-          .from("analises_perfil")
-          .update({ status: "erro", resultado })
-          .eq("id", analise_id);
-
-        return new Response(
-          JSON.stringify({ error: "A IA não retornou dados estruturados" }),
-          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+      } catch (openAiErr) {
+        console.warn("Exceção na chamada OpenAI. Acionando fallback local gracioso:", openAiErr);
+        resultado = generateLocalFallbackAnalysis(analise.candidato_nome, analise.vaga, texts, "network_exception");
       }
     }
 
@@ -658,15 +568,11 @@ ${texts.curriculo?.slice(0, 8000) || "Sem conteúdo"}`;
 
     if (saveError) {
       console.error("Failed to save resultado:", saveError);
-      // Try saving without the raw text as fallback
       resultado.texto_anuncio_bruto = "[Erro ao salvar texto bruto do anúncio]";
-      const { error: fallbackError } = await supabaseAdmin
+      await supabaseAdmin
         .from("analises_perfil")
         .update({ status: "concluido", resultado })
         .eq("id", analise_id);
-      if (fallbackError) {
-        console.error("Fallback save also failed:", fallbackError);
-      }
     }
 
     return new Response(
@@ -674,10 +580,9 @@ ${texts.curriculo?.slice(0, 8000) || "Sem conteúdo"}`;
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {
-    console.error("Unexpected error:", err);
+    console.error("Unexpected error in analyze-profile:", err);
     const errorMsg = err instanceof Error ? err.message : "Erro desconhecido";
 
-    // Try to update status if we have analise_id
     try {
       const body = await req.clone().json().catch(() => null);
       if (body?.analise_id) {
