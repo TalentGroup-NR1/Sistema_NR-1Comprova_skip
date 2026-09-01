@@ -148,12 +148,13 @@ export function useIniciarImportacaoPgr() {
       // o polling abaixo aguarda o resultado sem bloquear o preflight).
       supabase.functions
         .invoke("pgr-importar", { body: { importacao_id: importacao.id } })
-        .then(async ({ error: fnErr }) => {
-          if (fnErr) {
-            console.warn("[usePgrImportacao] Edge Function HTTP error (background):", fnErr);
+        .then(async ({ data, error: fnErr }) => {
+          const actualError = fnErr || (data && data.error ? new Error(data.error) : null);
+          if (actualError) {
+            console.warn("[usePgrImportacao] Edge Function error (background):", actualError);
             await (supabase as any)
               .from("pgr_importacoes")
-              .update({ status: "erro", erro_mensagem: `Erro na execução da análise: ${fnErr.message ?? JSON.stringify(fnErr)}` })
+              .update({ status: "erro", erro_mensagem: `Erro na execução da análise: ${actualError.message ?? JSON.stringify(actualError)}` })
               .eq("id", importacao.id);
           }
         })
