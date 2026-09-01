@@ -280,6 +280,11 @@ function HistoricoCard({ importacao }: { importacao: PgrImportacao }) {
             {format(new Date(importacao.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}
             {importacao.status === "confirmado" && ` · ${totalRiscos} riscos · ${totalAcoes} ações`}
           </div>
+          {importacao.status === "erro" && importacao.erro_mensagem && (
+            <div className="text-xs text-red-600 mt-1 truncate max-w-sm" title={importacao.erro_mensagem}>
+              {importacao.erro_mensagem}
+            </div>
+          )}
         </div>
       </div>
       <Badge className={`${cfg.color} shrink-0 flex items-center gap-1 text-xs`}>
