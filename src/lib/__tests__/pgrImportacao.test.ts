@@ -4,17 +4,20 @@ import { describe, it, expect } from "vitest";
 // Funções puras extraídas da Edge Function pgr-importar
 // ────────────────────────────────────────────────────────────
 
-const ALLOWED_ORIGINS = [
+const PRODUCTION_ORIGINS = [
   "https://nr-1pronto.com.br",
   "https://www.nr-1pronto.com.br",
-  "http://localhost:5173",
-  "http://localhost:8080",
-  "http://localhost:3000",
 ];
+const LOCALHOST_REGEX = /^https?:\/\/localhost(:\d+)?$/;
+
+function isAllowedOrigin(origin: string): boolean {
+  if (!origin) return true;
+  if (LOCALHOST_REGEX.test(origin)) return true;
+  return PRODUCTION_ORIGINS.includes(origin);
+}
 
 function buildCorsHeaders(origin: string): Record<string, string> {
-  const allowedOrigin =
-    origin === "" || ALLOWED_ORIGINS.includes(origin) ? origin || "*" : "";
+  const allowedOrigin = isAllowedOrigin(origin) ? (origin || "*") : "";
   return {
     "Access-Control-Allow-Origin": allowedOrigin,
     "Access-Control-Allow-Methods": "POST, OPTIONS",
@@ -74,9 +77,21 @@ describe("pgr-importar: CORS Preflight", () => {
     expect(h["Access-Control-Allow-Methods"]).toContain("POST");
   });
 
-  it("deve permitir localhost:8080 (dev local alternativo)", () => {
+  it("deve permitir localhost:8081 (porta usada em dev)", () => {
+    const h = buildCorsHeaders("http://localhost:8081");
+    expect(h["Access-Control-Allow-Origin"]).toBe("http://localhost:8081");
+  });
+
+  it("deve permitir localhost:8080", () => {
     const h = buildCorsHeaders("http://localhost:8080");
     expect(h["Access-Control-Allow-Origin"]).toBe("http://localhost:8080");
+  });
+
+  it("deve permitir qualquer porta de localhost (regex)", () => {
+    [3000, 4000, 5000, 5173, 8081, 9000].forEach((port) => {
+      const h = buildCorsHeaders(`http://localhost:${port}`);
+      expect(h["Access-Control-Allow-Origin"]).toBe(`http://localhost:${port}`);
+    });
   });
 
   it("deve permitir o domínio de produção https://nr-1pronto.com.br", () => {
@@ -94,18 +109,23 @@ describe("pgr-importar: CORS Preflight", () => {
     expect(h["Access-Control-Allow-Origin"]).toBe("");
   });
 
+  it("deve bloquear domínio parecido com localhost mas diferente", () => {
+    const h = buildCorsHeaders("https://notlocalhost.com");
+    expect(h["Access-Control-Allow-Origin"]).toBe("");
+  });
+
   it("deve aceitar requisição sem origin (curl/Postman) com wildcard", () => {
     const h = buildCorsHeaders("");
     expect(h["Access-Control-Allow-Origin"]).toBe("*");
   });
 
   it("deve incluir Access-Control-Max-Age para cache do preflight", () => {
-    const h = buildCorsHeaders("http://localhost:5173");
+    const h = buildCorsHeaders("http://localhost:8081");
     expect(h["Access-Control-Max-Age"]).toBe("86400");
   });
 
   it("deve incluir os headers necessários para o supabase-js", () => {
-    const h = buildCorsHeaders("http://localhost:5173");
+    const h = buildCorsHeaders("http://localhost:8081");
     const allowedHeaders = h["Access-Control-Allow-Headers"].toLowerCase();
     expect(allowedHeaders).toContain("authorization");
     expect(allowedHeaders).toContain("content-type");

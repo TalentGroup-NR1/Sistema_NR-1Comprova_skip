@@ -11,20 +11,25 @@ const MAX_FILE_SIZE_BYTES = 10 * 1_048_576; // 10 MB
 // o supabase-js client envia Authorization + content-type, então
 // todos os requests são "non-simple" e disparam preflight OPTIONS.
 // ──────────────────────────────────────────────────────────────
-const ALLOWED_ORIGINS = [
+
+/** Origens de produção permitidas (lista estrita). */
+const PRODUCTION_ORIGINS = [
   "https://nr-1pronto.com.br",
   "https://www.nr-1pronto.com.br",
-  "http://localhost:5173",
-  "http://localhost:8080",
-  "http://localhost:3000",
 ];
+
+/** Em dev: aceita qualquer localhost independente da porta (5173, 8080, 8081, 3000…). */
+const LOCALHOST_REGEX = /^https?:\/\/localhost(:\d+)?$/;
+
+function isAllowedOrigin(origin: string): boolean {
+  if (!origin) return true;                            // curl / Postman: sem origin
+  if (LOCALHOST_REGEX.test(origin)) return true;       // qualquer localhost
+  return PRODUCTION_ORIGINS.includes(origin);          // produção: lista estrita
+}
 
 function buildCorsHeaders(req: Request): Record<string, string> {
   const origin = req.headers.get("origin") ?? "";
-  // Em dev sem origin (ex.: curl / Postman), aceita tudo; em browser
-  // valida contra a lista de origens permitidas.
-  const allowedOrigin =
-    origin === "" || ALLOWED_ORIGINS.includes(origin) ? origin || "*" : "";
+  const allowedOrigin = isAllowedOrigin(origin) ? (origin || "*") : "";
 
   return {
     "Access-Control-Allow-Origin": allowedOrigin,
@@ -34,6 +39,7 @@ function buildCorsHeaders(req: Request): Record<string, string> {
     "Access-Control-Max-Age": "86400",
   };
 }
+
 
 const RequestSchema = z.object({
   importacao_id: z.string().uuid(),
