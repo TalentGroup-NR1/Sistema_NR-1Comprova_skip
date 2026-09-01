@@ -79,11 +79,19 @@ function UploadZone({ onFile, isPending }: { onFile: (file: File) => void; isPen
       )}
       <div className="text-center">
         <p className="font-semibold text-foreground">
-          {isPending ? "Processando o documento…" : "Arraste o PDF do PGR ou clique para selecionar"}
+          {isPending ? "Analisando o documento com IA…" : "Arraste o PDF do PGR ou clique para selecionar"}
         </p>
         <p className="text-sm text-muted-foreground mt-1">
-          PDF de até 10MB — pode ser escaneado, a IA fará o OCR
+          {isPending
+            ? "Extraindo riscos e plano de ação — pode levar até 1 minuto"
+            : "PDF de até 10MB — pode ser escaneado, a IA fará o OCR"}
         </p>
+        {isPending && (
+          <div className="mt-3 w-48 mx-auto space-y-1">
+            <Progress value={undefined} className="h-1.5 bg-orange-100 [&>div]:bg-orange-500" />
+            <p className="text-xs text-orange-500 font-medium">Aguardando processamento…</p>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -77,8 +77,33 @@ export function usePgrImportacoes() {
 }
 
 // ──────────────────────────────────────────────────────────────
-// Iniciar importação: faz upload do PDF e cria o registro
+// Iniciar importação: faz upload do PDF, cria o registro e aguarda
+// o resultado da Edge Function com polling (até 60s).
 // ──────────────────────────────────────────────────────────────
+
+/** Faz polling no status da importação até sair de 'processando'. */
+async function aguardarResultado(importacaoId: string, timeoutMs = 60_000): Promise<PgrImportacao> {
+  const POLL_INTERVAL = 2_000;
+  const deadline = Date.now() + timeoutMs;
+
+  while (Date.now() < deadline) {
+    await new Promise((r) => setTimeout(r, POLL_INTERVAL));
+    const { data, error } = await (supabase as any)
+      .from("pgr_importacoes")
+      .select("*")
+      .eq("id", importacaoId)
+      .single();
+    if (error) throw new Error(`Falha ao verificar status: ${error.message}`);
+    const row = data as PgrImportacao;
+    if (row.status !== "processando") return row;
+  }
+
+  // Timeout: retorna o registro mesmo que ainda esteja processando
+  const { data } = await (supabase as any)
+    .from("pgr_importacoes").select("*").eq("id", importacaoId).single();
+  return data as PgrImportacao;
+}
+
 export function useIniciarImportacaoPgr() {
   const companyId = useEffectiveCompanyId();
   const { user } = useAuth();
@@ -119,20 +144,15 @@ export function useIniciarImportacaoPgr() {
         .single();
       if (insertError) throw new Error(`Falha ao registrar: ${insertError.message}`);
 
-      // Invocar Edge Function de análise
-      const { error: fnError } = await supabase.functions.invoke("pgr-importar", {
-        body: { importacao_id: importacao.id },
-      });
-      if (fnError) {
-        // Não falha o fluxo: o status ficará 'processando' e o usuário pode retentar
-        console.warn("Edge Function pgr-importar retornou erro:", fnError);
-      }
+      // Invocar Edge Function de análise (fire-and-forget em background,
+      // o polling abaixo aguarda o resultado sem bloquear o preflight).
+      supabase.functions
+        .invoke("pgr-importar", { body: { importacao_id: importacao.id } })
+        .catch((fnErr) => console.warn("[usePgrImportacao] Edge Function error (background):", fnErr));
 
-      // Buscar registro atualizado
-      const { data: updated, error: refetchError } = await (supabase as any)
-        .from("pgr_importacoes").select("*").eq("id", importacao.id).single();
-      if (refetchError) throw refetchError;
-      return updated as PgrImportacao;
+      // Polling: aguarda o status sair de 'processando' (max 60s)
+      const resultado = await aguardarResultado(importacao.id, 60_000);
+      return resultado;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["pgr-importacoes"] }),
   });

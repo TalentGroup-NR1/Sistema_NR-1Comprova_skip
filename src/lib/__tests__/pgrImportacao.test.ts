@@ -4,6 +4,26 @@ import { describe, it, expect } from "vitest";
 // Funções puras extraídas da Edge Function pgr-importar
 // ────────────────────────────────────────────────────────────
 
+const ALLOWED_ORIGINS = [
+  "https://nr-1pronto.com.br",
+  "https://www.nr-1pronto.com.br",
+  "http://localhost:5173",
+  "http://localhost:8080",
+  "http://localhost:3000",
+];
+
+function buildCorsHeaders(origin: string): Record<string, string> {
+  const allowedOrigin =
+    origin === "" || ALLOWED_ORIGINS.includes(origin) ? origin || "*" : "";
+  return {
+    "Access-Control-Allow-Origin": allowedOrigin,
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Headers":
+      "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Max-Age": "86400",
+  };
+}
+
 function fallbackLocalAnalise(texto: string, motivo: string) {
   const linhas = texto.split("\n").filter((l) => l.trim().length > 0);
   return {
@@ -45,6 +65,53 @@ function validarArquivoPdf(nome: string, tamanho: number): { ok: boolean; erro?:
 // ────────────────────────────────────────────────────────────
 // TESTES
 // ────────────────────────────────────────────────────────────
+
+describe("pgr-importar: CORS Preflight", () => {
+  it("deve permitir localhost:5173 (dev local)", () => {
+    const h = buildCorsHeaders("http://localhost:5173");
+    expect(h["Access-Control-Allow-Origin"]).toBe("http://localhost:5173");
+    expect(h["Access-Control-Allow-Methods"]).toContain("OPTIONS");
+    expect(h["Access-Control-Allow-Methods"]).toContain("POST");
+  });
+
+  it("deve permitir localhost:8080 (dev local alternativo)", () => {
+    const h = buildCorsHeaders("http://localhost:8080");
+    expect(h["Access-Control-Allow-Origin"]).toBe("http://localhost:8080");
+  });
+
+  it("deve permitir o domínio de produção https://nr-1pronto.com.br", () => {
+    const h = buildCorsHeaders("https://nr-1pronto.com.br");
+    expect(h["Access-Control-Allow-Origin"]).toBe("https://nr-1pronto.com.br");
+  });
+
+  it("deve permitir www.nr-1pronto.com.br", () => {
+    const h = buildCorsHeaders("https://www.nr-1pronto.com.br");
+    expect(h["Access-Control-Allow-Origin"]).toBe("https://www.nr-1pronto.com.br");
+  });
+
+  it("deve bloquear origem não permitida (ex.: domínio malicioso)", () => {
+    const h = buildCorsHeaders("https://evil.example.com");
+    expect(h["Access-Control-Allow-Origin"]).toBe("");
+  });
+
+  it("deve aceitar requisição sem origin (curl/Postman) com wildcard", () => {
+    const h = buildCorsHeaders("");
+    expect(h["Access-Control-Allow-Origin"]).toBe("*");
+  });
+
+  it("deve incluir Access-Control-Max-Age para cache do preflight", () => {
+    const h = buildCorsHeaders("http://localhost:5173");
+    expect(h["Access-Control-Max-Age"]).toBe("86400");
+  });
+
+  it("deve incluir os headers necessários para o supabase-js", () => {
+    const h = buildCorsHeaders("http://localhost:5173");
+    const allowedHeaders = h["Access-Control-Allow-Headers"].toLowerCase();
+    expect(allowedHeaders).toContain("authorization");
+    expect(allowedHeaders).toContain("content-type");
+    expect(allowedHeaders).toContain("apikey");
+  });
+});
 
 describe("pgr-importar: Parsing e Validação", () => {
   describe("Validação de arquivo", () => {
@@ -103,7 +170,7 @@ describe("pgr-importar: Parsing e Validação", () => {
       expect(result).toContain("de Riscos");
     });
 
-    it("deve retornar string vazia para PDF sem texto extraível (scaneado)", () => {
+    it("deve retornar string vazia para PDF sem texto extraível (escaneado)", () => {
       const result = extractTextFromPDFBytesSimple("%PDF-1.4\n%%EOF");
       expect(result).toBe("");
     });

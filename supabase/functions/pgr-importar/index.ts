@@ -5,11 +5,35 @@ import { maskName } from "../_shared/mask.ts";
 
 const MAX_FILE_SIZE_BYTES = 10 * 1_048_576; // 10 MB
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-};
+// ──────────────────────────────────────────────────────────────
+// CORS — resposta correta para preflight e para requisições reais.
+// Supabase Edge Functions recebem chamadas diretas de JS no browser;
+// o supabase-js client envia Authorization + content-type, então
+// todos os requests são "non-simple" e disparam preflight OPTIONS.
+// ──────────────────────────────────────────────────────────────
+const ALLOWED_ORIGINS = [
+  "https://nr-1pronto.com.br",
+  "https://www.nr-1pronto.com.br",
+  "http://localhost:5173",
+  "http://localhost:8080",
+  "http://localhost:3000",
+];
+
+function buildCorsHeaders(req: Request): Record<string, string> {
+  const origin = req.headers.get("origin") ?? "";
+  // Em dev sem origin (ex.: curl / Postman), aceita tudo; em browser
+  // valida contra a lista de origens permitidas.
+  const allowedOrigin =
+    origin === "" || ALLOWED_ORIGINS.includes(origin) ? origin || "*" : "";
+
+  return {
+    "Access-Control-Allow-Origin": allowedOrigin,
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Headers":
+      "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Max-Age": "86400",
+  };
+}
 
 const RequestSchema = z.object({
   importacao_id: z.string().uuid(),
@@ -17,6 +41,7 @@ const RequestSchema = z.object({
 
 /**
  * Extrai texto de PDF bytes usando parser nativo (sem dependências externas).
+ * Funciona para PDFs com texto vetorial; PDFs escaneados precisam do OCR via IA.
  */
 function extractTextFromPDFBytes(bytes: Uint8Array): string {
   const raw = new TextDecoder("latin1").decode(bytes);
@@ -108,6 +133,7 @@ Se alguma informação não for encontrada no documento, use null para o campo. 
 
 /**
  * Fallback local: estrutura mínima quando a IA não está disponível.
+ * Nunca lança exceção — garante que o status sempre avança para aguardando_revisao.
  */
 function fallbackLocalAnalise(texto: string, motivo: string): Record<string, unknown> {
   const linhas = texto.split("\n").filter((l) => l.trim().length > 0);
@@ -123,7 +149,16 @@ function fallbackLocalAnalise(texto: string, motivo: string): Record<string, unk
 }
 
 serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  const requestId = crypto.randomUUID().slice(0, 8);
+  const corsHeaders = buildCorsHeaders(req);
+
+  // ── Preflight CORS ─────────────────────────────────────────
+  if (req.method === "OPTIONS") {
+    console.log(`[pgr-importar][${requestId}] OPTIONS preflight from origin=${req.headers.get("origin") ?? "no-origin"}`);
+    return new Response(null, { status: 204, headers: corsHeaders });
+  }
+
+  console.log(`[pgr-importar][${requestId}] ${req.method} request started`);
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -132,149 +167,150 @@ serve(async (req) => {
 
   const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
+  const jsonHeaders = { ...corsHeaders, "Content-Type": "application/json" };
+
   try {
-    // --- AuthN ---
+    // ── AuthN ────────────────────────────────────────────────
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      console.warn(`[pgr-importar][${requestId}] Missing or invalid Authorization header`);
+      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: jsonHeaders });
     }
+
     const supabaseUser = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: authHeader } },
     });
     const { data: userData, error: userErr } = await supabaseUser.auth.getUser();
     if (userErr || !userData?.user) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      console.warn(`[pgr-importar][${requestId}] Auth failed: ${userErr?.message ?? "no user"}`);
+      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: jsonHeaders });
     }
     const caller = userData.user;
+    console.log(`[pgr-importar][${requestId}] Caller: ${maskName(caller.email ?? caller.id)}`);
 
-    // --- Role check ---
+    // ── Role check ────────────────────────────────────────────
     const { data: roleRow } = await supabaseAdmin
       .from("user_roles").select("role").eq("user_id", caller.id).maybeSingle();
     const callerRole = roleRow?.role as string | undefined;
     const allowedRoles = ["admin_master", "admin_empresa", "analista_rh"];
     if (!callerRole || !allowedRoles.includes(callerRole)) {
-      return new Response(JSON.stringify({ error: "Forbidden" }), {
-        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      console.warn(`[pgr-importar][${requestId}] Forbidden role: ${callerRole}`);
+      return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: jsonHeaders });
     }
 
-    // --- Parse payload ---
+    // ── Parse payload ─────────────────────────────────────────
     const rawBody = await req.json().catch(() => null);
     const parsed = RequestSchema.safeParse(rawBody);
     if (!parsed.success) {
-      return new Response(JSON.stringify({ error: "Invalid payload", details: parsed.error.flatten() }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      console.warn(`[pgr-importar][${requestId}] Invalid payload:`, parsed.error.flatten());
+      return new Response(JSON.stringify({ error: "Invalid payload", details: parsed.error.flatten() }), { status: 400, headers: jsonHeaders });
     }
     const { importacao_id } = parsed.data;
+    console.log(`[pgr-importar][${requestId}] Processing importacao_id=${importacao_id}`);
 
-    // --- Fetch importacao record ---
+    // ── Fetch importacao record ───────────────────────────────
     const { data: importacao, error: fetchErr } = await supabaseAdmin
       .from("pgr_importacoes").select("*").eq("id", importacao_id).single();
     if (fetchErr || !importacao) {
-      return new Response(JSON.stringify({ error: "Importação não encontrada" }), {
-        status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      console.error(`[pgr-importar][${requestId}] Importação não encontrada: ${fetchErr?.message}`);
+      return new Response(JSON.stringify({ error: "Importação não encontrada" }), { status: 404, headers: jsonHeaders });
     }
 
-    // --- Tenant isolation ---
+    // ── Tenant isolation ──────────────────────────────────────
     if (callerRole !== "admin_master") {
       const { data: profileRow } = await supabaseAdmin
         .from("profiles").select("company_id").eq("user_id", caller.id).maybeSingle();
       if (!profileRow?.company_id || profileRow.company_id !== importacao.company_id) {
-        return new Response(JSON.stringify({ error: "Forbidden" }), {
-          status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        console.warn(`[pgr-importar][${requestId}] Tenant mismatch for caller ${maskName(caller.email ?? caller.id)}`);
+        return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: jsonHeaders });
       }
     }
 
-    // --- Download file from storage ---
+    // ── Download file from storage ────────────────────────────
+    console.log(`[pgr-importar][${requestId}] Downloading from storage: ${importacao.arquivo_storage}`);
     const { data: fileData, error: dlError } = await supabaseAdmin.storage
       .from("documentos_analise")
       .download(importacao.arquivo_storage);
 
     if (dlError || !fileData) {
-      await supabaseAdmin.from("pgr_importacoes").update({ status: "erro", erro_mensagem: "Falha ao baixar arquivo do storage." }).eq("id", importacao_id);
-      return new Response(JSON.stringify({ error: "Falha ao acessar o arquivo enviado." }), {
-        status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      const msg = `Falha ao baixar arquivo do storage: ${dlError?.message ?? "sem dados"}`;
+      console.error(`[pgr-importar][${requestId}] ${msg}`);
+      await supabaseAdmin.from("pgr_importacoes").update({ status: "erro", erro_mensagem: msg }).eq("id", importacao_id);
+      return new Response(JSON.stringify({ error: "Falha ao acessar o arquivo enviado." }), { status: 422, headers: jsonHeaders });
     }
 
-    // --- Size check (10MB) ---
+    // ── Size check (10MB) ─────────────────────────────────────
     if (fileData.size > MAX_FILE_SIZE_BYTES) {
-      await supabaseAdmin.from("pgr_importacoes").update({
-        status: "erro",
-        erro_mensagem: `Arquivo excede o limite de 10MB (${(fileData.size / 1_048_576).toFixed(1)}MB).`,
-      }).eq("id", importacao_id);
-      return new Response(JSON.stringify({ error: "Arquivo excede o limite máximo de 10MB." }), {
-        status: 413, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      const msg = `Arquivo excede o limite de 10MB (${(fileData.size / 1_048_576).toFixed(1)}MB).`;
+      console.warn(`[pgr-importar][${requestId}] ${msg}`);
+      await supabaseAdmin.from("pgr_importacoes").update({ status: "erro", erro_mensagem: msg }).eq("id", importacao_id);
+      return new Response(JSON.stringify({ error: "Arquivo excede o limite máximo de 10MB." }), { status: 413, headers: jsonHeaders });
     }
 
     const arrayBuffer = await fileData.arrayBuffer();
     const bytes = new Uint8Array(arrayBuffer);
+    console.log(`[pgr-importar][${requestId}] File downloaded: ${bytes.length} bytes`);
 
-    // --- Text extraction ---
-    let textoExtraido = "";
+    // ── Text extraction ────────────────────────────────────────
+    let textoExtraido = extractTextFromPDFBytes(bytes);
     let modoExtracao = "nativo";
-
-    textoExtraido = extractTextFromPDFBytes(bytes);
-    console.log(`[pgr-importar] Extração nativa: ${textoExtraido.length} chars (importacao=${importacao_id})`);
+    console.log(`[pgr-importar][${requestId}] Native extraction: ${textoExtraido.length} chars`);
 
     if (textoExtraido.trim().length < 100 && openAiApiKey) {
-      console.log(`[pgr-importar] Texto insuficiente, usando OpenAI Vision OCR...`);
+      console.log(`[pgr-importar][${requestId}] Insufficient text, falling back to OpenAI Vision OCR`);
       try {
         textoExtraido = await extractPdfWithOpenAI(bytes, openAiApiKey);
         modoExtracao = "ocr_openai";
+        console.log(`[pgr-importar][${requestId}] OCR extracted: ${textoExtraido.length} chars`);
       } catch (ocrErr) {
-        console.warn(`[pgr-importar] OCR falhou, usando texto nativo:`, ocrErr);
+        console.warn(`[pgr-importar][${requestId}] OCR failed, keeping native text:`, ocrErr);
       }
     }
 
-    // --- PGR Analysis ---
+    // ── PGR Analysis ───────────────────────────────────────────
     let extracao_raw: Record<string, unknown>;
 
     if (!openAiApiKey) {
-      console.log(`[pgr-importar] OPENAI_API_KEY ausente. Usando fallback local para ${maskName(caller.email ?? "user")}`);
+      console.log(`[pgr-importar][${requestId}] OPENAI_API_KEY absent — using local fallback`);
       extracao_raw = fallbackLocalAnalise(textoExtraido, "chave_ia_ausente");
       modoExtracao = "fallback_local";
     } else {
       try {
+        console.log(`[pgr-importar][${requestId}] Calling OpenAI for PGR analysis`);
         extracao_raw = await analisarPgrComOpenAI(textoExtraido, openAiApiKey);
         extracao_raw.modo_extracao = modoExtracao === "ocr_openai" ? "ia_openai_ocr" : "ia_openai_nativo";
+        const riscoCount = Array.isArray(extracao_raw.riscos) ? extracao_raw.riscos.length : 0;
+        console.log(`[pgr-importar][${requestId}] OpenAI analysis done: ${riscoCount} risks found`);
       } catch (iaErr) {
-        console.warn(`[pgr-importar] Análise OpenAI falhou, usando fallback:`, iaErr);
+        console.warn(`[pgr-importar][${requestId}] OpenAI analysis failed, using fallback:`, iaErr);
         extracao_raw = fallbackLocalAnalise(textoExtraido, `openai_error: ${iaErr}`);
         modoExtracao = "fallback_local";
       }
     }
 
-    // --- Persist result ---
+    // ── Persist result ─────────────────────────────────────────
     const { error: updateErr } = await supabaseAdmin
       .from("pgr_importacoes")
-      .update({
-        status: "aguardando_revisao",
-        extracao_raw,
-        modo_extracao: modoExtracao,
-      })
+      .update({ status: "aguardando_revisao", extracao_raw, modo_extracao: modoExtracao })
       .eq("id", importacao_id);
 
-    if (updateErr) throw updateErr;
+    if (updateErr) {
+      console.error(`[pgr-importar][${requestId}] Failed to persist result:`, updateErr);
+      throw updateErr;
+    }
 
+    console.log(`[pgr-importar][${requestId}] Done — status=aguardando_revisao, modo=${modoExtracao}`);
     return new Response(
       JSON.stringify({ success: true, status: "aguardando_revisao", extracao_raw, modo_extracao: modoExtracao }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 200, headers: jsonHeaders }
     );
+
   } catch (err) {
-    console.error("[pgr-importar] Unexpected error:", err);
+    console.error(`[pgr-importar][${requestId}] Unexpected error:`, err);
     const errorMsg = err instanceof Error ? err.message : "Erro desconhecido";
     return new Response(
       JSON.stringify({ error: errorMsg }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 500, headers: jsonHeaders }
     );
   }
 });
