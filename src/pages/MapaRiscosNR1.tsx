@@ -1,6 +1,6 @@
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Shield, LayoutDashboard, Flame, FileText, KanbanSquare, Brain, Library, Grid3X3 } from "lucide-react";
+import { Shield, LayoutDashboard, Flame, FileText, KanbanSquare, Brain, Library, Grid3X3, Upload } from "lucide-react";
 import { InstrumentosTab } from "@/components/mapa-riscos/psico/InstrumentosTab";
 import { CampanhasTab } from "@/components/mapa-riscos/psico/CampanhasTab";
 import { DashboardPsico } from "@/components/mapa-riscos/psico/DashboardPsico";
@@ -9,6 +9,7 @@ import { RelatoriosPsicoTab } from "@/components/mapa-riscos/psico/RelatoriosPsi
 import { PlanosAcaoPsicoTab } from "@/components/mapa-riscos/psico/planos/PlanosAcaoPsicoTab";
 import { MatrizRiscoTab } from "@/components/mapa-riscos/matriz/MatrizRiscoTab";
 import { PsicoMinhasAvaliacoes } from "@/components/mapa-riscos/psico/PsicoMinhasAvaliacoes";
+import { ImportarPgrTab } from "@/components/mapa-riscos/pgr/ImportarPgrTab";
 import { useAuth } from "@/hooks/useAuth";
 
 export default function MapaRiscosNR1() {
@@ -33,7 +34,7 @@ export default function MapaRiscosNR1() {
         </div>
 
         <Tabs defaultValue={defaultTab} className="space-y-6">
-          <TabsList className={`grid w-full max-w-5xl ${isAdmin ? "grid-cols-7" : "grid-cols-1"}`}>
+          <TabsList className={`grid w-full max-w-6xl ${isAdmin ? "grid-cols-8" : "grid-cols-1"}`}>
             {isAdmin && (
               <>
                 <TabsTrigger value="dashboard" className="flex items-center gap-2">
@@ -64,6 +65,10 @@ export default function MapaRiscosNR1() {
                   <FileText className="h-4 w-4" />
                   <span className="hidden sm:inline">Relatórios</span>
                 </TabsTrigger>
+                <TabsTrigger value="importar-pgr" className="flex items-center gap-2">
+                  <Upload className="h-4 w-4" />
+                  <span className="hidden sm:inline">Importar PGR</span>
+                </TabsTrigger>
               </>
             )}
 
@@ -84,6 +89,7 @@ export default function MapaRiscosNR1() {
               <TabsContent value="matriz"><MatrizRiscoTab /></TabsContent>
               <TabsContent value="planos"><PlanosAcaoPsicoTab /></TabsContent>
               <TabsContent value="relatorios"><RelatoriosPsicoTab /></TabsContent>
+              <TabsContent value="importar-pgr"><ImportarPgrTab /></TabsContent>
             </>
           )}
 
