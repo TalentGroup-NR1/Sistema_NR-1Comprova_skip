@@ -53,6 +53,7 @@ import Denuncias from "./pages/Denuncias";
 import ComportamentosOfensivos from "./pages/ComportamentosOfensivos";
 import AdminPlataforma from "./pages/AdminPlataforma";
 import NotFound from "./pages/NotFound";
+import LaudoAepPage from "./pages/LaudoAepPage";
 
 const queryClient = new QueryClient();
 
@@ -87,6 +88,7 @@ const App = () => (
               <Route path="/diario-bordo" element={<ProtectedRoute><DiarioBordo /></ProtectedRoute>} />
               <Route path="/cuidar-mais" element={<ProtectedRoute><CuidarMais /></ProtectedRoute>} />
               <Route path="/mapa-riscos-nr1" element={<ProtectedRoute><MapaRiscosNR1 /></ProtectedRoute>} />
+              <Route path="/laudo/:aplicacaoId" element={<ProtectedRoute><LaudoAepPage /></ProtectedRoute>} />
               <Route path="/estrutura-organizacional" element={
                 <ProtectedRoute allowedRoles={['admin_master', 'admin_empresa', 'analista_rh', 'gestor_departamento']}>
                   <EstruturaOrganizacional />

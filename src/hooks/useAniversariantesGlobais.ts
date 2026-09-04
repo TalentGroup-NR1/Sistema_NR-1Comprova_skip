@@ -1,6 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
+import { useEffectiveCompanyId } from "./useEffectiveCompanyId";
+
 export interface AniversarianteGlobal {
   id: string;
   nome: string;
@@ -12,10 +14,14 @@ export interface AniversarianteGlobal {
 }
 
 export function useAniversariantesGlobais() {
+  const effectiveCompanyId = useEffectiveCompanyId();
+
   return useQuery({
-    queryKey: ["aniversariantes-globais-mes"],
+    queryKey: ["aniversariantes-globais-mes", effectiveCompanyId],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc("get_aniversariantes_globais_mes");
+      const { data, error } = await supabase.rpc("get_aniversariantes_globais_mes", {
+        p_company_id: effectiveCompanyId || null
+      });
       if (error) throw error;
       const rows = (data ?? []) as AniversarianteGlobal[];
       return {

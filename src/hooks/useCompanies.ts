@@ -18,46 +18,7 @@ export function useCompanies() {
   });
 }
 
-export function useCreateCompany() {
-  const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: async (company: CompanyFormData) => {
-      const { data, error } = await supabase
-        .from("companies")
-        .insert({
-          name: company.name,
-          cnpj: company.cnpj,
-          contact_person: company.contact_person || null,
-          email: company.email || null,
-          status: company.status,
-          cep: company.cep || null,
-          logradouro: company.logradouro || null,
-          numero: company.numero || null,
-          complemento: company.complemento || null,
-          bairro: company.bairro || null,
-          cidade: company.cidade || null,
-          estado: company.estado ? company.estado.toUpperCase() : null,
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["companies"] });
-      toast.success("Empresa cadastrada com sucesso!");
-    },
-    onError: (error: Error) => {
-      if (error.message.includes("duplicate key") || error.message.includes("unique")) {
-        toast.error("CNPJ já cadastrado no sistema.");
-      } else {
-        toast.error("Erro ao cadastrar empresa: " + error.message);
-      }
-    },
-  });
-}
 
 export function useUpdateCompany() {
   const queryClient = useQueryClient();

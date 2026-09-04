@@ -1,6 +1,7 @@
 import type { ComponentType } from 'npm:@types/react@18.3.1'
 import { template as acessoLiberado } from './acesso-liberado.tsx'
 import { template as bemVindoEmpresa } from './bem-vindo-empresa.tsx'
+import { template as conviteAdminEmpresa } from './convite-admin-empresa.tsx'
 import { template as empresaSuspensa } from './empresa-suspensa.tsx'
 import { template as empresaReativada } from './empresa-reativada.tsx'
 import { template as redefinicaoSenha } from './redefinicao-senha.tsx'
@@ -16,6 +17,7 @@ export interface TemplateEntry {
 export const TEMPLATES: Record<string, TemplateEntry> = {
   'acesso-liberado': acessoLiberado,
   'bem-vindo-empresa': bemVindoEmpresa,
+  'convite-admin-empresa': conviteAdminEmpresa,
   'empresa-suspensa': empresaSuspensa,
   'empresa-reativada': empresaReativada,
   'redefinicao-senha': redefinicaoSenha,

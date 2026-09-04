@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,6 +10,7 @@ import { CompanyForm } from "@/components/empresas/CompanyForm";
 import { Company } from "@/lib/validators/company";
 
 export default function Empresas() {
+  const navigate = useNavigate();
   const [formOpen, setFormOpen] = useState(false);
   const [editingCompany, setEditingCompany] = useState<Company | null>(null);
   const { data: companies = [], isLoading } = useCompanies();
@@ -34,7 +36,7 @@ export default function Empresas() {
       <div className="space-y-6">
         {/* Header Actions */}
         <div className="flex justify-end">
-          <Button onClick={() => setFormOpen(true)}>
+          <Button onClick={() => navigate("/cadastro-empresa")}>
             <Plus className="h-4 w-4 mr-2" />
             Nova Empresa
           </Button>

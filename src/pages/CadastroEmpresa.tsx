@@ -55,13 +55,7 @@ const schema = z
     estado: z.string().trim().regex(/^[A-Za-z]{2}$/, "UF com 2 letras"),
     admin_nome: z.string().trim().min(2, "Informe o nome completo").max(200),
     admin_email: z.string().trim().email("E-mail inválido").max(255),
-    admin_senha: z.string().min(8, "Mínimo de 8 caracteres").max(200),
-    confirmar_senha: z.string(),
     aceite_termos: z.boolean(),
-  })
-  .refine((d) => d.admin_senha === d.confirmar_senha, {
-    path: ["confirmar_senha"],
-    message: "As senhas não conferem",
   })
   .refine((d) => d.aceite_termos, {
     path: ["aceite_termos"],
@@ -70,6 +64,7 @@ const schema = z
 
 type FormValues = z.infer<typeof schema>;
 
+// Wizard de 2 passos: (1) dados da empresa, (2) dados do admin + confirmação
 const STEP_FIELDS: Record<number, (keyof FormValues)[]> = {
   1: [
     "razao_social",
@@ -85,8 +80,7 @@ const STEP_FIELDS: Record<number, (keyof FormValues)[]> = {
     "cidade",
     "estado",
   ],
-  2: ["admin_nome", "admin_email", "admin_senha", "confirmar_senha"],
-  3: ["aceite_termos"],
+  2: ["admin_nome", "admin_email", "aceite_termos"],
 };
 
 function fileToBase64(file: File): Promise<string> {
@@ -124,8 +118,6 @@ export default function CadastroEmpresa() {
       estado: "",
       admin_nome: "",
       admin_email: "",
-      admin_senha: "",
-      confirmar_senha: "",
       aceite_termos: false,
     },
   });
@@ -144,7 +136,7 @@ export default function CadastroEmpresa() {
 
   const goNext = async () => {
     const ok = await trigger(STEP_FIELDS[step]);
-    if (ok) setStep((s) => Math.min(3, s + 1));
+    if (ok) setStep((s) => Math.min(2, s + 1));
   };
 
   const handleCepChange = async (raw: string) => {
@@ -209,7 +201,6 @@ export default function CadastroEmpresa() {
           estado: data.estado.toUpperCase(),
           admin_nome: data.admin_nome,
           admin_email: data.admin_email,
-          admin_senha: data.admin_senha,
           aceite_termos: true,
           terms_version: TERMS_VERSION,
           privacy_version: PRIVACY_VERSION,
@@ -225,18 +216,12 @@ export default function CadastroEmpresa() {
         return;
       }
 
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: data.admin_email.trim().toLowerCase(),
-        password: data.admin_senha,
-      });
-      if (signInError) {
-        toast.success("Conta criada! Faça login para continuar.");
-        navigate("/auth");
-        return;
-      }
-
-      toast.success("Empresa cadastrada com sucesso!");
-      navigate("/");
+      // Convite enviado por email — não fazemos login automático
+      toast.success(
+        `Empresa cadastrada! Um convite foi enviado para ${data.admin_email} para definir a senha.`,
+        { duration: 6000 }
+      );
+      navigate("/empresas");
     } catch (e) {
       toast.error((e as Error).message || "Erro inesperado no cadastro.");
     } finally {
@@ -251,15 +236,15 @@ export default function CadastroEmpresa() {
           <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-primary/10 text-primary mb-3">
             <Building2 className="w-6 h-6" />
           </div>
-          <h1 className="text-2xl font-bold text-foreground">Cadastre sua empresa</h1>
+          <h1 className="text-2xl font-bold text-foreground">Cadastrar nova empresa</h1>
           <p className="text-muted-foreground text-sm mt-1">
-            Crie sua conta e comece a usar a plataforma em minutos.
+            Preencha os dados abaixo. Um convite será enviado ao administrador por email.
           </p>
         </header>
 
-        {/* Stepper */}
+        {/* Stepper — 2 passos */}
         <div className="flex items-center justify-center gap-2 mb-6">
-          {[1, 2, 3].map((s) => (
+          {[1, 2].map((s) => (
             <div key={s} className="flex items-center gap-2">
               <div
                 className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${
@@ -268,7 +253,7 @@ export default function CadastroEmpresa() {
               >
                 {s}
               </div>
-              {s < 3 && <div className={`w-10 h-0.5 ${step > s ? "bg-primary" : "bg-muted"}`} />}
+              {s < 2 && <div className={`w-10 h-0.5 ${step > s ? "bg-primary" : "bg-muted"}`} />}
             </div>
           ))}
         </div>
@@ -277,13 +262,11 @@ export default function CadastroEmpresa() {
           <CardHeader>
             <CardTitle className="text-lg">
               {step === 1 && "Dados da empresa"}
-              {step === 2 && "Dados do administrador"}
-              {step === 3 && "Confirmação"}
+              {step === 2 && "Administrador e confirmação"}
             </CardTitle>
             <CardDescription>
               {step === 1 && "Informações institucionais e identidade visual."}
-              {step === 2 && "Esta será a conta de acesso principal."}
-              {step === 3 && "Revise os dados antes de criar a conta."}
+              {step === 2 && "Dados do responsável administrativo. Um convite por email será enviado para ele definir a senha."}
             </CardDescription>
           </CardHeader>
 
@@ -471,80 +454,30 @@ export default function CadastroEmpresa() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="admin_email">E-mail (será o login) *</Label>
+                    <Label htmlFor="admin_email">E-mail do administrador *</Label>
                     <Input id="admin_email" type="email" autoComplete="email" {...register("admin_email")} />
                     {errors.admin_email && (
                       <p className="text-sm text-destructive">{errors.admin_email.message}</p>
                     )}
                   </div>
 
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="admin_senha">Senha *</Label>
-                      <Input
-                        id="admin_senha"
-                        type="password"
-                        autoComplete="new-password"
-                        {...register("admin_senha")}
-                      />
-                      {errors.admin_senha && (
-                        <p className="text-sm text-destructive">{errors.admin_senha.message}</p>
-                      )}
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="confirmar_senha">Confirmar senha *</Label>
-                      <Input
-                        id="confirmar_senha"
-                        type="password"
-                        autoComplete="new-password"
-                        {...register("confirmar_senha")}
-                      />
-                      {errors.confirmar_senha && (
-                        <p className="text-sm text-destructive">{errors.confirmar_senha.message}</p>
-                      )}
-                    </div>
+                  {/* Aviso de convite — sem campo de senha */}
+                  <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
+                    <p className="font-semibold mb-1">📧 Convite por email</p>
+                    <p>
+                      Uma senha aleatória interna será gerada automaticamente. O administrador receberá
+                      um email com um link de uso único para <strong>definir a própria senha</strong>{" "}
+                      (expira em 24 horas).
+                    </p>
                   </div>
                 </>
               )}
 
-              {step === 3 && (
-                <>
-                  <dl className="rounded-lg border divide-y text-sm">
-                    {[
-                      ["Razão social", values.razao_social],
-                      ["CNPJ", values.cnpj],
-                      ["Nome da marca", values.brand_name],
-                      ["Segmento", values.segmento],
-                      ["Telefone", values.telefone],
-                      [
-                        "Endereço",
-                        values.logradouro
-                          ? `${values.logradouro}, ${values.numero}${
-                              values.complemento ? ` - ${values.complemento}` : ""
-                            } - ${values.bairro}, ${values.cidade}/${values.estado} - CEP ${values.cep}`
-                          : "",
-                      ],
-                      ["Logo", logoFile ? logoFile.name : "Não enviado"],
-                      ["Administrador", values.admin_nome],
-                      ["E-mail de acesso", values.admin_email],
-                    ].map(([label, value]) => (
-                      <div key={label as string} className="flex justify-between gap-4 px-4 py-2.5">
-                        <dt className="text-muted-foreground">{label}</dt>
-                        <dd className="font-medium text-right">{value || "—"}</dd>
-                      </div>
-                    ))}
-                    <div className="flex items-center justify-between gap-4 px-4 py-2.5">
-                      <dt className="text-muted-foreground">Cor da marca</dt>
-                      <dd className="flex items-center gap-2 font-medium">
-                        <span
-                          className="w-4 h-4 rounded border"
-                          style={{ backgroundColor: values.brand_primary_color }}
-                        />
-                        {values.brand_primary_color}
-                      </dd>
-                    </div>
-                  </dl>
+              {/* Step 2: resumo + aceite de termos (não há step 3 separado) */}
 
+              {/* Aceite de termos — sempre visível no Step 2 */}
+              {step === 2 && (
+                <div className="pt-2">
                   <div className="flex items-start gap-3">
                     <Checkbox
                       id="aceite_termos"
@@ -578,7 +511,7 @@ export default function CadastroEmpresa() {
                   {errors.aceite_termos && (
                     <p className="text-sm text-destructive">{errors.aceite_termos.message}</p>
                   )}
-                </>
+                </div>
               )}
 
               <div className="flex items-center justify-between pt-2">
@@ -589,14 +522,14 @@ export default function CadastroEmpresa() {
                   </Button>
                 ) : (
                   <Button type="button" variant="ghost" asChild>
-                    <Link to="/auth">
+                    <Link to="/empresas">
                       <ArrowLeft className="w-4 h-4 mr-2" />
-                      Já tenho conta
+                      Cancelar
                     </Link>
                   </Button>
                 )}
 
-                {step < 3 ? (
+                {step < 2 ? (
                   <Button type="button" onClick={goNext}>
                     Continuar
                     <ArrowRight className="w-4 h-4 ml-2" />
@@ -608,7 +541,7 @@ export default function CadastroEmpresa() {
                     ) : (
                       <CheckCircle2 className="w-4 h-4 mr-2" />
                     )}
-                    Criar minha conta
+                    Cadastrar e enviar convite
                   </Button>
                 )}
               </div>

@@ -25,6 +25,7 @@ import {
 import { classificacaoClasse } from "@/components/mapa-riscos/pgr/pgrRiscoUtils";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { supabase } from "@/integrations/supabase/client";
 
 const STATUS_CONFIG = {
   processando: { label: "Processando", icon: Loader2, spin: true, color: "bg-blue-100 text-blue-800" },
@@ -207,7 +208,7 @@ function PlanoAcaoEditor({
   };
 
   const remover = (i: number) => onChange(acoes.filter((_, idx) => idx !== i));
-  const adicionar = () => onChange([...acoes, { medida: "", prazo_sugerido: null, responsavel_sugerido: null, prioridade: "media", risco_referenciado: null }]);
+  const adicionar = () => onChange([...acoes, { id: crypto.randomUUID(), medida: "", prazo_sugerido: null, responsavel_sugerido: null, prioridade: "media", risco_referenciado: null, status: "pendente" }]);
 
   const PRIORIDADE_COR: Record<string, string> = {
     alta: "bg-red-100 text-red-800",
@@ -265,7 +266,7 @@ function PlanoAcaoEditor({
 }
 
 // ────────── Card de Histórico ──────────
-function HistoricoCard({ importacao }: { importacao: PgrImportacao }) {
+function HistoricoCard({ importacao, onOpen }: { importacao: PgrImportacao; onOpen: () => void }) {
   const cfg = STATUS_CONFIG[importacao.status as keyof typeof STATUS_CONFIG] || STATUS_CONFIG.erro;
   const Icon = cfg.icon || AlertCircle;
   
@@ -277,11 +278,16 @@ function HistoricoCard({ importacao }: { importacao: PgrImportacao }) {
   const excluir = useExcluirImportacaoPgr();
 
   return (
-    <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-card p-3">
+    <div 
+      className="flex items-center justify-between gap-3 rounded-xl border border-border bg-card p-3 hover:border-orange-300 hover:shadow-sm transition-all cursor-pointer group"
+      onClick={onOpen}
+    >
       <div className="flex items-center gap-3 min-w-0">
-        <FileText className="h-5 w-5 text-orange-400 shrink-0" />
+        <div className="bg-orange-50 p-2 rounded-lg group-hover:bg-orange-100 transition-colors">
+          <FileText className="h-5 w-5 text-orange-500 shrink-0" />
+        </div>
         <div className="min-w-0">
-          <div className="font-medium text-sm truncate">{importacao.arquivo_nome}</div>
+          <div className="font-medium text-sm truncate group-hover:text-orange-700 transition-colors">{importacao.arquivo_nome}</div>
           <div className="text-xs text-muted-foreground">
             {importacao.created_at ? format(new Date(importacao.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR }) : "Data não disponível"}
             {importacao.status === "confirmado" && ` · ${totalRiscos} riscos · ${totalAcoes} ações`}
@@ -301,8 +307,9 @@ function HistoricoCard({ importacao }: { importacao: PgrImportacao }) {
         <Button 
           variant="ghost" 
           size="icon" 
-          className="h-8 w-8 text-muted-foreground hover:text-red-600 hover:bg-red-50"
-          onClick={() => {
+          className="h-8 w-8 text-muted-foreground hover:text-red-600 hover:bg-red-50 z-10 relative"
+          onClick={(e) => {
+            e.stopPropagation();
             if (confirm("Tem certeza que deseja excluir esta importação? Esta ação não pode ser desfeita.")) {
               excluir.mutateAsync(importacao.id)
                 .then(() => toast.success("Importação excluída com sucesso."))
@@ -339,86 +346,137 @@ function PainelRevisao({
   const [riscos, setRiscos] = useState<RiscoExtraido[]>(initialRiscos);
   const [planoAcao, setPlanoAcao] = useState<AcaoExtraida[]>(initialPlano);
   const [secao, setSecao] = useState<"empresa" | "riscos" | "plano">("empresa");
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (importacao.arquivo_storage) {
+      const fetchUrl = async () => {
+        const { data } = await supabase.storage
+          .from('documentos_analise')
+          .createSignedUrl(importacao.arquivo_storage, 60 * 60);
+        
+        if (data?.signedUrl) {
+          setPdfUrl(data.signedUrl);
+        } else {
+          const { data: pub } = supabase.storage
+            .from('documentos_analise')
+            .getPublicUrl(importacao.arquivo_storage);
+          setPdfUrl(pub.publicUrl);
+        }
+      };
+      fetchUrl();
+    }
+  }, [importacao.arquivo_storage]);
 
   const totalPreenchido = riscos.filter((r) => r?.nome).length;
   const totalAcoes = planoAcao.filter((a) => a?.medida).length;
 
   return (
-    <div className="space-y-6">
-      {raw?.aviso && (
-        <Alert>
-          <AlertTriangle className="h-4 w-4" />
-          <AlertDescription>{raw.aviso}</AlertDescription>
-        </Alert>
-      )}
-
-      <div className="flex flex-wrap gap-2 items-center">
-        <Badge variant="outline" className="flex items-center gap-1">
-          <Shield className="h-3 w-3" /> {totalPreenchido} risco(s) identificado(s)
-        </Badge>
-        <Badge variant="outline" className="flex items-center gap-1">
-          <CheckCircle className="h-3 w-3" /> {totalAcoes} ação(ões) do plano
-        </Badge>
-        {raw?.modo_extracao && (
-          <Badge variant="secondary" className="text-xs">
-            {raw.modo_extracao === "fallback_local" ? "⚠️ Processamento local" : "✅ IA OpenAI"}
-          </Badge>
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-[700px]">
+      {/* Coluna 1: Formulários de Revisão */}
+      <div className="space-y-6 flex flex-col h-full overflow-y-auto pr-2">
+        {raw?.aviso && (
+          <Alert>
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>{raw.aviso}</AlertDescription>
+          </Alert>
         )}
-      </div>
 
-      <div className="flex gap-2 border-b border-border">
-        {(["empresa", "riscos", "plano"] as const).map((s) => (
-          <button key={s} id={`pgr-revisao-tab-${s}`} onClick={() => setSecao(s)}
-            className={`pb-2 px-1 text-sm font-medium border-b-2 transition-colors
-              ${secao === s ? "border-orange-500 text-orange-600" : "border-transparent text-muted-foreground hover:text-foreground"}`}>
-            {s === "empresa" ? "Dados da Empresa" : s === "riscos" ? `Riscos (${totalPreenchido})` : `Plano de Ação (${totalAcoes})`}
-          </button>
-        ))}
-      </div>
+        <div className="flex flex-wrap gap-2 items-center">
+          <Badge variant="outline" className="flex items-center gap-1">
+            <Shield className="h-3 w-3" /> {totalPreenchido} risco(s) identificado(s)
+          </Badge>
+          <Badge variant="outline" className="flex items-center gap-1">
+            <CheckCircle className="h-3 w-3" /> {totalAcoes} ação(ões) do plano
+          </Badge>
+          {raw?.modo_extracao && (
+            <Badge variant="secondary" className="text-xs">
+              {raw.modo_extracao === "fallback_local" ? "⚠️ Processamento local" : "✅ IA OpenAI"}
+            </Badge>
+          )}
+        </div>
 
-      {secao === "empresa" && (
-        <div className="grid gap-4 sm:grid-cols-2">
-          {[
-            { key: "nome", label: "Nome da empresa" },
-            { key: "cnpj", label: "CNPJ" },
-            { key: "responsavel_tecnico", label: "Responsável técnico" },
-            { key: "cargo_responsavel", label: "Cargo do responsável" },
-            { key: "data_elaboracao", label: "Data de elaboração" },
-            { key: "validade", label: "Validade" },
-          ].map(({ key, label }) => (
-            <div key={key} className="space-y-1">
-              <Label>{label}</Label>
-              <Input id={`pgr-empresa-${key}`}
-                value={(dadosEmpresa as any)[key] ?? ""}
-                onChange={(e) => setDadosEmpresa((d) => ({ ...d, [key]: e.target.value || null }))}
-              />
-            </div>
+        <div className="flex gap-2 border-b border-border">
+          {(["empresa", "riscos", "plano"] as const).map((s) => (
+            <button key={s} id={`pgr-revisao-tab-${s}`} onClick={() => setSecao(s)}
+              className={`pb-2 px-1 text-sm font-medium border-b-2 transition-colors
+                ${secao === s ? "border-orange-500 text-orange-600" : "border-transparent text-muted-foreground hover:text-foreground"}`}>
+              {s === "empresa" ? "Dados da Empresa" : s === "riscos" ? `Riscos (${totalPreenchido})` : `Plano de Ação (${totalAcoes})`}
+            </button>
           ))}
         </div>
-      )}
 
-      {secao === "riscos" && <RiscosEditor riscos={riscos} onChange={setRiscos} />}
-      {secao === "plano" && <PlanoAcaoEditor acoes={planoAcao} onChange={setPlanoAcao} />}
+        {secao === "empresa" && (
+          <div className="grid gap-4 sm:grid-cols-2">
+            {[
+              { key: "nome", label: "Nome da empresa" },
+              { key: "cnpj", label: "CNPJ" },
+              { key: "responsavel_tecnico", label: "Responsável técnico" },
+              { key: "cargo_responsavel", label: "Cargo do responsável" },
+              { key: "data_elaboracao", label: "Data de elaboração" },
+              { key: "validade", label: "Validade" },
+            ].map(({ key, label }) => (
+              <div key={key} className="space-y-1">
+                <Label>{label}</Label>
+                <Input id={`pgr-empresa-${key}`}
+                  value={(dadosEmpresa as any)[key] ?? ""}
+                  onChange={(e) => setDadosEmpresa((d) => ({ ...d, [key]: e.target.value || null }))}
+                />
+              </div>
+            ))}
+          </div>
+        )}
 
-      <Separator />
-      <div className="flex justify-end gap-3">
-        <Button id="pgr-confirmar-importacao" onClick={() => onConfirmar({ dadosEmpresa, riscos, planoAcao })}
-          disabled={isPending || totalPreenchido === 0}
-          className="bg-orange-600 hover:bg-orange-700 text-white">
-          {isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <CheckCircle className="h-4 w-4 mr-2" />}
-          Confirmar e Ativar Plano de Ação
-        </Button>
+        {secao === "riscos" && <RiscosEditor riscos={riscos} onChange={setRiscos} />}
+        {secao === "plano" && <PlanoAcaoEditor acoes={planoAcao} onChange={setPlanoAcao} />}
+
+        <div className="mt-auto pt-4 pb-2">
+          <Separator className="mb-4" />
+          <div className="flex justify-end gap-3">
+            <Button id="pgr-confirmar-importacao" onClick={() => onConfirmar({ dadosEmpresa, riscos, planoAcao })}
+              disabled={isPending || totalPreenchido === 0}
+              className="bg-orange-600 hover:bg-orange-700 text-white w-full">
+              {isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <CheckCircle className="h-4 w-4 mr-2" />}
+              Confirmar e Ativar Plano de Ação
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Coluna 2: Visualizador de PDF */}
+      <div className="hidden lg:flex flex-col border border-border rounded-lg bg-muted overflow-hidden h-full">
+        <div className="bg-muted-foreground/10 px-3 py-2 border-b border-border flex items-center gap-2">
+          <FileText className="h-4 w-4 text-muted-foreground" />
+          <span className="text-xs font-medium text-muted-foreground">Documento Original</span>
+        </div>
+        {pdfUrl ? (
+          <iframe 
+            src={`${pdfUrl}#toolbar=0`}
+            className="w-full h-full flex-1 border-0 bg-white" 
+            title="Visualizador de PDF"
+          />
+        ) : (
+          <div className="flex flex-1 items-center justify-center">
+            <div className="flex flex-col items-center gap-2 text-muted-foreground">
+              <Loader2 className="h-6 w-6 animate-spin" />
+              <span className="text-sm">Carregando PDF...</span>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
 // ────────── Componente Principal ──────────
+import { PgrImportadoDashboard } from "./PgrImportadoDashboard";
+
 export function ImportarPgrTab() {
   const { data: importacoes = [], isLoading } = usePgrImportacoes();
   const iniciar = useIniciarImportacaoPgr();
   const confirmar = useConfirmarImportacaoPgr();
   const [importacaoEmRevisao, setImportacaoEmRevisao] = useState<PgrImportacao | null>(null);
+  const [selectedPgrId, setSelectedPgrId] = useState<string | null>(null);
 
   const aguardandoRevisao = importacoes.find((i) => i.status === "aguardando_revisao");
 
@@ -441,6 +499,10 @@ export function ImportarPgrTab() {
       toast.error(err.message ?? "Erro ao confirmar.");
     }
   };
+
+  if (selectedPgrId) {
+    return <PgrImportadoDashboard pgrId={selectedPgrId} onBack={() => setSelectedPgrId(null)} />;
+  }
 
   return (
     <div className="space-y-6">
@@ -509,7 +571,7 @@ export function ImportarPgrTab() {
             {isLoading ? (
               <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
             ) : (
-              importacoes.map((imp) => <HistoricoCard key={imp.id} importacao={imp} />)
+              importacoes.map((imp) => <HistoricoCard key={imp.id} importacao={imp} onOpen={() => setSelectedPgrId(imp.id)} />)
             )}
           </CardContent>
         </Card>

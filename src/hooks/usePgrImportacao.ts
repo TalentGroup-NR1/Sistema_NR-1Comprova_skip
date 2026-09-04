@@ -23,11 +23,13 @@ export interface RiscoExtraido {
 }
 
 export interface AcaoExtraida {
+  id?: string;
   medida: string;
   prazo_sugerido: string | null;
   responsavel_sugerido: string | null;
   prioridade: "alta" | "media" | "baixa";
   risco_referenciado: string | null;
+  status?: "pendente" | "concluida";
 }
 
 export interface ExtracaoRaw {
@@ -196,13 +198,19 @@ export function useConfirmarImportacaoPgr() {
       if (!user?.id) throw new Error("Não autenticado.");
 
       // Salva os dados confirmados na importação
+      const actionsWithDefaults = planoAcao.map(a => ({
+        ...a,
+        id: a.id || crypto.randomUUID(),
+        status: a.status || "pendente"
+      }));
+
       const { error: updateErr } = await (supabase as any)
         .from("pgr_importacoes")
         .update({
           status: "confirmado",
           dados_empresa: dadosEmpresa,
           riscos,
-          plano_acao: planoAcao,
+          plano_acao: actionsWithDefaults,
         })
         .eq("id", importacaoId);
       if (updateErr) throw updateErr;
@@ -226,16 +234,39 @@ export function useExcluirImportacaoPgr() {
   return useMutation({
     mutationFn: async (importacaoId: string) => {
       if (!user?.id) throw new Error("Não autenticado.");
-      
+
       const { data, error: fnErr } = await supabase.functions.invoke("pgr-excluir", {
         body: { importacao_id: importacaoId }
       });
-      
+
       const actualError = fnErr || (data && data.error ? new Error(data.error) : null);
       if (actualError) throw actualError;
 
       return data;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["pgr-importacoes"] }),
+  });
+}
+
+// ──────────────────────────────────────────────────────────────
+// Atualizar ações de um PGR importado
+// ──────────────────────────────────────────────────────────────
+export function useUpdatePgrActions() {
+  const { user } = useAuth();
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ importacaoId, planoAcao }: { importacaoId: string, planoAcao: AcaoExtraida[] }) => {
+      if (!user?.id) throw new Error("Não autenticado.");
+      const { error: updateErr } = await (supabase as any)
+        .from("pgr_importacoes")
+        .update({ plano_acao: planoAcao })
+        .eq("id", importacaoId);
+      if (updateErr) throw updateErr;
+      return { importacaoId };
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["pgr-importacoes"] });
+    },
   });
 }

@@ -28,7 +28,7 @@ import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { companySchema, CompanyFormData, Company, formatCNPJ } from "@/lib/validators/company";
 import { formatCEP, isCepComplete, fetchAddressByCep } from "@/lib/cep";
-import { useCreateCompany, useUpdateCompany } from "@/hooks/useCompanies";
+import { useUpdateCompany } from "@/hooks/useCompanies";
 import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { BrandingSection } from "./BrandingSection";
@@ -50,7 +50,6 @@ const EMPTY_ADDRESS = {
 };
 
 export function CompanyForm({ open, onOpenChange, company }: CompanyFormProps) {
-  const createCompany = useCreateCompany();
   const updateCompany = useUpdateCompany();
   const isEditing = !!company;
   const [buscandoCep, setBuscandoCep] = useState(false);
@@ -116,23 +115,21 @@ export function CompanyForm({ open, onOpenChange, company }: CompanyFormProps) {
   };
 
   const onSubmit = async (data: CompanyFormData) => {
-    if (isEditing && company) {
+    if (company) {
       await updateCompany.mutateAsync({ ...data, id: company.id });
-    } else {
-      await createCompany.mutateAsync(data);
     }
     onOpenChange(false);
     form.reset();
   };
 
-  const isPending = createCompany.isPending || updateCompany.isPending;
+  const isPending = updateCompany.isPending;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[550px] max-h-[90vh]">
         <DialogHeader>
           <DialogTitle>
-            {isEditing ? "Editar Empresa" : "Nova Empresa"}
+            Editar Empresa
           </DialogTitle>
         </DialogHeader>
 
@@ -371,7 +368,7 @@ export function CompanyForm({ open, onOpenChange, company }: CompanyFormProps) {
                   Cancelar
                 </Button>
                 <Button type="submit" disabled={isPending}>
-                  {isPending ? "Salvando..." : isEditing ? "Salvar" : "Cadastrar"}
+                  {isPending ? "Salvando..." : "Salvar"}
                 </Button>
               </DialogFooter>
             </form>

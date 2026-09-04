@@ -12,6 +12,7 @@ const corsHeaders = {
 
 const cnpjRegex = /^\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}$/;
 
+// Schema sem admin_senha / confirmar_senha — senha gerada internamente
 const BodySchema = z.object({
   razao_social: z.string().trim().min(2).max(255),
   cnpj: z.string().trim().regex(cnpjRegex, "CNPJ inválido"),
@@ -40,7 +41,6 @@ const BodySchema = z.object({
   estado: z.string().trim().regex(/^[A-Za-z]{2}$/, "UF inválida"),
   admin_nome: z.string().trim().min(2).max(200),
   admin_email: z.string().trim().email().max(255),
-  admin_senha: z.string().min(8).max(200),
   aceite_termos: z.literal(true),
   terms_version: z.string().trim().min(1).max(20).default("1.0"),
   privacy_version: z.string().trim().min(1).max(20).default("1.0"),
@@ -58,6 +58,17 @@ const BodySchema = z.object({
     .nullable()
     .optional(),
 });
+
+/** Gera senha aleatória interna (jamais exposta ao cliente). */
+function generateRandomPassword(length: number): string {
+  const chars =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+~`|}{[]:;?><,./-=";
+  const bytes = new Uint8Array(length);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes)
+    .map((b) => chars[b % chars.length])
+    .join("");
+}
 
 /** UUID determinístico a partir de uma string (para rate limit por IP). */
 async function stableUuid(input: string): Promise<string> {
@@ -104,6 +115,23 @@ Deno.serve(async (req) => {
     req.headers.get("cf-connecting-ip") ||
     "unknown";
 
+  // Capturar caller para audit log (opcional — pode não ter Authorization)
+  let callerUserId: string | null = null;
+  const authHeader = req.headers.get("Authorization");
+  if (authHeader) {
+    try {
+      const userClient = createClient(
+        Deno.env.get("SUPABASE_URL") ?? "",
+        Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+        { global: { headers: { Authorization: authHeader } } },
+      );
+      const { data: { user } } = await userClient.auth.getUser();
+      callerUserId = user?.id ?? null;
+    } catch {
+      // Ignorar — audit log com caller null é aceitável
+    }
+  }
+
   let companyId: string | null = null;
   let userId: string | null = null;
 
@@ -147,7 +175,7 @@ Deno.serve(async (req) => {
       return json({ success: false, error: "CNPJ já cadastrado" }, 409);
     }
 
-    // E-mail duplicado (consulta direta indexada em profiles)
+    // E-mail duplicado
     const { count: emailCount } = await admin
       .from("profiles")
       .select("id", { count: "exact", head: true })
@@ -185,10 +213,11 @@ Deno.serve(async (req) => {
     if (companyError || !company) throw new Error(companyError?.message ?? "Falha ao criar empresa");
     companyId = company.id;
 
-    // 2. Usuário admin (e-mail já confirmado)
+    // 2. Usuário admin com SENHA ALEATÓRIA INTERNA (ninguém vê)
+    const randomPassword = generateRandomPassword(64);
     const { data: created, error: userError } = await admin.auth.admin.createUser({
       email,
-      password: data.admin_senha,
+      password: randomPassword,
       email_confirm: true,
       user_metadata: { full_name: data.admin_nome },
     });
@@ -210,7 +239,7 @@ Deno.serve(async (req) => {
         email,
         phone: data.telefone,
         is_active: true,
-        must_change_password: false,
+        must_change_password: true, // Força troca de senha no primeiro login
       },
       { onConflict: "user_id" },
     );
@@ -223,7 +252,7 @@ Deno.serve(async (req) => {
       .insert({ user_id: userId, role: "admin_empresa" });
     if (roleError) throw new Error(roleError.message);
 
-    // 4.1 Registro formal do aceite (exigência legal — falha derruba o cadastro)
+    // 4.1 Aceite de termos (exigência legal — falha derruba o cadastro)
     const { error: termsError } = await admin.from("terms_acceptance").insert({
       company_id: companyId,
       user_id: userId,
@@ -260,9 +289,27 @@ Deno.serve(async (req) => {
       }
     }
 
+    // 6. Link de definição de senha (recovery — padrão do convite)
+    const redirectTo = `${Deno.env.get("APP_ORIGIN") || "https://nr1pronto.com.br"}/atualizar-senha`;
+    const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({
+      type: "recovery",
+      email,
+      options: { redirectTo },
+    });
+
+    let recoveryUrl: string | null = null;
+    if (linkError || !linkData) {
+      // Falha no link NÃO invalida o cadastro — admin pode usar "Esqueci minha senha"
+      console.error("falha ao gerar link de convite", linkError?.message);
+    } else {
+      recoveryUrl = linkData.properties.action_link;
+    }
+
     console.log("empresa registrada", { companyId, userId, ip, segmento: data.segmento });
 
-    // 6. E-mail de boas-vindas (falha NÃO invalida o cadastro)
+    // 7. Email de convite com CTA "Definir minha senha" (falha NÃO invalida o cadastro)
+    let emailSent = false;
+    let emailError: string | null = null;
     try {
       const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
       const resp = await fetch(
@@ -275,26 +322,60 @@ Deno.serve(async (req) => {
             apikey: serviceKey,
           },
           body: JSON.stringify({
-            templateName: "bem-vindo-empresa",
+            templateName: "convite-admin-empresa",
             recipientEmail: email,
             companyId,
-            idempotencyKey: `bem-vindo-empresa-${companyId}`,
+            idempotencyKey: `convite-admin-empresa-${companyId}`,
             templateData: {
+              siteName: "NR-1 Pronto",
+              siteUrl: Deno.env.get("APP_ORIGIN") || "https://nr1pronto.com.br",
               adminName: data.admin_nome,
               companyName: data.brand_name || data.razao_social,
-              loginUrl: `${Deno.env.get('APP_ORIGIN') || 'https://nr1pronto.com.br'}/auth`,
+              logoUrl: logoUrl || undefined,
+              confirmationUrl: recoveryUrl ?? `${Deno.env.get("APP_ORIGIN") || "https://nr1pronto.com.br"}/auth`,
+              expirationHours: 24,
             },
           }),
         },
       );
+      emailSent = resp.ok;
       if (!resp.ok) {
-        console.error("falha ao enviar boas-vindas", resp.status, await resp.text());
+        emailError = await resp.text();
+        console.error("falha ao enviar convite", resp.status, emailError);
       }
     } catch (e) {
-      console.error("boas-vindas ignorado", (e as Error).message);
+      emailError = (e as Error).message;
+      console.error("convite ignorado", emailError);
     }
 
-    return json({ success: true, company_id: companyId, user_id: userId, logo_url: logoUrl });
+    // 8. Audit log em platform_audit_logs (Passo 4)
+    try {
+      await admin.from("platform_audit_logs").insert({
+        user_id: callerUserId ?? userId,
+        user_email: callerUserId ? undefined : email,
+        action: "empresa_criada_convite_enviado",
+        target_company_id: companyId,
+        target_company_name: data.brand_name || data.razao_social,
+        ip_address: ip,
+        details: {
+          admin_email: email,
+          admin_nome: data.admin_nome,
+          email_convite_enviado: emailSent,
+          email_convite_erro: emailError,
+          recovery_link_gerado: !!recoveryUrl,
+        },
+      });
+    } catch (auditErr) {
+      console.error("audit log ignorado", (auditErr as Error).message);
+    }
+
+    return json({
+      success: true,
+      company_id: companyId,
+      user_id: userId,
+      logo_url: logoUrl,
+      invite_sent: emailSent,
+    });
 
   } catch (error) {
     const message = (error as Error).message ?? "Erro inesperado";

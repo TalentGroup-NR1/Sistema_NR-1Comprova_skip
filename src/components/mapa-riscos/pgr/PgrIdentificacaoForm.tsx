@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Upload, Save, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { PgrGheSetorMappingSection } from "./PgrGheSetorMappingSection";
 import type { PgrDocumento, PgrResponsavelTecnico } from "@/hooks/usePgrDocumento";
 
 interface Props {
@@ -177,6 +178,9 @@ export function PgrIdentificacaoForm({ documento, onSave, saving }: Props) {
         {saving ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Save className="h-4 w-4 mr-1" />}
         Salvar identificação
       </Button>
+
+      {/* Seção Nova: Sincronização GHE x Setores RH */}
+      <PgrGheSetorMappingSection />
     </div>
   );
 }
