@@ -223,8 +223,7 @@ export const contratoSchema = z.object({
   admission_date: requiredDateStringSchema,
   work_schedule: z.string().max(100).optional(),
   work_schedule_id: z.string().uuid().optional().nullable(),
-  gestao_tecnica: z.string().max(255).optional(),
-  empresa_cliente: z.string().max(255).optional(),
+
   is_substituicao: z.boolean().optional().default(false),
   substituicao_colaborador_id: z.string().uuid().optional().nullable(),
   is_banco_horas: z.boolean().optional().default(false),

@@ -59,8 +59,7 @@ export interface Colaborador {
   status: string;
   created_at: string;
   updated_at: string;
-  gestao_tecnica: string | null;
-  empresa_cliente: string | null;
+
   is_banco_horas: boolean;
   jornada_diaria_minutos: number | null;
   is_substituicao: boolean;
@@ -282,8 +281,7 @@ export function useCreateColaborador() {
           department: colaboradorData.department,
           manager_name: colaboradorData.manager_name || null,
           gestor_id: colaboradorData.gestor_id || null,
-          gestao_tecnica: colaboradorData.gestao_tecnica || null,
-          empresa_cliente: colaboradorData.empresa_cliente || null,
+
           is_banco_horas: colaboradorData.is_banco_horas || false,
           jornada_diaria_minutos: null,
           banco_horas_perfil_id: (colaboradorData as any).banco_horas_perfil_id || null,
@@ -412,8 +410,7 @@ export function useUpdateColaborador() {
           department: colaboradorData.department,
           manager_name: colaboradorData.manager_name || null,
           gestor_id: colaboradorData.gestor_id || null,
-          gestao_tecnica: colaboradorData.gestao_tecnica || null,
-          empresa_cliente: colaboradorData.empresa_cliente || null,
+
           is_banco_horas: colaboradorData.is_banco_horas || false,
           jornada_diaria_minutos: null,
           banco_horas_perfil_id: (colaboradorData as any).banco_horas_perfil_id || null,
