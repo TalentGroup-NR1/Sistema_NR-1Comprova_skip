@@ -1,7 +1,5 @@
 import { useState } from "react";
-import { Building2, Users } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {
   Select,
   SelectContent,
@@ -26,8 +24,8 @@ const PERIODOS: { label: string; months: PeriodoMeses }[] = [
 ];
 
 export function ResultadosAgregadosTab() {
-  const [dimensao, setDimensao] = useState<DimensaoAgrupamento>("departamento");
   const [periodoIdx, setPeriodoIdx] = useState<number>(0);
+  const dimensao: DimensaoAgrupamento = "departamento";
   const months = PERIODOS[periodoIdx].months;
 
   const { data, isLoading } = useCuidarResultadosAgregados(dimensao, months);
@@ -38,27 +36,12 @@ export function ResultadosAgregadosTab() {
         <CardHeader>
           <CardTitle>Resultados Agregados</CardTitle>
           <CardDescription>
-            Visão consolidada das respostas do Cuidar+ agrupadas por{" "}
-            {dimensao === "departamento" ? "departamento" : "empresa cliente"}.
+            Visão consolidada das respostas do Cuidar+ agrupadas por departamento.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-            <ToggleGroup
-              type="single"
-              value={dimensao}
-              onValueChange={(v) => v && setDimensao(v as DimensaoAgrupamento)}
-              className="justify-start"
-            >
-              <ToggleGroupItem value="departamento" className="gap-2">
-                <Users className="h-4 w-4" />
-                Departamento
-              </ToggleGroupItem>
-              <ToggleGroupItem value="cliente" className="gap-2">
-                <Building2 className="h-4 w-4" />
-                Empresa Cliente
-              </ToggleGroupItem>
-            </ToggleGroup>
+
 
             <Select
               value={String(periodoIdx)}
@@ -83,7 +66,7 @@ export function ResultadosAgregadosTab() {
         <CardHeader>
           <CardTitle>Mapa de Calor por Dimensão</CardTitle>
           <CardDescription>
-            Médias (1 a 5) por {dimensao === "departamento" ? "departamento" : "empresa cliente"} e dimensão da pergunta.
+            Médias (1 a 5) por departamento e dimensão da pergunta.
           </CardDescription>
         </CardHeader>
         <CardContent>

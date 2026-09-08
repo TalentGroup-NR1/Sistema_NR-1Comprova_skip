@@ -11,8 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, Plus, Filter, Download, History } from "lucide-react";
-import { ImportarPromocoesDialog } from "@/components/colaboradores/ImportarPromocoesDialog";
+import { Search, Plus, Filter } from "lucide-react";
 import { ColaboradorTable } from "@/components/colaboradores/ColaboradorTable";
 import { ColaboradorForm } from "@/components/colaboradores/ColaboradorForm";
 import {
@@ -31,13 +30,10 @@ const Colaboradores = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("todos");
   const [departmentFilter, setDepartmentFilter] = useState<string>("todos");
-  const [gestaoTecnicaFilter, setGestaoTecnicaFilter] = useState<string>("todos");
   const [vinculoFilter, setVinculoFilter] = useState<string>("todos");
-  const [empresaClienteFilter, setEmpresaClienteFilter] = useState<string>("todos");
   const [formOpen, setFormOpen] = useState(false);
   const [selectedColaborador, setSelectedColaborador] = useState<Colaborador | null>(null);
   const [viewingColaboradorId, setViewingColaboradorId] = useState<string | null>(null);
-  const [importPromocoesOpen, setImportPromocoesOpen] = useState(false);
 
   const { isAdminMaster, isAdminEmpresa } = useAuth();
   const effectiveCompanyId = useEffectiveCompanyId();
@@ -50,11 +46,9 @@ const Colaboradores = () => {
   // Check if user can manage colaboradores
   const canManage = !isAdminMaster || effectiveCompanyId;
 
-  // Extract unique departments and gestão técnica values for filters
+  // Extract unique departments and vínculos values for filters
   const departments = [...new Set(colaboradores.map(c => c.department).filter(Boolean))].sort();
-  const gestoesTecnicas = [...new Set(colaboradores.map(c => c.gestao_tecnica).filter(Boolean) as string[])].sort();
   const vinculos = [...new Set(colaboradores.map(c => c.contract_type).filter(Boolean) as string[])].sort();
-  const empresasClientes = [...new Set(colaboradores.map(c => c.empresa_cliente).filter(Boolean) as string[])].sort();
 
   const filteredColaboradores = colaboradores.filter((colab) => {
     const matchesSearch =
@@ -64,10 +58,8 @@ const Colaboradores = () => {
       colab.department.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === "todos" || colab.status === statusFilter;
     const matchesDepartment = departmentFilter === "todos" || colab.department === departmentFilter;
-    const matchesGestaoTecnica = gestaoTecnicaFilter === "todos" || colab.gestao_tecnica === gestaoTecnicaFilter;
     const matchesVinculo = vinculoFilter === "todos" || colab.contract_type === vinculoFilter;
-    const matchesEmpresaCliente = empresaClienteFilter === "todos" || colab.empresa_cliente === empresaClienteFilter;
-    return matchesSearch && matchesStatus && matchesDepartment && matchesGestaoTecnica && matchesVinculo && matchesEmpresaCliente;
+    return matchesSearch && matchesStatus && matchesDepartment && matchesVinculo;
   });
 
   const handleOpenForm = (colaborador?: Colaborador) => {
@@ -153,17 +145,6 @@ const Colaboradores = () => {
                   ))}
                 </SelectContent>
               </Select>
-              <Select value={gestaoTecnicaFilter} onValueChange={setGestaoTecnicaFilter}>
-                <SelectTrigger className="w-[170px]">
-                  <SelectValue placeholder="Gestão Técnica" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="todos">Todas Gestões</SelectItem>
-                  {gestoesTecnicas.map(gestao => (
-                    <SelectItem key={gestao} value={gestao}>{gestao}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
               <Select value={vinculoFilter} onValueChange={setVinculoFilter}>
                 <SelectTrigger className="w-[150px]">
                   <SelectValue placeholder="Vínculo" />
@@ -175,30 +156,6 @@ const Colaboradores = () => {
                   ))}
                 </SelectContent>
               </Select>
-              <Select value={empresaClienteFilter} onValueChange={setEmpresaClienteFilter}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Empresa Cliente" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="todos">Todas Empresas Clientes</SelectItem>
-                  {empresasClientes.map(empresa => (
-                    <SelectItem key={empresa} value={empresa}>{empresa}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Button variant="outline" size="icon">
-                <Download className="h-4 w-4" />
-              </Button>
-              {canManage && (
-                <Button
-                  variant="outline"
-                  onClick={() => setImportPromocoesOpen(true)}
-                  title="Importar histórico de cargo e salário"
-                >
-                  <History className="h-4 w-4 mr-2" />
-                  Importar Histórico
-                </Button>
-              )}
               {canManage && (
                 <Button
                   className="gradient-primary text-primary-foreground shadow-md hover:shadow-lg transition-shadow"
@@ -229,11 +186,6 @@ const Colaboradores = () => {
         colaborador={colaboradorForForm}
         onSubmit={handleSubmit}
         isSubmitting={createColaborador.isPending || updateColaborador.isPending}
-      />
-
-      <ImportarPromocoesDialog
-        open={importPromocoesOpen}
-        onOpenChange={setImportPromocoesOpen}
       />
     </MainLayout>
   );

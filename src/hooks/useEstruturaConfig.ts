@@ -7,8 +7,7 @@ export type EntidadeTabela =
   | 'departamentos'
   | 'cargos'
   | 'ghes'
-  | 'niveis_maturidade'
-  | 'empresas_clientes';
+  | 'niveis_maturidade';
 
 export interface Departamento {
   id: string;
@@ -42,12 +41,7 @@ export interface NivelMaturidade {
   ativo: boolean;
 }
 
-export interface EmpresaCliente {
-  id: string;
-  nome: string;
-  codigo: string | null;
-  ativo: boolean;
-}
+
 
 function useEntidade<T>(tabela: EntidadeTabela, companyId: string | null, colunas: string, order: string) {
   return useQuery({
@@ -82,8 +76,7 @@ export const useNiveisMaturidade = (companyId: string | null) =>
     'ordem'
   );
 
-export const useEmpresasClientes = (companyId: string | null) =>
-  useEntidade<EmpresaCliente>('empresas_clientes', companyId, 'id,nome,codigo,ativo', 'nome');
+
 
 
 export function useEntidadeMutations(tabela: EntidadeTabela, companyId: string | null) {

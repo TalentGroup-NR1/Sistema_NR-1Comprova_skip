@@ -47,7 +47,7 @@ export interface ColaboradorComFerias {
   full_name: string;
   job_title: string;
   department: string;
-  empresa_cliente?: string | null;
+
   admission_date: string;
   status: string;
   ultima_ferias_inicio?: string | null;
@@ -130,7 +130,7 @@ export function useColaboradoresComFerias() {
 
       let query = supabase
         .from('colaboradores')
-        .select('id, full_name, job_title, department, empresa_cliente, admission_date, status, company_id, contract_type, ultima_ferias_inicio, ultima_ferias_fim, data_corte_ferias')
+        .select('id, full_name, job_title, department, admission_date, status, company_id, contract_type, ultima_ferias_inicio, ultima_ferias_fim, data_corte_ferias')
         .eq('status', 'ATIVO')
         // Trava de elegibilidade: apenas vínculos com direito legal a férias
         .in('contract_type', ['CLT', 'Aprendiz', 'Estágio'])

@@ -31,7 +31,7 @@ import { useWorkSchedules, formatScheduleLabel } from '@/hooks/useWorkSchedules'
 import { useColaboradores } from '@/hooks/useColaboradores';
 import { useBancoHorasPerfis } from '@/hooks/useBancoHorasPerfis';
 import { CargoCascadeSelect } from '@/components/colaboradores/CargoCascadeSelect';
-import { useNiveisMaturidade, useEmpresasClientes } from '@/hooks/useEstruturaConfig';
+import { useNiveisMaturidade } from '@/hooks/useEstruturaConfig';
 import { useEffectiveCompanyId } from '@/hooks/useEffectiveCompanyId';
 
 interface ContratoTabProps {
@@ -46,15 +46,6 @@ export function ContratoTab({ form, colaboradorId }: ContratoTabProps) {
   const companyId = useEffectiveCompanyId();
   const { data: niveis = [] } = useNiveisMaturidade(companyId);
   const niveisAtivos = niveis.filter((n) => n.ativo);
-  const { data: empresasClientes = [] } = useEmpresasClientes(companyId);
-  const empresaClienteAtual = form.watch('empresa_cliente');
-  const empresasClientesOptions = [
-    ...empresasClientes.filter((e) => e.ativo).map((e) => e.nome),
-    ...(empresaClienteAtual &&
-    !empresasClientes.some((e) => e.ativo && e.nome === empresaClienteAtual)
-      ? [empresaClienteAtual]
-      : []),
-  ];
   const [gestorSugerido, setGestorSugerido] = useState<{ id: string; name: string } | null>(null);
 
   // Filtrar gestores disponíveis (colaboradores ativos, exceto o próprio colaborador)
@@ -422,52 +413,6 @@ export function ContratoTab({ form, colaboradorId }: ContratoTabProps) {
         )}
       </div>
 
-
-      {/* Gestão Técnica + Empresa Cliente */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        <FormField
-          control={form.control}
-          name="gestao_tecnica"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Gestão Técnica</FormLabel>
-              <FormControl>
-                <Input placeholder="Nome do gestor técnico no cliente" {...field} value={field.value || ''} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="empresa_cliente"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Empresa Cliente</FormLabel>
-              <Select
-                value={field.value || '__none__'}
-                onValueChange={(v) => field.onChange(v === '__none__' ? '' : v)}
-              >
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione a empresa cliente" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent className="z-50 bg-background">
-                  <SelectItem value="__none__">Não informado</SelectItem>
-                  {empresasClientesOptions.map((nome) => (
-                    <SelectItem key={nome} value={nome}>
-                      {nome}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-      </div>
 
       {/* Substituição */}
       <div className="space-y-4">

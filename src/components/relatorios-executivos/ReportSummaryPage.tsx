@@ -51,7 +51,7 @@ function renderMonthlyChart(monthlyData: ReturnType<typeof buildMonthlyData>, ti
 }
 
 export function ReportSummaryPage({ data, year }: Props) {
-  const { headcount, admissoes_mes, desligamentos_mes, gestao_tecnica } = data;
+  const { headcount, admissoes_mes, desligamentos_mes, gestor_interno } = data;
 
   const totalAdmissoes = admissoes_mes.reduce((s, m) => s + m.total, 0);
   const totalDesligamentos = desligamentos_mes.reduce((s, m) => s + m.total, 0);
@@ -120,14 +120,14 @@ export function ReportSummaryPage({ data, year }: Props) {
         return renderMonthlyChart(monthlyData, title);
       })}
 
-      {/* Gestão Técnica - Horizontal Bars */}
+      {/* Gestor Interno - Horizontal Bars */}
       <div className="rounded-xl overflow-hidden avoid-break" style={{ border: `1px solid ${TALENT_BORDER}` }}>
         <h3 className="text-sm font-semibold px-5 py-3" style={{ color: TALENT_NAVY, background: '#F8F9FA' }}>
-          Distribuição por Gestão Técnica
+          Distribuição por Gestor Interno
         </h3>
-        {gestao_tecnica && gestao_tecnica.length > 0 ? (
-          <ResponsiveContainer width="100%" height={Math.max(140, gestao_tecnica.length * 36)}>
-            <BarChart data={gestao_tecnica} layout="vertical" margin={{ left: 30, right: 40 }}>
+        {gestor_interno && gestor_interno.length > 0 ? (
+          <ResponsiveContainer width="100%" height={Math.max(140, gestor_interno.length * 36)}>
+            <BarChart data={gestor_interno} layout="vertical" margin={{ left: 30, right: 40 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
               <XAxis type="number" allowDecimals={false} tick={{ fontSize: 10 }} />
               <YAxis dataKey="gestor" type="category" width={180} tick={{ fontSize: 9 }} />
@@ -138,7 +138,7 @@ export function ReportSummaryPage({ data, year }: Props) {
             </BarChart>
           </ResponsiveContainer>
         ) : (
-          <p className="px-5 py-4 text-sm italic" style={{ color: TALENT_GRAY }}>Nenhum dado de gestão técnica disponível.</p>
+          <p className="px-5 py-4 text-sm italic" style={{ color: TALENT_GRAY }}>Nenhum dado de gestor interno disponível.</p>
         )}
       </div>
     </div>

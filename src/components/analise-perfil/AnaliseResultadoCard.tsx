@@ -114,7 +114,7 @@ function ReportHeader({ dataAnalise }: { dataAnalise: string }) {
       <div className="h-1.5" style={{ background: `linear-gradient(90deg, ${TALENT_NAVY}, ${TALENT_RED})` }} />
       <div className="px-5 pt-4 pb-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <img src="/images/nr1-pronto-logo.png" alt="NR1-Pronto" className="h-9 object-contain" />
+          <img src="/images/Logo_NR1_Transparente.png" alt="NR1-Pronto" className="h-9 object-contain" />
           <div className="border-l-2 pl-3" style={{ borderColor: TALENT_GOLD }}>
             <h1 className="text-xs font-bold uppercase tracking-wider" style={{ color: TALENT_NAVY }}>
               Relatório de Análise de Perfil

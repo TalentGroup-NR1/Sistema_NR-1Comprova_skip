@@ -33,7 +33,6 @@ interface ColabRow {
   full_name: string;
   matricula: string | null;
   department: string | null;
-  empresa_cliente: string | null;
   fechamento?: Fechamento;
 }
 
@@ -55,8 +54,7 @@ export function FechamentoPonto() {
     queryFn: async () => {
       if (!companyId) return [];
       const { data, error } = await supabase
-        .from("colaboradores")
-        .select("id, full_name, matricula, department, empresa_cliente")
+        .select("id, full_name, matricula, department")
         .eq("company_id", companyId)
         .eq("status", "ATIVO")
         .in("contract_type", ["CLT", "Estágio", "Aprendiz", "Temporário"])
@@ -79,23 +77,9 @@ export function FechamentoPonto() {
     return colaboradores.map((c) => ({ ...c, fechamento: map.get(c.id) }));
   }, [colaboradores, fechamentos, ciclo]);
 
-  const [empresaClienteFiltro, setEmpresaClienteFiltro] = useState<string>("todos");
-
-  const empresasClientes = useMemo(() => {
-    const s = new Set<string>();
-    for (const r of rows) if (r.empresa_cliente) s.add(r.empresa_cliente);
-    return Array.from(s).sort((a, b) => a.localeCompare(b));
-  }, [rows]);
-
-  const rowsFiltradas = useMemo(() => {
-    if (empresaClienteFiltro === "todos") return rows;
-    if (empresaClienteFiltro === "__sem__") return rows.filter((r) => !r.empresa_cliente);
-    return rows.filter((r) => r.empresa_cliente === empresaClienteFiltro);
-  }, [rows, empresaClienteFiltro]);
-
-  const totalFechados = rowsFiltradas.filter((r) => r.fechamento?.status === "fechado").length;
-  const totalReabertos = rowsFiltradas.filter((r) => r.fechamento?.status === "reaberto").length;
-  const totalPendentes = rowsFiltradas.length - totalFechados - totalReabertos;
+  const totalFechados = rows.filter((r) => r.fechamento?.status === "fechado").length;
+  const totalReabertos = rows.filter((r) => r.fechamento?.status === "reaberto").length;
+  const totalPendentes = rows.length - totalFechados - totalReabertos;
 
   const [reabrirOpen, setReabrirOpen] = useState<Fechamento | null>(null);
   const [reabrirMassaOpen, setReabrirMassaOpen] = useState(false);
@@ -232,21 +216,6 @@ export function FechamentoPonto() {
                 O fechamento sela o período: novas batidas, abonos ou edições ficam bloqueados nas datas dentro do ciclo.
               </CardDescription>
             </div>
-            <div className="min-w-[240px] space-y-1">
-              <Label className="text-xs">Empresa cliente</Label>
-              <Select value={empresaClienteFiltro} onValueChange={setEmpresaClienteFiltro}>
-                <SelectTrigger className="h-9">
-                  <SelectValue placeholder="Todas" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="todos">Todas as empresas clientes</SelectItem>
-                  {empresasClientes.map((e) => (
-                    <SelectItem key={e} value={e}>{e}</SelectItem>
-                  ))}
-                  <SelectItem value="__sem__">Sem empresa cliente</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
           </div>
         </CardHeader>
         <CardContent>
@@ -258,7 +227,6 @@ export function FechamentoPonto() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Colaborador</TableHead>
-                    <TableHead>Empresa Cliente</TableHead>
                     <TableHead>Departamento</TableHead>
                     <TableHead className="text-center">Status</TableHead>
                     <TableHead className="text-center">Saldo</TableHead>
@@ -271,14 +239,13 @@ export function FechamentoPonto() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {rowsFiltradas.map((r) => {
+                  {rows.map((r) => {
                     const f = r.fechamento;
                     const isFechado = f?.status === "fechado";
                     const isReaberto = f?.status === "reaberto";
                     return (
                       <TableRow key={r.id}>
                         <TableCell className="font-medium">{r.full_name}</TableCell>
-                        <TableCell className="text-muted-foreground">{r.empresa_cliente ?? "—"}</TableCell>
                         <TableCell className="text-muted-foreground">{r.department ?? "—"}</TableCell>
                         <TableCell className="text-center">
                           {isFechado && <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100"><Lock className="h-3 w-3 mr-1" />Fechado v{f?.versao}</Badge>}

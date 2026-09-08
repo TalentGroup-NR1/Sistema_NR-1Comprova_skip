@@ -275,7 +275,7 @@ export function ComunicadoFlyerDetail({ comunicado, isAdmin = false }: Comunicad
     ? format(new Date(comunicado.data_publicacao), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })
     : '';
 
-  const logoUrl = `${window.location.origin}/images/nr1-pronto-logo.png`;
+  const logoUrl = `${window.location.origin}/images/Logo_NR1_Transparente.png`;
 
   return (
     <div className="space-y-4">

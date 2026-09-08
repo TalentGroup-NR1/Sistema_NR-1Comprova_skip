@@ -166,7 +166,7 @@ export function FeriasDashboard({ onGoAprovacoes, onGoColaboradores }: Props) {
                   <li key={g.id} className="flex items-center justify-between text-sm border-b pb-2 last:border-0">
                     <div>
                       <p className="font-medium">{g.colaborador.full_name}</p>
-                      <p className="text-xs text-muted-foreground">{g.colaborador.empresa_cliente || '—'}</p>
+                      <p className="text-xs text-muted-foreground">{g.colaborador.department || '—'}</p>
                     </div>
                     <Badge variant="secondary">
                       até {format(parseISO(g.data_fim_gozo), "dd/MM", { locale: ptBR })}
@@ -193,7 +193,7 @@ export function FeriasDashboard({ onGoAprovacoes, onGoColaboradores }: Props) {
                   <li key={g.id} className="flex items-center justify-between text-sm border-b pb-2 last:border-0">
                     <div>
                       <p className="font-medium">{g.colaborador.full_name}</p>
-                      <p className="text-xs text-muted-foreground">{g.colaborador.empresa_cliente || '—'}</p>
+                      <p className="text-xs text-muted-foreground">{g.colaborador.department || '—'}</p>
                     </div>
                     <Badge variant="outline">
                       {format(parseISO(g.data_inicio_gozo), "dd/MM", { locale: ptBR })} – {format(parseISO(g.data_fim_gozo), "dd/MM", { locale: ptBR })}
@@ -221,7 +221,7 @@ export function FeriasDashboard({ onGoAprovacoes, onGoColaboradores }: Props) {
                 <li key={g.id} className="flex items-center justify-between gap-2 text-sm border-b pb-2 last:border-0">
                   <div className="min-w-0 flex-1">
                     <p className="font-medium truncate">{g.colaborador.full_name}</p>
-                    <p className="text-xs text-muted-foreground truncate">{g.colaborador.empresa_cliente || '—'}</p>
+                    <p className="text-xs text-muted-foreground truncate">{g.colaborador.department || '—'}</p>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <Badge variant={g.status === 'aprovado' ? 'default' : 'secondary'} className="w-24 justify-center">
@@ -258,7 +258,7 @@ export function FeriasDashboard({ onGoAprovacoes, onGoColaboradores }: Props) {
                   <div>
                     <p className="font-medium">{s.colaborador.full_name}</p>
                     <p className="text-xs text-muted-foreground">
-                      {(s.colaborador.empresa_cliente || '—')} • Aquisitivo {format(parseISO(s.periodo.data_inicio_aquisitivo), "dd/MM/yyyy", { locale: ptBR })} – {format(parseISO(s.periodo.data_fim_aquisitivo), "dd/MM/yyyy", { locale: ptBR })}
+                      {(s.colaborador.department || '—')} • Aquisitivo {format(parseISO(s.periodo.data_inicio_aquisitivo), "dd/MM/yyyy", { locale: ptBR })} – {format(parseISO(s.periodo.data_fim_aquisitivo), "dd/MM/yyyy", { locale: ptBR })}
                     </p>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">

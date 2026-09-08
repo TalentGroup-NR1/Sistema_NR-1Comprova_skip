@@ -167,7 +167,6 @@ export function ColaboradorTable({
             <Skeleton className="h-4 w-24" />
             <Skeleton className="h-4 w-24" />
             <Skeleton className="h-4 w-24" />
-            <Skeleton className="h-4 w-24" />
           </div>
         ))}
       </div>
@@ -193,10 +192,9 @@ export function ColaboradorTable({
               <TableHead className="min-w-[200px]">Colaborador</TableHead>
               <TableHead className="min-w-[180px] hidden md:table-cell">Cargo e Nível</TableHead>
               <TableHead className="min-w-[140px] hidden lg:table-cell">Departamento</TableHead>
-              <TableHead className="min-w-[150px] hidden lg:table-cell">Empresa Cliente</TableHead>
               <TableHead className="min-w-[110px] hidden xl:table-cell">Admissão</TableHead>
               <TableHead className="min-w-[130px] hidden xl:table-cell">Tempo de Casa</TableHead>
-              <TableHead className="min-w-[150px] hidden lg:table-cell">Gestão Técnica</TableHead>
+              <TableHead className="min-w-[150px] hidden lg:table-cell">Gestor</TableHead>
               <TableHead className="w-[50px]"></TableHead>
             </TableRow>
           </TableHeader>
@@ -245,9 +243,6 @@ export function ColaboradorTable({
                 <TableCell className="hidden lg:table-cell">
                   <p>{colaborador.department || '—'}</p>
                 </TableCell>
-                <TableCell className="hidden lg:table-cell">
-                  <p>{colaborador.empresa_cliente || '—'}</p>
-                </TableCell>
                 <TableCell className="hidden xl:table-cell">
                   {format(parseISODate(colaborador.admission_date), 'dd/MM/yyyy', { locale: ptBR })}
                 </TableCell>
@@ -257,7 +252,7 @@ export function ColaboradorTable({
                   </p>
                 </TableCell>
                 <TableCell className="hidden lg:table-cell">
-                  <p>{colaborador.gestao_tecnica || '—'}</p>
+                  <p>{colaborador.gestor_nome || colaborador.manager_name || '—'}</p>
                 </TableCell>
                 <TableCell>
                   <DropdownMenu>

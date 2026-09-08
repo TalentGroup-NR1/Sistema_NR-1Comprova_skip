@@ -202,6 +202,10 @@ export default {
           "0%, 100%": { transform: "scale(1)", opacity: "1" },
           "50%": { transform: "scale(1.35)", opacity: "0.7" },
         },
+        "elegant-float": {
+          "0%, 100%": { transform: "translateY(0)" },
+          "50%": { transform: "translateY(-12px)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -218,6 +222,7 @@ export default {
         "wiggle": "wiggle 1.2s ease-in-out infinite",
         "bounce-slow": "bounce-slow 1.6s ease-in-out infinite",
         "sparkle": "sparkle 1.5s ease-in-out infinite",
+        "elegant-float": "elegant-float 5s ease-in-out infinite",
       },
 
     },

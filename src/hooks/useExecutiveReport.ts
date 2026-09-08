@@ -12,7 +12,7 @@ export interface ExecutiveReportData {
   admissoes_mes: Array<{ ano?: number; mes: number; total: number }>;
   desligamentos_mes: Array<{ ano?: number; mes: number; total: number }>;
   departamentos: Array<{ departamento: string; total: number }>;
-  gestao_tecnica: Array<{ gestor: string; total: number }>;
+  gestor_interno: Array<{ gestor: string; total: number }>;
   demografia_sexo: Array<{ sexo: string; total: number }>;
   demografia_raca: Array<{ raca: string; total: number }>;
   faixas_etarias: Array<{ faixa: string; total: number }>;
@@ -68,7 +68,7 @@ export interface ExecutiveReportData {
     media_gestor: number | null;
   }>;
   feedbacks_alertas: Array<{
-    gestao_tecnica: string;
+    departamento: string;
     total_feedbacks: number;
     total_alertas: number;
     colaboradores: Array<{
@@ -86,9 +86,9 @@ export interface ExecutiveReportData {
   }>;
 }
 
-export function useExecutiveReport(companyId: string | null, year: number | null, gestaoTecnica?: string | null, empresaCliente?: string | null) {
+export function useExecutiveReport(companyId: string | null, year: number | null, departamento?: string | null) {
   return useQuery({
-    queryKey: ["executive-report", companyId, year, gestaoTecnica, empresaCliente],
+    queryKey: ["executive-report", companyId, year, departamento],
     queryFn: async () => {
       if (!companyId || year === null || year === undefined) throw new Error("Missing params");
       
@@ -96,11 +96,8 @@ export function useExecutiveReport(companyId: string | null, year: number | null
         p_company_id: companyId,
         p_year: year,
       };
-      if (gestaoTecnica) {
-        params.p_gestao_tecnica = gestaoTecnica;
-      }
-      if (empresaCliente) {
-        params.p_empresa_cliente = empresaCliente;
+      if (departamento) {
+        params.p_departamento = departamento;
       }
 
       const { data, error } = await supabase.rpc("get_executive_report_data", params as any);
@@ -112,38 +109,19 @@ export function useExecutiveReport(companyId: string | null, year: number | null
   });
 }
 
-export function useGestaoTecnicaOptions(companyId: string | null) {
+export function useDepartamentoOptions(companyId: string | null) {
   return useQuery({
-    queryKey: ["gestao-tecnica-options", companyId],
+    queryKey: ["departamento-options", companyId],
     queryFn: async () => {
       if (!companyId) return [];
       const { data, error } = await supabase
         .from("colaboradores")
-        .select("gestao_tecnica")
+        .select("department")
         .eq("company_id", companyId)
-        .not("gestao_tecnica", "is", null)
-        .not("gestao_tecnica", "eq", "");
+        .not("department", "is", null)
+        .not("department", "eq", "");
       if (error) throw error;
-      const unique = [...new Set(data.map(d => d.gestao_tecnica).filter(Boolean))] as string[];
-      return unique.sort();
-    },
-    enabled: !!companyId,
-  });
-}
-
-export function useEmpresasClienteOptions(companyId: string | null) {
-  return useQuery({
-    queryKey: ["empresas-cliente-options", companyId],
-    queryFn: async () => {
-      if (!companyId) return [];
-      const { data, error } = await supabase
-        .from("colaboradores")
-        .select("empresa_cliente")
-        .eq("company_id", companyId)
-        .not("empresa_cliente", "is", null)
-        .not("empresa_cliente", "eq", "");
-      if (error) throw error;
-      const unique = [...new Set(data.map((d: any) => d.empresa_cliente).filter(Boolean))] as string[];
+      const unique = [...new Set(data.map(d => d.department).filter(Boolean))] as string[];
       return unique.sort();
     },
     enabled: !!companyId,

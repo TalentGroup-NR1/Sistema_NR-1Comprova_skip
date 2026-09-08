@@ -4,7 +4,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { BeneficiosBuilder } from "@/components/beneficios/BeneficiosBuilder";
 import { BeneficiosDepartamentoManager } from "@/components/beneficios/BeneficiosDepartamentoManager";
 import { BeneficiosTipoContratoManager } from "@/components/beneficios/BeneficiosTipoContratoManager";
-import { BeneficiosEmpresaClienteManager } from "@/components/beneficios/BeneficiosEmpresaClienteManager";
 import { ColaboradorBeneficiosTab } from "@/components/beneficios/ColaboradorBeneficiosTab";
 import { BeneficiosCatalogo } from "@/components/beneficios/catalogo";
 import { Gift, Building2, Users, CreditCard, FileText, Briefcase } from "lucide-react";
@@ -31,7 +30,7 @@ export default function Beneficios() {
 
         {isAdmin ? (
           <Tabs defaultValue="gerenciar" className="space-y-6">
-            <TabsList className="grid w-full max-w-4xl grid-cols-5">
+            <TabsList className="grid w-full max-w-4xl grid-cols-4">
               <TabsTrigger value="gerenciar" className="flex items-center gap-2">
                 <CreditCard className="h-4 w-4" />
                 Gerenciar
@@ -44,10 +43,7 @@ export default function Beneficios() {
                 <FileText className="h-4 w-4" />
                 Tipo Contrato
               </TabsTrigger>
-              <TabsTrigger value="empresa-cliente" className="flex items-center gap-2">
-                <Briefcase className="h-4 w-4" />
-                Empresa Cliente
-              </TabsTrigger>
+
               <TabsTrigger value="individuais" className="flex items-center gap-2">
                 <Users className="h-4 w-4" />
                 Individual
@@ -66,9 +62,7 @@ export default function Beneficios() {
               <BeneficiosTipoContratoManager />
             </TabsContent>
 
-            <TabsContent value="empresa-cliente">
-              <BeneficiosEmpresaClienteManager />
-            </TabsContent>
+
 
             <TabsContent value="individuais">
               <ColaboradorBeneficiosTab />

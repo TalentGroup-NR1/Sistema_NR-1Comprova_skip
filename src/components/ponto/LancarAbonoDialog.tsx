@@ -23,7 +23,7 @@ interface Props {
 
 type Modalidade = "dia" | "horas";
 type Modo = "individual" | "lote";
-type Escopo = "empresa" | "empresa_cliente" | "departamento" | "manual";
+type Escopo = "empresa" | "departamento" | "manual";
 
 export function LancarAbonoDialog({ open, onOpenChange }: Props) {
   const { tipos } = useTiposAbono();
@@ -35,7 +35,6 @@ export function LancarAbonoDialog({ open, onOpenChange }: Props) {
   const [colaboradorId, setColaboradorId] = useState("");
   const [escopo, setEscopo] = useState<Escopo>("departamento");
   const [empresaFilter, setEmpresaFilter] = useState<string>("");
-  const [empresaClienteFilter, setEmpresaClienteFilter] = useState<string>("");
   const [deptoFilter, setDeptoFilter] = useState<string>("");
   const [search, setSearch] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -55,7 +54,7 @@ export function LancarAbonoDialog({ open, onOpenChange }: Props) {
       setColaboradorId(""); setTipoId(""); setModalidade("dia");
       setDataInicio(""); setDataFim(""); setHoraInicio(""); setHoraFim("");
       setJustificativa(""); setAnexo(null);
-      setEscopo("departamento"); setEmpresaFilter(""); setEmpresaClienteFilter(""); setDeptoFilter("");
+      setEscopo("departamento"); setEmpresaFilter(""); setDeptoFilter("");
       setSearch(""); setSelectedIds(new Set());
     }
   }, [open]);
@@ -77,19 +76,11 @@ export function LancarAbonoDialog({ open, onOpenChange }: Props) {
     return Array.from(set).sort();
   }, [colaboradoresAtivos]);
 
-  const empresasClientesDisponiveis = useMemo(() => {
-    const set = new Set<string>();
-    colaboradoresAtivos.forEach((c) => { if (c.empresa_cliente) set.add(c.empresa_cliente); });
-    return Array.from(set).sort();
-  }, [colaboradoresAtivos]);
-
   // Lista pré-filtrada pelo escopo
   const listaEscopo = useMemo(() => {
     let base = colaboradoresAtivos;
     if (escopo === "empresa" && empresaFilter) {
       base = base.filter((c) => c.company_id === empresaFilter);
-    } else if (escopo === "empresa_cliente" && empresaClienteFilter) {
-      base = base.filter((c) => c.empresa_cliente === empresaClienteFilter);
     } else if (escopo === "departamento" && deptoFilter) {
       base = base.filter((c) => c.department === deptoFilter);
     }
@@ -98,13 +89,13 @@ export function LancarAbonoDialog({ open, onOpenChange }: Props) {
       base = base.filter((c) => (c.full_name || "").toLowerCase().includes(q));
     }
     return base;
-  }, [colaboradoresAtivos, escopo, empresaFilter, empresaClienteFilter, deptoFilter, search]);
+  }, [colaboradoresAtivos, escopo, empresaFilter, deptoFilter, search]);
 
   // Marcar todos ao mudar filtro
   useEffect(() => {
     if (modo !== "lote") return;
     setSelectedIds(new Set(listaEscopo.map((c: any) => c.id)));
-  }, [modo, escopo, empresaFilter, empresaClienteFilter, deptoFilter, listaEscopo.length]); // eslint-disable-line
+  }, [modo, escopo, empresaFilter, deptoFilter, listaEscopo.length]); // eslint-disable-line
 
   const toggleOne = (id: string) => {
     setSelectedIds((prev) => {
@@ -228,10 +219,6 @@ export function LancarAbonoDialog({ open, onOpenChange }: Props) {
                   <Label htmlFor="esc-dep" className="font-normal cursor-pointer">Por departamento</Label>
                 </div>
                 <div className="flex items-center gap-2">
-                  <RadioGroupItem value="empresa_cliente" id="esc-cli" />
-                  <Label htmlFor="esc-cli" className="font-normal cursor-pointer">Por empresa cliente</Label>
-                </div>
-                <div className="flex items-center gap-2">
                   <RadioGroupItem value="manual" id="esc-man" />
                   <Label htmlFor="esc-man" className="font-normal cursor-pointer">Manual</Label>
                 </div>
@@ -271,28 +258,6 @@ export function LancarAbonoDialog({ open, onOpenChange }: Props) {
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
-            )}
-
-            {escopo === "empresa_cliente" && (
-              <div className="space-y-1.5">
-                <Label>Empresa Cliente</Label>
-                {empresasClientesDisponiveis.length === 0 ? (
-                  <p className="text-xs text-muted-foreground">Nenhum colaborador ativo com empresa cliente definida.</p>
-                ) : (
-                  <Select
-                    value={empresaClienteFilter || "__all__"}
-                    onValueChange={(v) => setEmpresaClienteFilter(v === "__all__" ? "" : v)}
-                  >
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__all__">Todas as empresas cliente</SelectItem>
-                      {empresasClientesDisponiveis.map((c) => (
-                        <SelectItem key={c} value={c}>{c}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
               </div>
             )}
 

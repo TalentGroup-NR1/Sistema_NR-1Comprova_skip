@@ -29,7 +29,6 @@ export function DashboardAdmin() {
     diarioBordoReminders,
     recentes,
     funcionariosPorEmpresa,
-    funcionariosPorEmpresaCliente,
     showCompanyBreakdown,
     isLoading,
   } = useDashboardMetrics();
@@ -90,19 +89,11 @@ export function DashboardAdmin() {
 
       {/* Company Breakdown - Only for admin_master with "All Companies" */}
       {showCompanyBreakdown && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        <div className="mb-6">
           <FuncionariosPorEmpresaCard
             empresas={funcionariosPorEmpresa}
             isLoading={isLoading}
             delay={350}
-            className=""
-          />
-          <FuncionariosPorEmpresaCard
-            empresas={funcionariosPorEmpresaCliente}
-            isLoading={isLoading}
-            delay={400}
-            title="Funcionários por Empresa Cliente"
-            emptyMessage="Nenhum colaborador com empresa cliente informada"
             className=""
           />
         </div>

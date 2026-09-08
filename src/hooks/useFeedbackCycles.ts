@@ -262,8 +262,7 @@ export type ColaboradorWithMilestones = {
   department: string;
   corporate_email: string;
   status: string;
-  empresa_cliente: string | null;
-  gestao_tecnica: string | null;
+
   milestones: MilestoneInfo[];
   hasOverdueMilestone: boolean;
   hasUpcomingMilestone: boolean;
@@ -294,7 +293,7 @@ export function useColaboradoresMilestones(statusFilter: 'ATIVO' | 'DESLIGADO' |
           questionnaire_template_id,
           collaborator_token,
           gestor_token,
-          colaborador:colaboradores(id, full_name, admission_date, job_title, department, corporate_email, status, gestor_id, empresa_cliente, gestao_tecnica)
+          colaborador:colaboradores(id, full_name, admission_date, job_title, department, corporate_email, status, gestor_id)
         `)
         .eq('company_id', effectiveCompanyId)
         .order('due_date', { ascending: true });
@@ -345,8 +344,7 @@ export function useColaboradoresMilestones(statusFilter: 'ATIVO' | 'DESLIGADO' |
             department: colab.department,
             corporate_email: colab.corporate_email,
             status: colab.status,
-            empresa_cliente: colab.empresa_cliente ?? null,
-            gestao_tecnica: colab.gestao_tecnica ?? null,
+
             milestones: [],
             hasOverdueMilestone: false,
             hasUpcomingMilestone: false,

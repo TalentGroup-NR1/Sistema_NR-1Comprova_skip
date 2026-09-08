@@ -22,13 +22,11 @@ import {
 import {
   useCargos,
   useDepartamentos,
-  useEmpresasClientes,
   useEntidadeMutations,
   useGhes,
   useNiveisMaturidade,
   type Cargo,
   type Departamento,
-  type EmpresaCliente,
   type EntidadeTabela as Tabela,
   type Ghe,
   type NivelMaturidade,
@@ -72,13 +70,7 @@ export function ConfiguracaoTab({ companyId, podeEditar, podeExcluir }: Props) {
   const cargos = useCargos(companyId);
   const ghes = useGhes(companyId);
   const niveis = useNiveisMaturidade(companyId);
-  const empresasClientes = useEmpresasClientes(companyId);
-
-  const mutDep = useEntidadeMutations('departamentos', companyId);
-  const mutCargo = useEntidadeMutations('cargos', companyId);
-  const mutGhe = useEntidadeMutations('ghes', companyId);
   const mutNivel = useEntidadeMutations('niveis_maturidade', companyId);
-  const mutEmpCli = useEntidadeMutations('empresas_clientes', companyId);
 
   const [dialog, setDialog] = useState<{ tabela: Tabela; row: Row | null } | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm);
@@ -106,15 +98,13 @@ export function ConfiguracaoTab({ companyId, podeEditar, podeExcluir }: Props) {
         ? mutCargo
         : t === 'ghes'
           ? mutGhe
-          : t === 'empresas_clientes'
-            ? mutEmpCli
-            : mutNivel;
+          : mutNivel;
 
   const salvar = async () => {
     if (!dialog || !form.nome.trim()) return;
     const t = dialog.tabela;
     const values: Record<string, unknown> =
-      t === 'departamentos' || t === 'empresas_clientes'
+      t === 'departamentos'
         ? { nome: form.nome.trim(), codigo: form.codigo.trim() || null, ativo: form.ativo }
         : t === 'cargos'
           ? {
@@ -146,7 +136,6 @@ export function ConfiguracaoTab({ companyId, podeEditar, podeExcluir }: Props) {
     cargos: 'Cargo',
     ghes: 'Grupo (GHE)',
     niveis_maturidade: 'Nível / Maturidade',
-    empresas_clientes: 'Empresa Cliente',
   };
 
 
@@ -255,25 +244,7 @@ export function ConfiguracaoTab({ companyId, podeEditar, podeExcluir }: Props) {
         emptyText="Nenhum nível cadastrado ainda."
       />
 
-      <EntidadeTabela<EmpresaCliente>
-        titulo="Empresas Clientes"
-        descricao="Empresas clientes usadas no cadastro de colaboradores e nos filtros dos demais módulos."
-        icone={<Factory className="h-5 w-5 text-primary" />}
-        itens={empresasClientes.data ?? []}
-        isLoading={empresasClientes.isLoading}
-        colunas={[
-          { header: 'Empresa Cliente', render: (r) => <span className="font-medium">{r.nome}</span> },
-          { header: 'Código', render: (r) => r.codigo ?? '—' },
-        ]}
-        buscaEm={(r) => `${r.nome} ${r.codigo ?? ''}`}
-        podeEditar={podeEditar}
-        podeExcluir={podeExcluir}
-        onNovo={() => setDialog({ tabela: 'empresas_clientes', row: null })}
-        onEditar={(r) => setDialog({ tabela: 'empresas_clientes', row: r as unknown as Row })}
-        onExcluir={(r) => mutEmpCli.excluir.mutate(r.id)}
-        labelNovo="Nova Empresa Cliente"
-        emptyText="Nenhuma empresa cliente cadastrada ainda."
-      />
+
 
 
 
@@ -306,7 +277,7 @@ export function ConfiguracaoTab({ companyId, podeEditar, podeExcluir }: Props) {
               />
             </div>
 
-            {(dialog?.tabela === 'departamentos' || dialog?.tabela === 'empresas_clientes') && (
+            {dialog?.tabela === 'departamentos' && (
               <div>
                 <Label>Código</Label>
                 <Input

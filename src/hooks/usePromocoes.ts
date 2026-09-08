@@ -44,13 +44,6 @@ export interface CreatePromocaoData {
   observacoes?: string | null;
 }
 
-export interface CreatePromocaoRetroativaData extends CreatePromocaoData {
-  cargo_anterior: string;
-  salario_anterior: number;
-  nivel_anterior?: string | null;
-  departamento_anterior?: string | null;
-}
-
 // Hook para buscar promoções de um colaborador específico
 export function usePromocoes(colaboradorId: string | null | undefined) {
   return useQuery({
@@ -166,53 +159,6 @@ export function useCreatePromocao() {
     onError: (error: Error) => {
       toast({
         title: "Erro ao registrar promoção",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
-}
-
-// Hook para criar promoção retroativa (não atualiza o cadastro atual)
-export function useCreatePromocaoRetroativa() {
-  const queryClient = useQueryClient();
-  const { toast } = useToast();
-
-  return useMutation({
-    mutationFn: async (data: CreatePromocaoRetroativaData) => {
-      const { data: result, error } = await supabase.rpc("registrar_promocao_retroativa", {
-        p_colaborador_id: data.colaborador_id,
-        p_company_id: data.company_id,
-        p_data_promocao: data.data_promocao,
-        p_cargo_anterior: data.cargo_anterior,
-        p_salario_anterior: data.salario_anterior,
-        p_cargo_novo: data.cargo_novo,
-        p_salario_novo: data.salario_novo,
-        p_nivel_anterior: data.nivel_anterior || null,
-        p_departamento_anterior: data.departamento_anterior || null,
-        p_nivel_novo: data.nivel_novo || null,
-        p_departamento_novo: data.departamento_novo || null,
-        p_motivo: data.motivo || null,
-        p_aprovado_por: data.aprovado_por,
-        p_observacoes: data.observacoes || null,
-      });
-
-      if (error) throw error;
-      return result as unknown as Promocao;
-    },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["promocoes", variables.colaborador_id] });
-      queryClient.invalidateQueries({ queryKey: ["promocoes-empresa"] });
-      queryClient.invalidateQueries({ queryKey: ["promocoes-recentes"] });
-
-      toast({
-        title: "Histórico registrado",
-        description: "Registro retroativo adicionado ao histórico (cadastro atual preservado).",
-      });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Erro ao registrar histórico",
         description: error.message,
         variant: "destructive",
       });

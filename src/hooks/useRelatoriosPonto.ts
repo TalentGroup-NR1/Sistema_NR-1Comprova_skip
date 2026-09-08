@@ -6,7 +6,7 @@ export interface FiltrosRelatorio {
   data_inicio: string; // YYYY-MM-DD
   data_fim: string;
   departamento?: string | null;
-  empresa_cliente?: string | null;
+
 }
 
 export interface AbsenteismoData {
@@ -37,7 +37,7 @@ export interface AbsenteismoData {
     colaborador_id: string;
     nome: string;
     departamento: string | null;
-    empresa_cliente: string | null;
+
     horas_mensais: number;
     valor_hora: number | null;
     base_salary: number | null;
@@ -90,7 +90,7 @@ export function useRelatorioAbsenteismo(f: FiltrosRelatorio) {
         p_data_inicio: f.data_inicio,
         p_data_fim: f.data_fim,
         p_departamento: f.departamento || null,
-        p_empresa_cliente: f.empresa_cliente || null,
+
       });
       if (error) throw error;
       return data as AbsenteismoData;
@@ -109,7 +109,7 @@ export function useRelatorioJornada(f: FiltrosRelatorio) {
         p_data_inicio: f.data_inicio,
         p_data_fim: f.data_fim,
         p_departamento: f.departamento || null,
-        p_empresa_cliente: f.empresa_cliente || null,
+
       });
       if (error) throw error;
       return data as JornadaData;

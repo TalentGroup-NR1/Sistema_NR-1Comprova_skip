@@ -15,7 +15,7 @@ export function LandingHeader() {
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-3">
         <Link to="/" className="flex items-center gap-3">
           <img
-            src="/logos/nr1-logo-main.png"
+            src="/logos/Logo_NR1_Transparente.png"
             alt="NR-1 Pronto"
             className="h-8 w-8 shrink-0 object-contain md:h-10 md:w-10"
             loading="eager"

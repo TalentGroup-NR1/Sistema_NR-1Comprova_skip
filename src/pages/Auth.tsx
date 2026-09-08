@@ -33,21 +33,21 @@ export default function Auth() {
         <div className="absolute top-[-10%] left-[-10%] w-96 h-96 rounded-full bg-white/5 blur-3xl" />
         <div className="absolute bottom-[-20%] right-[-10%] w-[30rem] h-[30rem] rounded-full bg-[hsl(216_64%_48%)]/10 blur-3xl" />
 
-        <div className="relative z-10 max-w-2xl px-8 xl:px-16 animate-fade-up flex flex-col items-center text-center" style={{ animationDuration: '0.8s' }}>
-          <div className="bg-white/95 px-8 py-6 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] mb-12 backdrop-blur-md transition-transform duration-700 hover:-translate-y-1">
+        <div className="relative z-10 max-w-2xl px-8 xl:px-16 animate-fade-up flex flex-col items-center text-center -mt-12" style={{ animationDuration: '0.8s' }}>
+          <div className="-mb-16 animate-elegant-float w-full max-w-sm sm:max-w-md mx-auto">
             <img
               src={branding.logoUrl}
               alt={branding.brandName}
-              className="h-24 sm:h-32 drop-shadow-sm"
+              className="w-full h-auto drop-shadow-[0_10px_20px_rgba(0,0,0,0.5)] object-contain scale-110"
             />
           </div>
           
-          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-white tracking-tight leading-[1.4] mb-8 drop-shadow-lg max-w-xl mx-auto">
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-white tracking-tight leading-[1.3] mb-6 drop-shadow-lg max-w-xl mx-auto">
             A plataforma de gestão de pessoas que dá vida ao seu PGR.
           </h1>
           
           {/* Badges moved to directly below the title */}
-          <div className="flex flex-wrap justify-center items-center gap-4 mb-8">
+          <div className="flex flex-wrap justify-center items-center gap-3 mb-6">
             {['Gestão Viva', 'Trabalho Real', 'PGR Inteligente'].map((label) => (
               <div key={label} className="flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-xl border border-white/10 shadow-sm transition-colors hover:bg-white/20">
                 <div className="w-2 h-2 rounded-full" style={{ background: 'hsl(216 64% 48%)' }} />
@@ -56,7 +56,7 @@ export default function Auth() {
             ))}
           </div>
 
-          <p className="text-lg sm:text-xl font-light leading-[1.7] tracking-wide max-w-lg mx-auto" style={{ color: 'hsl(220 20% 80%)' }}>
+          <p className="text-base sm:text-lg font-light leading-[1.6] tracking-wide max-w-lg mx-auto" style={{ color: 'hsl(220 20% 80%)' }}>
             Conectamos a rotina real dos colaboradores à conformidade da NR-1, transformando dados operacionais e a escuta de riscos psicossociais em uma gestão preventiva viva, inteligente e auditável.
           </p>
         </div>

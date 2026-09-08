@@ -310,7 +310,7 @@ export async function gerarRelatorioEvidenciaPDF(params: GerarRelatorioParams) {
   )}`;
   const hashCurto = hashConteudo.slice(0, 16).toUpperCase();
 
-  const talentLogo = await loadImage("/images/nr1-pronto-logo.png");
+  const talentLogo = await loadImage("/images/Logo_NR1_Transparente.png");
 
   // QR Code de verificação (renderizado no rodapé da ÚLTIMA página)
   const baseUrl = params.verificacaoUrlBase || getShareBaseUrl();

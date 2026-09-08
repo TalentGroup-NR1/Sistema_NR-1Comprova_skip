@@ -52,14 +52,6 @@ export interface BeneficioTipoContrato {
   created_at: string;
 }
 
-export interface BeneficioEmpresaCliente {
-  id: string;
-  beneficio_id: string;
-  empresa_cliente: string;
-  company_id: string;
-  created_at: string;
-}
-
 
 export interface BeneficioFormData {
   nome: string;
@@ -231,78 +223,6 @@ export const TIPOS_CONTRATO = [
   'Outros',
 ];
 
-// Fetch beneficio empresa clientes
-export function useBeneficioEmpresasCliente(beneficioId: string | null) {
-  return useQuery({
-    queryKey: ['beneficio-empresas-cliente', beneficioId],
-    queryFn: async () => {
-      if (!beneficioId) return [];
-      const { data, error } = await supabase
-        .from('beneficios_empresa_cliente' as any)
-        .select('*')
-        .eq('beneficio_id', beneficioId);
-      if (error) throw error;
-      return (data || []) as unknown as BeneficioEmpresaCliente[];
-    },
-    enabled: !!beneficioId,
-  });
-}
-
-// Fetch all empresas cliente from colaboradores for the company
-export function useEmpresasCliente() {
-  const effectiveCompanyId = useEffectiveCompanyId();
-  return useQuery({
-    queryKey: ['empresas-cliente-beneficios', effectiveCompanyId],
-    queryFn: async () => {
-      let query = supabase
-        .from('colaboradores')
-        .select('empresa_cliente')
-        .eq('status', 'ATIVO');
-      if (effectiveCompanyId) query = query.eq('company_id', effectiveCompanyId);
-      const { data, error } = await query;
-      if (error) throw error;
-      const empresas = [...new Set((data as any[]).map(c => c.empresa_cliente).filter(Boolean))] as string[];
-      return empresas.sort();
-    },
-  });
-}
-
-// Update beneficio empresas cliente
-export function useUpdateBeneficioEmpresasCliente() {
-  const queryClient = useQueryClient();
-  const effectiveCompanyId = useEffectiveCompanyId();
-
-  return useMutation({
-    mutationFn: async ({ beneficioId, empresasCliente }: { beneficioId: string; empresasCliente: string[] }) => {
-      if (!effectiveCompanyId) throw new Error('Empresa não selecionada');
-
-      await supabase
-        .from('beneficios_empresa_cliente' as any)
-        .delete()
-        .eq('beneficio_id', beneficioId);
-
-      if (empresasCliente.length > 0) {
-        const { error } = await supabase
-          .from('beneficios_empresa_cliente' as any)
-          .insert(
-            empresasCliente.map(ec => ({
-              beneficio_id: beneficioId,
-              empresa_cliente: ec,
-              company_id: effectiveCompanyId,
-            })) as any
-          );
-        if (error) throw error;
-      }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['beneficio-empresas-cliente'] });
-      toast.success('Empresas cliente atualizadas com sucesso!');
-    },
-    onError: (error) => {
-      toast.error('Erro ao atualizar empresas cliente: ' + error.message);
-    },
-  });
-}
 
 // Fetch my benefits (for colaborador view)
 export function useMeusBeneficios() {
@@ -314,12 +234,12 @@ export function useMeusBeneficios() {
       
       const { data: colaborador, error: colabError } = await supabase
         .from('colaboradores')
-        .select('id, department, company_id, contract_type, empresa_cliente')
+        .select('id, department, company_id, contract_type')
         .eq('user_id', user.id)
         .single();
       
       if (colabError || !colaborador) {
-        return { individual: [], departamento: [], tipoContrato: [], empresaCliente: [] };
+        return { individual: [], departamento: [], tipoContrato: [] };
       }
       
       // Get individual benefits
@@ -363,25 +283,10 @@ export function useMeusBeneficios() {
       
       const ctIds = new Set(contractTypeBenefits.map((b: any) => b.beneficio_id));
 
-      // Get empresa cliente benefits
-      let empresaClienteBenefits: any[] = [];
-      if ((colaborador as any).empresa_cliente) {
-        const { data: ecBeneficios, error: ecError } = await supabase
-          .from('beneficios_empresa_cliente' as any)
-          .select(`*, beneficio:beneficios(*)`)
-          .eq('empresa_cliente', (colaborador as any).empresa_cliente)
-          .eq('company_id', colaborador.company_id);
-        if (ecError) throw ecError;
-        empresaClienteBenefits = ((ecBeneficios as any[]) || [])
-          .filter((ec: any) => ec.beneficio?.ativo && !individualIds.has(ec.beneficio_id) && !deptIds.has(ec.beneficio_id) && !ctIds.has(ec.beneficio_id))
-          .map((ec: any) => ({ ...ec, tipo_atribuicao: 'empresa_cliente' }));
-      }
-
       return {
-        individual: ((individualBeneficios as any[]) || []).map(b => ({ ...b, tipo_atribuicao: 'individual' })),
+        individual: individualBeneficios.map((i: any) => ({ ...i, tipo_atribuicao: 'individual' })),
         departamento: departmentBenefits,
         tipoContrato: contractTypeBenefits,
-        empresaCliente: empresaClienteBenefits,
       };
     },
   });
@@ -657,12 +562,11 @@ export function useRemoveColaboradorBeneficio() {
 
 // ===== Inverted scope assignment (select scope -> toggle benefits) =====
 
-export type BeneficioEscopo = 'departamento' | 'tipo_contrato' | 'empresa_cliente';
+export type BeneficioEscopo = 'departamento' | 'tipo_contrato';
 
 const ESCOPO_CONFIG: Record<BeneficioEscopo, { table: string; column: string; queryKey: string }> = {
   departamento: { table: 'beneficios_departamento', column: 'departamento', queryKey: 'beneficio-departamentos' },
   tipo_contrato: { table: 'beneficios_tipo_contrato', column: 'tipo_contrato', queryKey: 'beneficio-tipos-contrato' },
-  empresa_cliente: { table: 'beneficios_empresa_cliente', column: 'empresa_cliente', queryKey: 'beneficio-empresas-cliente' },
 };
 
 export interface EscopoAtribuicao {

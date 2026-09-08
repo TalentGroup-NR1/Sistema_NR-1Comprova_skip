@@ -5,7 +5,7 @@ import { useEffectiveCompanyId } from "@/hooks/useEffectiveCompanyId";
 /** NR1-Pronto defaults — used when no company branding is available. */
 export const DEFAULT_BRANDING = {
   brandName: "Gestão Ativa",
-  logoUrl: "/images/nr1-pronto-logo.png",
+  logoUrl: "/images/Logo_NR1_Transparente.png",
   primaryColor: "#C8102E",
   faviconUrl: "/favicon.png",
 };

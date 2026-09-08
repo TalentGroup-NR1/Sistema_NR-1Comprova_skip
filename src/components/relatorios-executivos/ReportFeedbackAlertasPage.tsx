@@ -27,7 +27,7 @@ export function ReportFeedbackAlertasPage({ data, year }: Props) {
       <div className="flex items-center gap-3 mb-6" style={{ borderBottom: `3px solid ${TALENT_RED}`, paddingBottom: 12 }}>
         <AlertTriangle className="h-5 w-5 flex-shrink-0" style={{ color: TALENT_RED }} />
         <h2 className="text-lg font-bold tracking-tight" style={{ color: TALENT_NAVY }}>
-          Feedbacks & Alertas por Gestão Técnica
+          Feedbacks & Alertas por Departamento
         </h2>
         <span className="ml-auto text-xs font-medium flex-shrink-0" style={{ color: "#64748b" }}>
           {year === 0 ? "Todos os anos" : year}
@@ -53,12 +53,12 @@ export function ReportFeedbackAlertasPage({ data, year }: Props) {
         ))}
       </div>
 
-      {/* Tables by Gestão Técnica */}
+      {/* Tables by Departamento */}
       {alertas.map((grupo) => (
-        <div key={grupo.gestao_tecnica} className="mb-5">
+        <div key={grupo.departamento} className="mb-5">
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-xs font-bold" style={{ color: TALENT_NAVY }}>
-              {grupo.gestao_tecnica}
+              {grupo.departamento}
             </h3>
             <div className="flex gap-3 text-[10px] font-medium" style={{ color: "#64748b" }}>
               <span>Feedbacks: <strong style={{ color: TALENT_NAVY }}>{grupo.total_feedbacks}</strong></span>

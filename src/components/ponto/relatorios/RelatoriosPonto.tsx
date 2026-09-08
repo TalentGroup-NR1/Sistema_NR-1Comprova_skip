@@ -63,13 +63,12 @@ function useDeptEmpresaOptions() {
   return useQuery({
     queryKey: ["colab-dept-empresa", companyId],
     queryFn: async () => {
-      let q = supabase.from("colaboradores").select("department, empresa_cliente").eq("status", "ATIVO");
+      let q = supabase.from("colaboradores").select("department").eq("status", "ATIVO");
       if (companyId) q = q.eq("company_id", companyId);
       const { data, error } = await q;
       if (error) throw error;
       const depts = Array.from(new Set((data || []).map((c: any) => c.department).filter(Boolean))).sort();
-      const empresas = Array.from(new Set((data || []).map((c: any) => c.empresa_cliente).filter(Boolean))).sort();
-      return { depts, empresas } as { depts: string[]; empresas: string[] };
+      return { depts } as { depts: string[] };
     },
   });
 }
@@ -134,7 +133,6 @@ function exportarExcel(dados: AbsenteismoData, filtros: FiltrosRelatorio) {
     XLSX.utils.json_to_sheet(dados.detalhado.map(d => ({
       Nome: d.nome,
       Departamento: d.departamento || "",
-      "Empresa Cliente": d.empresa_cliente || "",
       "Horas/mês": d.horas_mensais,
       "Valor Hora (R$)": d.valor_hora,
       "Previsto (h)": +(d.prev_min / 60).toFixed(2),
@@ -220,7 +218,6 @@ export function RelatoriosPonto() {
     data_inicio: format(startOfMonth(hoje), "yyyy-MM-dd"),
     data_fim: format(endOfMonth(hoje), "yyyy-MM-dd"),
     departamento: null,
-    empresa_cliente: null,
   });
 
   const { data: opts } = useDeptEmpresaOptions();
@@ -292,17 +289,7 @@ export function RelatoriosPonto() {
                 </SelectContent>
               </Select>
             </div>
-            <div>
-              <Label className="text-xs">Empresa Cliente</Label>
-              <Select value={filtros.empresa_cliente ?? "__all__"}
-                onValueChange={v => setFiltros(f => ({ ...f, empresa_cliente: v === "__all__" ? null : v }))}>
-                <SelectTrigger><SelectValue placeholder="Todas" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__all__">Todas</SelectItem>
-                  {(opts?.empresas || []).map(e => <SelectItem key={e} value={e}>{e}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
+
             <div className="flex items-end gap-2">
               <Button variant="outline" size="sm" className="gap-1.5" disabled={!absent}
                 onClick={() => absent && exportarExcel(absent, filtros)}>
@@ -477,7 +464,6 @@ export function RelatoriosPonto() {
                         <TableRow>
                           <TableHead>Colaborador</TableHead>
                           <TableHead>Depto.</TableHead>
-                          <TableHead>Emp. Cliente</TableHead>
                           <TableHead className="text-right">Previsto</TableHead>
                           <TableHead className="text-right">Trabalhado</TableHead>
                           <TableHead className="text-right">Extras</TableHead>
@@ -491,7 +477,6 @@ export function RelatoriosPonto() {
                           <TableRow key={d.colaborador_id}>
                             <TableCell className="font-medium">{d.nome}</TableCell>
                             <TableCell className="text-xs text-muted-foreground">{d.departamento || "—"}</TableCell>
-                            <TableCell className="text-xs text-muted-foreground">{d.empresa_cliente || "—"}</TableCell>
                             <TableCell className="text-right tabular-nums">{minToHHMM(d.prev_min)}</TableCell>
                             <TableCell className="text-right tabular-nums">{minToHHMM(d.trab_min)}</TableCell>
                             <TableCell className="text-right tabular-nums">{minToHHMM(d.extras_min)}</TableCell>

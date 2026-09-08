@@ -33,49 +33,20 @@ export function MilestonesDashboard({ statusFilter = 'ATIVO' }: MilestonesDashbo
   const [analysisOpen, setAnalysisOpen] = useState(false);
   const [selectedCycleId, setSelectedCycleId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [empresasSelecionadas, setEmpresasSelecionadas] = useState<string[]>([]);
-
-  const SEM_EMPRESA = '__SEM_EMPRESA__';
-
-  const empresasClienteOptions = useMemo(() => {
-    if (!colaboradores) return [] as { value: string; label: string }[];
-    const set = new Set<string>();
-    let hasEmpty = false;
-    colaboradores.forEach(c => {
-      const v = c.empresa_cliente?.trim();
-      if (v) set.add(v);
-      else hasEmpty = true;
-    });
-    const opts = Array.from(set).sort((a, b) => a.localeCompare(b, 'pt-BR'))
-      .map(v => ({ value: v, label: v }));
-    if (hasEmpty) opts.push({ value: SEM_EMPRESA, label: '(Sem empresa cliente)' });
-    return opts;
-  }, [colaboradores]);
-
   const colaboradoresFiltrados = useMemo(() => {
     if (!colaboradores) return [];
     const term = searchTerm.trim().toLowerCase();
     return colaboradores.filter(c => {
       if (term && !c.full_name.toLowerCase().includes(term)) return false;
-      if (empresasSelecionadas.length > 0) {
-        const empresa = c.empresa_cliente?.trim();
-        const key = empresa || SEM_EMPRESA;
-        if (!empresasSelecionadas.includes(key)) return false;
-      }
       return true;
     });
-  }, [colaboradores, searchTerm, empresasSelecionadas]);
+  }, [colaboradores, searchTerm]);
 
-  const hasActiveFilters = searchTerm.trim().length > 0 || empresasSelecionadas.length > 0;
+  const hasActiveFilters = searchTerm.trim().length > 0;
   const clearFilters = () => {
     setSearchTerm('');
-    setEmpresasSelecionadas([]);
   };
-  const toggleEmpresa = (v: string) => {
-    setEmpresasSelecionadas(prev =>
-      prev.includes(v) ? prev.filter(x => x !== v) : [...prev, v]
-    );
-  };
+
 
   // Scroll para colaborador específico vindo do dashboard (?colaborador=ID)
   useEffect(() => {
@@ -244,54 +215,7 @@ export function MilestonesDashboard({ statusFilter = 'ATIVO' }: MilestonesDashbo
                     />
                   </div>
 
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button variant="outline" className="justify-start sm:w-72">
-                        <Building2 className="h-4 w-4 mr-2" />
-                        <span className="truncate">
-                          {empresasSelecionadas.length === 0
-                            ? 'Empresa Cliente: Todas'
-                            : `Empresa Cliente (${empresasSelecionadas.length})`}
-                        </span>
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-72 p-0" align="end">
-                      <div className="max-h-72 overflow-y-auto p-2 space-y-1">
-                        {empresasClienteOptions.length === 0 && (
-                          <p className="text-sm text-muted-foreground p-2">
-                            Nenhuma empresa cliente disponível.
-                          </p>
-                        )}
-                        {empresasClienteOptions.map(opt => {
-                          const checked = empresasSelecionadas.includes(opt.value);
-                          return (
-                            <label
-                              key={opt.value}
-                              className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer"
-                            >
-                              <Checkbox
-                                checked={checked}
-                                onCheckedChange={() => toggleEmpresa(opt.value)}
-                              />
-                              <span className="text-sm text-foreground truncate">{opt.label}</span>
-                            </label>
-                          );
-                        })}
-                      </div>
-                      {empresasSelecionadas.length > 0 && (
-                        <div className="border-t p-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="w-full"
-                            onClick={() => setEmpresasSelecionadas([])}
-                          >
-                            Limpar seleção
-                          </Button>
-                        </div>
-                      )}
-                    </PopoverContent>
-                  </Popover>
+
 
                   {hasActiveFilters && (
                     <Button variant="ghost" size="sm" onClick={clearFilters}>
@@ -346,18 +270,7 @@ export function MilestonesDashboard({ statusFilter = 'ATIVO' }: MilestonesDashbo
                                 <span>{colab.department}</span>
                                 <span>•</span>
                                 <span>Admissão: {colab.admission_date.split('-').reverse().join('/')}</span>
-                                {colab.empresa_cliente && (
-                                  <>
-                                    <span>•</span>
-                                    <span>Empresa Cliente: {colab.empresa_cliente}</span>
-                                  </>
-                                )}
-                                {colab.gestao_tecnica && (
-                                  <>
-                                    <span>•</span>
-                                    <span>Gestão Técnica: {colab.gestao_tecnica}</span>
-                                  </>
-                                )}
+
                               </div>
                             </div>
                           </div>
@@ -369,7 +282,7 @@ export function MilestonesDashboard({ statusFilter = 'ATIVO' }: MilestonesDashbo
                                 milestone={milestone}
                                 colaboradorId={colab.id}
                                 colaboradorNome={colab.full_name}
-                                gestorNamePrefill={colab.gestao_tecnica ?? ''}
+                                gestorNamePrefill={''}
                                 onViewAnalysis={handleViewAnalysis}
                                 isHistorical={colab.status === 'DESLIGADO'}
                               />
@@ -388,7 +301,7 @@ export function MilestonesDashboard({ statusFilter = 'ATIVO' }: MilestonesDashbo
                       Nenhum colaborador corresponde aos filtros
                     </h3>
                     <p className="text-muted-foreground mb-4">
-                      Ajuste a busca ou o filtro de Empresa Cliente para ver mais resultados.
+                      Ajuste a busca para ver mais resultados.
                     </p>
                     <Button variant="outline" onClick={clearFilters}>
                       <X className="h-4 w-4 mr-1" />

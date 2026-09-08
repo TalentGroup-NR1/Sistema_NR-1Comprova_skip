@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { useCompanies } from "@/hooks/useCompanies";
-import { useExecutiveReport, useGestaoTecnicaOptions, useEmpresasClienteOptions } from "@/hooks/useExecutiveReport";
+import { useExecutiveReport, useDepartamentoOptions } from "@/hooks/useExecutiveReport";
 import { useSavedExecutiveReport } from "@/hooks/useSavedExecutiveReport";
 import { ExecutiveReportPreview } from "@/components/relatorios-executivos/ExecutiveReportPreview";
 import { RichTextEditor } from "@/components/comunicados/RichTextEditor";
@@ -19,19 +19,16 @@ const YEARS = [0, CURRENT_YEAR, CURRENT_YEAR - 1, CURRENT_YEAR - 2, CURRENT_YEAR
 export default function RelatoriosExecutivos() {
   const [selectedCompanyId, setSelectedCompanyId] = useState<string>("");
   const [selectedYear, setSelectedYear] = useState<string>(String(CURRENT_YEAR));
-  const [selectedGestao, setSelectedGestao] = useState<string>("");
-  const [selectedEmpresaCliente, setSelectedEmpresaCliente] = useState<string>("");
+  const [selectedDepartamento, setSelectedDepartamento] = useState<string>("");
   const [parecer, setParecer] = useState("");
   const [showReport, setShowReport] = useState(false);
 
   const { data: companies } = useCompanies();
-  const { data: gestaoOptions } = useGestaoTecnicaOptions(selectedCompanyId || null);
-  const { data: empresaClienteOptions } = useEmpresasClienteOptions(selectedCompanyId || null);
+  const { data: departamentoOptions } = useDepartamentoOptions(selectedCompanyId || null);
   const { data: reportData, isLoading, isError } = useExecutiveReport(
     showReport ? selectedCompanyId || null : null,
     showReport ? Number(selectedYear) : null,
-    showReport && selectedGestao ? selectedGestao : null,
-    showReport && selectedEmpresaCliente ? selectedEmpresaCliente : null
+    showReport && selectedDepartamento ? selectedDepartamento : null
   );
 
 
@@ -92,7 +89,7 @@ export default function RelatoriosExecutivos() {
               <div className="flex flex-wrap items-end gap-4">
                 <div className="space-y-2 flex-1 min-w-[200px]">
                   <label className="text-sm font-medium text-muted-foreground">Empresa</label>
-                  <Select value={selectedCompanyId} onValueChange={(v) => { setSelectedCompanyId(v); setSelectedGestao(""); setSelectedEmpresaCliente(""); setShowReport(false); }}>
+                  <Select value={selectedCompanyId} onValueChange={(v) => { setSelectedCompanyId(v); setSelectedDepartamento(""); setShowReport(false); }}>
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione a empresa" />
                     </SelectTrigger>
@@ -118,34 +115,17 @@ export default function RelatoriosExecutivos() {
                   </Select>
                 </div>
 
-                {gestaoOptions && gestaoOptions.length > 0 && (
+                {departamentoOptions && departamentoOptions.length > 0 && (
                   <div className="space-y-2 min-w-[200px]">
-                    <label className="text-sm font-medium text-muted-foreground">Gestão Técnica</label>
-                    <Select value={selectedGestao} onValueChange={(v) => { setSelectedGestao(v === "__all__" ? "" : v); setShowReport(false); }}>
+                    <label className="text-sm font-medium text-muted-foreground">Departamento</label>
+                    <Select value={selectedDepartamento} onValueChange={(v) => { setSelectedDepartamento(v === "__all__" ? "" : v); setShowReport(false); }}>
                       <SelectTrigger>
-                        <SelectValue placeholder="Todas as gestões" />
+                        <SelectValue placeholder="Todos os departamentos" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="__all__">Todas as gestões</SelectItem>
-                        {gestaoOptions.map((g) => (
+                        <SelectItem value="__all__">Todos os departamentos</SelectItem>
+                        {departamentoOptions.map((g) => (
                           <SelectItem key={g} value={g}>{g}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-
-                {empresaClienteOptions && empresaClienteOptions.length > 0 && (
-                  <div className="space-y-2 min-w-[200px]">
-                    <label className="text-sm font-medium text-muted-foreground">Empresa Cliente</label>
-                    <Select value={selectedEmpresaCliente || "__all__"} onValueChange={(v) => { setSelectedEmpresaCliente(v === "__all__" ? "" : v); setShowReport(false); }}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Todos os clientes" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="__all__">Todos os clientes</SelectItem>
-                        {empresaClienteOptions.map((c) => (
-                          <SelectItem key={c} value={c}>{c}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>

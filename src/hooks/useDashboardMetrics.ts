@@ -430,24 +430,24 @@ export function useDashboardMetrics(): DashboardMetrics {
     staleTime: 5 * 60 * 1000,
   });
 
-  // Query para funcionários por empresa cliente (apenas admin_master sem empresa selecionada)
-  const { data: funcionariosPorEmpresaCliente = [], isLoading: loadingFuncPorEmpresaCliente } = useQuery({
-    queryKey: ['dashboard-funcionarios-por-empresa-cliente'],
+  // Query para funcionários por departamento (apenas admin_master sem empresa selecionada)
+  const { data: funcionariosPorDepartamento = [], isLoading: loadingFuncPorDepartamento } = useQuery({
+    queryKey: ['dashboard-funcionarios-por-departamento'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('colaboradores')
-        .select('empresa_cliente')
+        .select('department')
         .eq('status', 'ATIVO');
 
       if (error) throw error;
 
-      const countByCliente: Record<string, number> = (data || []).reduce((acc, c: any) => {
-        const key = (c.empresa_cliente || '').trim();
+      const countByDepto: Record<string, number> = (data || []).reduce((acc, c: any) => {
+        const key = (c.department || '').trim();
         if (key) acc[key] = (acc[key] || 0) + 1;
         return acc;
       }, {} as Record<string, number>);
 
-      return Object.entries(countByCliente)
+      return Object.entries(countByDepto)
         .map(([name, count]) => ({ id: name, name, count }))
         .sort((a, b) => b.count - a.count);
     },
@@ -467,7 +467,7 @@ export function useDashboardMetrics(): DashboardMetrics {
   
   const isLoading = loadingAtivos || loadingContratados || loadingDemitidos || 
                     loadingAniversariantes || loadingAnivEmpresa || loadingRecentes || 
-                    loadingDiarioBordo || (showCompanyBreakdown && (loadingFuncPorEmpresa || loadingFuncPorEmpresaCliente));
+                    loadingDiarioBordo || (showCompanyBreakdown && (loadingFuncPorEmpresa || loadingFuncPorDepartamento));
 
   return {
     totalAtivos,
@@ -483,7 +483,7 @@ export function useDashboardMetrics(): DashboardMetrics {
     diarioBordoReminders,
     recentes,
     funcionariosPorEmpresa,
-    funcionariosPorEmpresaCliente,
+    funcionariosPorDepartamento,
     showCompanyBreakdown,
     isLoading,
     error: null,

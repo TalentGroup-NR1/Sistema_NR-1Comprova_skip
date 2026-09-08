@@ -14,7 +14,7 @@ export interface Atribuicao {
   colaborador_nome: string;
   colaborador_cargo: string | null;
   colaborador_departamento: string | null;
-  colaborador_empresa_cliente: string | null;
+
 }
 
 export function useQuestionarioAtribuicoes(descricaoQuestionarioId: string | null) {
@@ -42,7 +42,7 @@ export function useQuestionarioAtribuicoes(descricaoQuestionarioId: string | nul
       const { data, error } = await supabase
         .from('questionario_atribuicoes')
         .select(
-          'id,colaborador_id,status,data_atribuicao,data_resposta,colaboradores(full_name,job_title,department,empresa_cliente)',
+          'id,colaborador_id,status,data_atribuicao,data_resposta,colaboradores(full_name,job_title,department)',
         )
         .eq('descricao_questionario_id', descricaoQuestionarioId as string)
         .order('data_atribuicao');
@@ -59,7 +59,7 @@ export function useQuestionarioAtribuicoes(descricaoQuestionarioId: string | nul
           colaborador_nome: c.full_name ?? 'Colaborador',
           colaborador_cargo: c.job_title ?? null,
           colaborador_departamento: c.department ?? null,
-          colaborador_empresa_cliente: c.empresa_cliente ?? null,
+
         };
       });
     },

@@ -96,7 +96,7 @@ function useColaboradoresDaEmpresa(companyId: string | null) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('colaboradores')
-        .select('id,full_name,job_title,department,empresa_cliente,cargo_id,status')
+        .select('id,full_name,job_title,department,cargo_id,status')
         .eq('company_id', companyId as string)
         .order('full_name');
       if (error) throw error;
@@ -290,7 +290,7 @@ export function DescricaoQuestionarioSection({
                   <div>
                     <p className="text-sm font-medium">{a.colaborador_nome}</p>
                     <p className="text-xs text-muted-foreground">
-                      {[a.colaborador_cargo, a.colaborador_empresa_cliente]
+                      {[a.colaborador_cargo, a.colaborador_departamento]
                         .filter(Boolean)
                         .join(' · ')}
                     </p>
@@ -380,7 +380,7 @@ function AtribuirDialog({
       colaboradores.filter(
         (c) =>
           c.status !== 'DESLIGADO' &&
-          `${c.full_name} ${c.job_title ?? ''} ${c.department ?? ''} ${c.empresa_cliente ?? ''}`
+          `${c.full_name} ${c.job_title ?? ''} ${c.department ?? ''}`
             .toLowerCase()
             .includes(busca.toLowerCase()),
       ),
@@ -428,7 +428,7 @@ function AtribuirDialog({
                 <div>
                   <p className="font-medium">{c.full_name}</p>
                   <p className="text-xs text-muted-foreground">
-                    {[c.job_title, c.department, c.empresa_cliente].filter(Boolean).join(' · ')}
+                    {[c.job_title, c.department].filter(Boolean).join(' · ')}
                   </p>
                 </div>
                 {ja && <Badge variant="secondary" className="ml-auto">Já habilitado</Badge>}

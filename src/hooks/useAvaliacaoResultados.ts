@@ -230,7 +230,7 @@ export function useAvaliacaoResultado(avaliacaoId: string | undefined) {
         .select(`
           *,
           ciclo:ciclos_avaliacao(id, nome_ciclo, status),
-          colaborador:colaboradores!avaliacoes_colaborador_id_fkey(id, full_name, job_title, department, gestao_tecnica),
+          colaborador:colaboradores!avaliacoes_colaborador_id_fkey(id, full_name, job_title, department),
           gestor:colaboradores!avaliacoes_gestor_id_fkey(id, full_name)
         `)
         .eq('id', avaliacaoId)
@@ -379,7 +379,7 @@ export function useAvaliacaoResultado(avaliacaoId: string | undefined) {
       });
 
       const cicloData = avaliacao.ciclo as { id: string; nome_ciclo: string; status: string } | null;
-      const colaboradorData = avaliacao.colaborador as { id: string; full_name: string; job_title: string; department: string; gestao_tecnica: string | null } | null;
+      const colaboradorData = avaliacao.colaborador as { id: string; full_name: string; job_title: string; department: string; } | null;
       const gestorData = avaliacao.gestor as { id: string; full_name: string } | null;
 
       return {
@@ -392,7 +392,7 @@ export function useAvaliacaoResultado(avaliacaoId: string | undefined) {
         colaborador_cargo: colaboradorData?.job_title ?? '',
         colaborador_departamento: colaboradorData?.department ?? '',
         gestor_id: avaliacao.gestor_id,
-        gestor_nome: colaboradorData?.gestao_tecnica || gestorData?.full_name || '',
+        gestor_nome: gestorData?.full_name || '',
         status_autoavaliacao: avaliacao.status_autoavaliacao as 'nao_iniciada' | 'em_andamento' | 'concluida',
         status_avaliacao_gestor: avaliacao.status_avaliacao_gestor as 'nao_iniciada' | 'em_andamento' | 'concluida',
         prazo_autoavaliacao: avaliacao.prazo_autoavaliacao,
