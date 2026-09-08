@@ -62,12 +62,14 @@ export function ContactSection() {
     }
 
     setSubmitting(true);
-    const { error } = await supabase.from("contact_requests").insert({
-      name: parsed.data.name,
-      company: parsed.data.company,
-      email: parsed.data.email,
-      phone: parsed.data.phone || null,
-      message: parsed.data.message || null,
+    const { error } = await supabase.functions.invoke("solicitar-demonstracao", {
+      body: {
+        name: parsed.data.name,
+        company: parsed.data.company,
+        email: parsed.data.email,
+        phone: parsed.data.phone || null,
+        message: parsed.data.message || null,
+      },
     });
     setSubmitting(false);
 
