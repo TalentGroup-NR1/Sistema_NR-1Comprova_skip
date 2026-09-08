@@ -2,16 +2,19 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-const SUPABASE_URL =
-  import.meta.env.VITE_SUPABASE_URL ||
-  import.meta.env.NEXT_PUBLIC_SUPABASE_URL ||
-  "https://alneozvrsuwszlkisbyo.supabase.co";
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+
+if (!SUPABASE_URL) {
+  console.error("VITE_SUPABASE_URL não configurada");
+}
 
 const SUPABASE_PUBLISHABLE_KEY =
   import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
-  import.meta.env.VITE_SUPABASE_ANON_KEY ||
-  import.meta.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFsbmVvenZyc3V3c3psa2lzYnlvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc1Nzg2MTcsImV4cCI6MjEwMzE1NDYxN30.0gxHjDOm3HrLhHGEhry2zVpiL8HC1SES96D69BccWoM";
+  import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+if (!SUPABASE_PUBLISHABLE_KEY) {
+  console.error("VITE_SUPABASE_ANON_KEY não configurada");
+}
 
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";

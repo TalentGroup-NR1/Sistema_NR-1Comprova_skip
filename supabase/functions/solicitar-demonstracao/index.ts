@@ -5,47 +5,22 @@ import { z } from "https://esm.sh/zod@3.23.8";
 const MAX_BODY_BYTES = 1_048_576; // 1 MB
 
 const SolicitarDemonstracaoSchema = z.object({
-  name: z.string().trim().min(2).max(120),
-  company: z.string().trim().min(2).max(150),
-  email: z.string().trim().email().max(255),
-  phone: z.string().trim().max(30).optional().nullable(),
-  message: z.string().trim().max(2000).optional().nullable(),
+  name: z.string().trim().min(2).max(500),
+  company: z.string().trim().min(2).max(500),
+  email: z.string().trim().email().max(500),
+  phone: z.string().trim().max(500).optional().nullable(),
+  message: z.string().trim().max(500).optional().nullable(),
 });
 
-const allowedOrigins = [
-  Deno.env.get('APP_ORIGIN') || '',
-  'https://nr1pronto.com.br',
-  'https://www.nr1pronto.com.br',
-  'http://localhost:5173',
-  'http://localhost:8080',
-].filter(Boolean);
-
-function getCorsHeaders(req: Request) {
-  const origin = req.headers.get('origin') || '';
-  const isAllowed = allowedOrigins.some(allowed => 
-    origin === allowed || (allowed && origin.startsWith(allowed))
-  );
-  
-  return {
-    'Access-Control-Allow-Origin': isAllowed ? origin : '',
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  };
-}
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+};
 
 serve(async (req) => {
-  const corsHeaders = getCorsHeaders(req);
-  
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
-  }
-
-  const origin = req.headers.get('origin');
-  if (origin && !corsHeaders['Access-Control-Allow-Origin']) {
-    console.warn('CORS rejected for origin:', origin);
-    return new Response(JSON.stringify({ error: 'Origin not allowed' }), {
-      status: 403,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
   }
 
   try {
