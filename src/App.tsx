@@ -54,6 +54,7 @@ import ComportamentosOfensivos from "./pages/ComportamentosOfensivos";
 import AdminPlataforma from "./pages/AdminPlataforma";
 import NotFound from "./pages/NotFound";
 import LaudoAepPage from "./pages/LaudoAepPage";
+import ConfiguracoesEmpresa from "./pages/ConfiguracoesEmpresa";
 
 const queryClient = new QueryClient();
 
@@ -129,6 +130,11 @@ const App = () => (
               <Route path="/acessos" element={
                 <ProtectedRoute allowedRoles={['admin_master', 'admin_empresa']}>
                   <GerenciamentoAcessos />
+                </ProtectedRoute>
+              } />
+              <Route path="/configuracoes-empresa" element={
+                <ProtectedRoute allowedRoles={['admin_empresa']}>
+                  <ConfiguracoesEmpresa />
                 </ProtectedRoute>
               } />
               <Route path="/empresas" element={

@@ -74,3 +74,40 @@ export function formatCNPJ(value: string): string {
   if (digits.length <= 12) return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5, 8)}/${digits.slice(8)}`;
   return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5, 8)}/${digits.slice(8, 12)}-${digits.slice(12)}`;
 }
+
+// Validação completa de CNPJ (14 dígitos e dígitos verificadores da Receita Federal)
+export function isValidCNPJ(value: string): boolean {
+  if (!value) return false;
+  const digits = value.replace(/\D/g, "");
+  if (digits.length !== 14) return false;
+  // Elimina números com todos os dígitos iguais
+  if (/^(\d)\1+$/.test(digits)) return false;
+
+  // Validação do 1º dígito verificador
+  let size = digits.length - 2;
+  let numbers = digits.substring(0, size);
+  const digitsCheck = digits.substring(size);
+  let sum = 0;
+  let pos = size - 7;
+  for (let i = size; i >= 1; i--) {
+    sum += Number(numbers.charAt(size - i)) * pos--;
+    if (pos < 2) pos = 9;
+  }
+  let result = sum % 11 < 2 ? 0 : 11 - (sum % 11);
+  if (result !== Number(digitsCheck.charAt(0))) return false;
+
+  // Validação do 2º dígito verificador
+  size = size + 1;
+  numbers = digits.substring(0, size);
+  sum = 0;
+  pos = size - 7;
+  for (let i = size; i >= 1; i--) {
+    sum += Number(numbers.charAt(size - i)) * pos--;
+    if (pos < 2) pos = 9;
+  }
+  result = sum % 11 < 2 ? 0 : 11 - (sum % 11);
+  if (result !== Number(digitsCheck.charAt(1))) return false;
+
+  return true;
+}
+

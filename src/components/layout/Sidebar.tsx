@@ -63,6 +63,7 @@ const desenvolvimentoItems: NavItem[] = [
 ];
 
 const configuracoesItems: NavItem[] = [
+  { icon: Settings, label: "Configurações da Empresa", href: "/configuracoes-empresa", roles: ['admin_empresa'] },
   { icon: Building2, label: "Cadastro de Empresa", href: "/empresas", roles: ['admin_master'] },
   { icon: BarChart3, label: "Relatórios", href: "/relatorios", roles: ['admin_master', 'admin_empresa'] },
   { icon: FileText, label: "Relatórios Executivos", href: "/relatorios-executivos", roles: ['admin_master', 'admin_empresa', 'analista_rh'] },
@@ -383,6 +384,12 @@ export function Sidebar() {
               <Palette className="mr-2 h-4 w-4" />
               Preferências
             </DropdownMenuItem>
+            {role === 'admin_empresa' && (
+              <DropdownMenuItem onClick={() => navigate('/configuracoes-empresa')}>
+                <Settings className="mr-2 h-4 w-4" />
+                Configurações da Empresa
+              </DropdownMenuItem>
+            )}
             <DropdownMenuSeparator />
             <DropdownMenuItem className="text-destructive" onClick={handleSignOut}>
               <LogOut className="mr-2 h-4 w-4" />
