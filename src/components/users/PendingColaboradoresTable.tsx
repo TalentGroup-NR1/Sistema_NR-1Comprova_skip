@@ -9,6 +9,7 @@ import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useColaboradoresPendentes, useResendAcessoColaborador, type ColaboradorPendente } from '@/hooks/useColaboradoresPendentes';
 import { FinalizeColaboradorDialog } from './FinalizeColaboradorDialog';
+import { DevInviteDialog } from './DevInviteDialog';
 import { useAuth } from '@/hooks/useAuth';
 
 function getInitials(name: string | null) {
@@ -31,6 +32,11 @@ export function PendingColaboradoresTable({ searchTerm = '' }: PendingColaborado
   const resendAcesso = useResendAcessoColaborador();
   const [selectedColaborador, setSelectedColaborador] = useState<ColaboradorPendente | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [devInvite, setDevInvite] = useState<{
+    name: string;
+    email: string;
+    url: string;
+  } | null>(null);
 
   const filteredColaboradores = pendingColaboradores?.filter(colab =>
     colab.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -40,7 +46,14 @@ export function PendingColaboradoresTable({ searchTerm = '' }: PendingColaborado
   const handleResend = async (colaborador: ColaboradorPendente, e: React.MouseEvent) => {
     e.stopPropagation();
     try {
-      await resendAcesso.mutateAsync({ colaborador_id: colaborador.id });
+      const res = await resendAcesso.mutateAsync({ colaborador_id: colaborador.id });
+      if (res?.invite_url) {
+        setDevInvite({
+          name: colaborador.full_name,
+          email: colaborador.email_pessoal,
+          url: res.invite_url,
+        });
+      }
     } catch {
       // error handled by mutation
     }
@@ -151,6 +164,16 @@ export function PendingColaboradoresTable({ searchTerm = '' }: PendingColaborado
           setSelectedColaborador(null);
         }}
       />
+
+      {devInvite && (
+        <DevInviteDialog
+          open={!!devInvite}
+          onClose={() => setDevInvite(null)}
+          colaboradorName={devInvite.name}
+          email={devInvite.email}
+          inviteUrl={devInvite.url}
+        />
+      )}
     </>
   );
 }

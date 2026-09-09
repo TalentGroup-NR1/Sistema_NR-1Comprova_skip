@@ -12,6 +12,7 @@ export interface ColaboradorPendente {
   admission_date: string;
   company_id: string;
   company_name?: string;
+  contract_type?: string | null;
 }
 
 export function useColaboradoresPendentes() {
@@ -30,6 +31,7 @@ export function useColaboradoresPendentes() {
           department,
           admission_date,
           company_id,
+          contract_type,
           companies:company_id (name)
         `)
         .is('user_id', null)
@@ -59,6 +61,7 @@ export function useColaboradoresPendentes() {
 
 interface FinalizeColaboradorData {
   colaborador_id: string;
+  contract_type?: string;
 }
 
 export function useFinalizeColaborador() {
@@ -98,12 +101,19 @@ export function useFinalizeColaborador() {
       queryClient.invalidateQueries({ queryKey: ['colaboradores-pendentes'] });
       queryClient.invalidateQueries({ queryKey: ['users'] });
       queryClient.invalidateQueries({ queryKey: ['colaboradores'] });
-      toast({
-        title: 'Acesso liberado',
-        description: data?.email_sent
-          ? 'E-mail de boas-vindas enviado com link para definição de senha.'
-          : 'Acesso criado, mas houve uma falha ao enviar o e-mail. Use o botão de reenvio.',
-      });
+      if (data?.invite_url) {
+        toast({
+          title: 'Acesso liberado (Modo Dev)',
+          description: 'Ambiente de dev: link de convite gerado — copie ou abra para definir a senha.',
+        });
+      } else {
+        toast({
+          title: 'Acesso liberado',
+          description: data?.email_sent
+            ? 'E-mail de boas-vindas enviado com link para definição de senha.'
+            : 'Acesso criado, mas houve uma falha ao enviar o e-mail. Use o botão de reenvio.',
+        });
+      }
     },
     onError: (error: Error) => {
       console.error('[FinalizeColaborador] Mutation error:', error);
@@ -147,12 +157,19 @@ export function useResendAcessoColaborador() {
 
       return response.data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['colaboradores-pendentes'] });
-      toast({
-        title: 'E-mail reenviado',
-        description: 'O colaborador receberá um novo link para definir a senha.',
-      });
+      if (data?.invite_url) {
+        toast({
+          title: 'Link de acesso gerado (Modo Dev)',
+          description: 'Ambiente de dev: link de convite gerado — copie ou abra para definir a senha.',
+        });
+      } else {
+        toast({
+          title: 'E-mail reenviado',
+          description: 'O colaborador receberá um novo link para definir a senha.',
+        });
+      }
     },
     onError: (error: Error) => {
       toast({

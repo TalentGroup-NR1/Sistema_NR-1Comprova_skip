@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -7,8 +8,17 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Loader2, KeyRound, Mail, User, Building2 } from 'lucide-react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Loader2, KeyRound, Mail, User, Building2, Briefcase } from 'lucide-react';
 import { useFinalizeColaborador, type ColaboradorPendente } from '@/hooks/useColaboradoresPendentes';
+import { contractTypeOptions } from '@/lib/validators/colaborador';
+import { DevInviteDialog } from './DevInviteDialog';
 
 interface FinalizeColaboradorDialogProps {
   colaborador: ColaboradorPendente | null;
@@ -18,20 +28,50 @@ interface FinalizeColaboradorDialogProps {
 
 export function FinalizeColaboradorDialog({ colaborador, open, onClose }: FinalizeColaboradorDialogProps) {
   const finalizeColaborador = useFinalizeColaborador();
+  const [devInviteUrl, setDevInviteUrl] = useState<string | null>(null);
+  const [contractType, setContractType] = useState<string>('CLT');
+
+  useEffect(() => {
+    setContractType(colaborador?.contract_type || 'CLT');
+  }, [colaborador]);
 
   const onConfirm = async () => {
     if (!colaborador) return;
 
-    await finalizeColaborador.mutateAsync({
-      colaborador_id: colaborador.id,
-    });
+    try {
+      const response = await finalizeColaborador.mutateAsync({
+        colaborador_id: colaborador.id,
+        contract_type: contractType || 'CLT',
+      });
 
-    onClose();
+      // Em ambiente dev (sem RESEND_API_KEY ou APP_ENV=dev), exibe o aviso com o link de convite gerado
+      if (response?.invite_url) {
+        setDevInviteUrl(response.invite_url);
+      } else {
+        // Em produção, o e-mail é enviado de verdade e fechamos a janela diretamente
+        onClose();
+      }
+    } catch {
+      // Erro tratado pela mutation
+    }
   };
 
   const handleClose = () => {
+    setDevInviteUrl(null);
     onClose();
   };
+
+  if (devInviteUrl) {
+    return (
+      <DevInviteDialog
+        open={open}
+        onClose={handleClose}
+        colaboradorName={colaborador?.full_name}
+        email={colaborador?.email_pessoal}
+        inviteUrl={devInviteUrl}
+      />
+    );
+  }
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -72,6 +112,27 @@ export function FinalizeColaboradorDialog({ colaborador, open, onClose }: Finali
                   </div>
                 </div>
               )}
+
+              <div className="flex items-start gap-3 pt-1 border-t border-border/40">
+                <Briefcase className="h-4 w-4 text-muted-foreground mt-2" />
+                <div className="flex-1 space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">
+                    Regime de Contratação <span className="text-destructive">*</span>
+                  </label>
+                  <Select value={contractType} onValueChange={setContractType}>
+                    <SelectTrigger className="h-8 text-xs bg-background">
+                      <SelectValue placeholder="Selecione o regime" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {contractTypeOptions.map((opt) => (
+                        <SelectItem key={opt} value={opt} className="text-xs">
+                          {opt}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
             </div>
 
             <div className="text-sm text-muted-foreground">

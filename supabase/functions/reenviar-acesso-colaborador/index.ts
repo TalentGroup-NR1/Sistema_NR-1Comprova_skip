@@ -165,10 +165,10 @@ serve(async (req) => {
     }
 
     const companyName = (colaborador.companies as { name?: string; logo_url?: string } | null)?.name;
-    const logoUrl = (colaborador.companies as { name?: string; logo_url?: string } | null)?.logo_url;
-
-    // Generate new recovery link (invalidates previous ones for this user)
-    const redirectTo = `${Deno.env.get('APP_ORIGIN') || 'https://nr1pronto.com.br'}/atualizar-senha`;
+    const logoUrl = (colaborador.companies as { name?: string; logo_url?: string } | null)?.logo_url;    // Generate new recovery link (invalidates previous ones for this user)
+    const reqOrigin = req.headers.get('origin');
+    const appOrigin = Deno.env.get('APP_ORIGIN') || reqOrigin || 'https://nr1pronto.com.br';
+    const redirectTo = `${appOrigin}/atualizar-senha`;
     const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
       type: 'recovery',
       email: colaborador.email_pessoal,
@@ -185,35 +185,91 @@ serve(async (req) => {
 
     const recoveryUrl = linkData.properties.action_link;
 
-    // Send welcome email with new recovery link
+    // Checagem de ambiente: produção vs fallback dev
+    const appEnv = (Deno.env.get('APP_ENV') || '').toLowerCase();
+    const isProduction = appEnv === 'production';
+    const resendApiKey = Deno.env.get('RESEND_API_KEY');
+
     let emailSent = false;
     let emailError: string | null = null;
-    try {
-      const idempotencyKey = `${colaborador_id}-${Date.now()}`;
-      const { error: invokeError } = await supabaseAdmin.functions.invoke('send-transactional-email', {
-        body: {
-          templateName: 'acesso-liberado',
-          recipientEmail: colaborador.email_pessoal,
-          idempotencyKey,
-          templateData: {
-            siteName: 'Talent Group',
-            siteUrl: Deno.env.get('APP_ORIGIN') || 'https://nr1pronto.com.br',
-            recipientName: colaborador.full_name,
-            companyName: companyName || 'sua empresa',
-            logoUrl: logoUrl || undefined,
-            confirmationUrl: recoveryUrl,
-            expirationHours: 24,
-          },
-        },
-      });
+    let isDevFallback = false;
 
-      if (invokeError) {
-        throw invokeError;
+    if (isProduction) {
+      // Em produção: SEMPRE tenta envio de e-mail. Se RESEND_API_KEY ausente, erro 500 explícito (nunca expõe invite_url)
+      if (!resendApiKey) {
+        console.error('[reenviar-acesso-colaborador] GA405: Resend não configurado em ambiente de produção.');
+        return new Response(JSON.stringify({ 
+          error: 'GA405: Resend não configurado (RESEND_API_KEY ausente)' 
+        }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
       }
-      emailSent = true;
-    } catch (err) {
-      console.error('Error sending welcome email:', err);
-      emailError = err instanceof Error ? err.message : String(err);
+
+      try {
+        const idempotencyKey = `${colaborador_id}-${Date.now()}`;
+        const { error: invokeError } = await supabaseAdmin.functions.invoke('send-transactional-email', {
+          body: {
+            templateName: 'acesso-liberado',
+            recipientEmail: colaborador.email_pessoal,
+            idempotencyKey,
+            templateData: {
+              siteName: 'Talent Group',
+              siteUrl: appOrigin,
+              recipientName: colaborador.full_name,
+              companyName: companyName || 'sua empresa',
+              logoUrl: logoUrl || undefined,
+              confirmationUrl: recoveryUrl,
+              expirationHours: 24,
+            },
+          },
+        });
+
+        if (invokeError) {
+          throw invokeError;
+        }
+        emailSent = true;
+      } catch (err) {
+        console.error('Error sending welcome email in production:', err);
+        emailError = err instanceof Error ? err.message : String(err);
+      }
+    } else {
+      // Fallback dev apenas quando !isProduction E (!resendApiKey OU env dev/local/development)
+      const isDevEnv = !resendApiKey || ['dev', 'local', 'development'].includes(appEnv);
+      if (isDevEnv) {
+        isDevFallback = true;
+        console.log('[reenviar-acesso-colaborador] Modo dev ativo. Retornando invite_url.');
+        emailSent = false;
+      } else {
+        // Ambiente não-produção com chave de e-mail configurada
+        try {
+          const idempotencyKey = `${colaborador_id}-${Date.now()}`;
+          const { error: invokeError } = await supabaseAdmin.functions.invoke('send-transactional-email', {
+            body: {
+              templateName: 'acesso-liberado',
+              recipientEmail: colaborador.email_pessoal,
+              idempotencyKey,
+              templateData: {
+                siteName: 'Talent Group',
+                siteUrl: appOrigin,
+                recipientName: colaborador.full_name,
+                companyName: companyName || 'sua empresa',
+                logoUrl: logoUrl || undefined,
+                confirmationUrl: recoveryUrl,
+                expirationHours: 24,
+              },
+            },
+          });
+
+          if (invokeError) {
+            throw invokeError;
+          }
+          emailSent = true;
+        } catch (err) {
+          console.error('Error sending welcome email in non-production:', err);
+          emailError = err instanceof Error ? err.message : String(err);
+        }
+      }
     }
 
     // Audit log
@@ -232,11 +288,19 @@ serve(async (req) => {
       console.error('Error writing audit log:', auditErr);
     }
 
-    return new Response(JSON.stringify({ 
+    const responsePayload: Record<string, unknown> = {
       success: true,
       email_sent: emailSent,
       email_error: emailError,
-    }), {
+    };
+
+    if (isDevFallback) {
+      responsePayload.invite_url = recoveryUrl;
+      responsePayload.dev_mode = true;
+      responsePayload.message = 'Link de acesso gerado em modo de desenvolvimento.';
+    }
+
+    return new Response(JSON.stringify(responsePayload), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
