@@ -102,7 +102,24 @@ export function EntidadeTabela<T extends { id: string; ativo: boolean }>({
             ))}
           </div>
         ) : filtrados.length === 0 ? (
-          <p className="py-8 text-center text-sm text-muted-foreground">{emptyText}</p>
+          <div className="flex flex-col items-center justify-center py-10 px-4 text-center">
+            <div className="rounded-full bg-primary/10 p-3 text-primary mb-2">
+              {icone}
+            </div>
+            <p className="font-medium text-foreground">
+              {itens.length === 0 ? emptyText : 'Nenhum resultado encontrado'}
+            </p>
+            <p className="text-xs text-muted-foreground max-w-sm mt-0.5 mb-4">
+              {itens.length === 0
+                ? 'Este cadastro é opcional e pode ser preenchido a qualquer momento para estruturar sua empresa.'
+                : 'Tente ajustar os termos digitados na busca.'}
+            </p>
+            {itens.length === 0 && podeEditar && (
+              <Button size="sm" onClick={onNovo} className="gradient-primary text-primary-foreground">
+                <Plus className="mr-1.5 h-4 w-4" /> {labelNovo}
+              </Button>
+            )}
+          </div>
         ) : (
           <>
             <div className="overflow-x-auto">

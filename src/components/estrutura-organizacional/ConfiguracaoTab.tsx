@@ -158,7 +158,7 @@ export function ConfiguracaoTab({ companyId, podeEditar, podeExcluir }: Props) {
         onEditar={(r) => setDialog({ tabela: 'departamentos', row: r as unknown as Row })}
         onExcluir={(r) => mutDep.excluir.mutate(r.id)}
         labelNovo="Novo Departamento"
-        emptyText="Nenhum departamento cadastrado ainda."
+        emptyText="Cadastre o primeiro departamento"
       />
 
       <EntidadeTabela<Cargo>
@@ -189,7 +189,7 @@ export function ConfiguracaoTab({ companyId, podeEditar, podeExcluir }: Props) {
         onEditar={(r) => setDialog({ tabela: 'cargos', row: r as unknown as Row })}
         onExcluir={(r) => mutCargo.excluir.mutate(r.id)}
         labelNovo="Novo Cargo"
-        emptyText="Nenhum cargo cadastrado ainda."
+        emptyText="Cadastre o primeiro cargo"
       />
 
       <EntidadeTabela<Ghe>
@@ -215,7 +215,7 @@ export function ConfiguracaoTab({ companyId, podeEditar, podeExcluir }: Props) {
         onEditar={(r) => setDialog({ tabela: 'ghes', row: r as unknown as Row })}
         onExcluir={(r) => mutGhe.excluir.mutate(r.id)}
         labelNovo="Novo Grupo"
-        emptyText="Nenhum grupo cadastrado ainda."
+        emptyText="Cadastre o primeiro grupo (GHE)"
       />
 
       <EntidadeTabela<NivelMaturidade>
@@ -241,7 +241,7 @@ export function ConfiguracaoTab({ companyId, podeEditar, podeExcluir }: Props) {
         onEditar={(r) => setDialog({ tabela: 'niveis_maturidade', row: r as unknown as Row })}
         onExcluir={(r) => mutNivel.excluir.mutate(r.id)}
         labelNovo="Novo Nível"
-        emptyText="Nenhum nível cadastrado ainda."
+        emptyText="Cadastre o primeiro nível"
       />
 
 

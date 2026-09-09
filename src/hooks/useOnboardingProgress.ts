@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 
-export const ONBOARDING_STEPS = ['branding', 'estrutura', 'equipe', 'nr1'] as const;
+export const ONBOARDING_STEPS = ['branding'] as const;
 export type OnboardingStep = (typeof ONBOARDING_STEPS)[number];
 
 export interface OnboardingProgress {
@@ -15,8 +15,9 @@ export interface OnboardingProgress {
 }
 
 /** Progresso do Welcome Wizard da empresa do usuário logado. */
-export function useOnboardingProgress(enabled = true) {
-  const { companyId } = useAuth();
+export function useOnboardingProgress(enabled = true, targetCompanyId?: string | null) {
+  const { companyId: authCompanyId } = useAuth();
+  const companyId = targetCompanyId !== undefined ? targetCompanyId : authCompanyId;
 
   return useQuery({
     queryKey: ['onboarding-progress', companyId],
@@ -30,6 +31,7 @@ export function useOnboardingProgress(enabled = true) {
       if (error) throw error;
       return (data ?? null) as unknown as OnboardingProgress | null;
     },
+    staleTime: 1000 * 30,
   });
 }
 

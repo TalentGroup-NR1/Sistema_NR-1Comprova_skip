@@ -10,6 +10,8 @@ import {
   Trash2,
   FileUser,
   ArrowRightLeft,
+  Users,
+  UserPlus,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useTransferenciasRecentes } from '@/hooks/useTransferenciaColaborador';
@@ -59,6 +61,7 @@ interface ColaboradorTableProps {
   onEdit: (colaborador: Colaborador) => void;
   onView: (colaborador: Colaborador) => void;
   onDelete: (id: string) => void;
+  onNovo?: () => void;
 }
 
 const statusStyles: Record<string, string> = {
@@ -129,6 +132,7 @@ export function ColaboradorTable({
   onEdit,
   onView,
   onDelete,
+  onNovo,
 }: ColaboradorTableProps) {
   const navigate = useNavigate();
   const { isAdminMaster, isAdminEmpresa, role } = useAuth();
@@ -175,9 +179,20 @@ export function ColaboradorTable({
 
   if (colaboradores.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-        <p className="text-lg font-medium">Nenhum colaborador encontrado</p>
-        <p className="text-sm">Cadastre um novo colaborador para começar</p>
+      <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
+        <div className="rounded-full bg-primary/10 p-4 text-primary mb-3">
+          <Users className="h-8 w-8" />
+        </div>
+        <p className="text-lg font-semibold text-foreground">Convide os primeiros colaboradores</p>
+        <p className="text-sm text-muted-foreground max-w-md mt-1 mb-5">
+          Adicione os membros da sua equipe para liberar o acesso ao sistema, gerenciar registros e acompanhar o Mapa de Riscos NR-1.
+        </p>
+        {onNovo && (
+          <Button onClick={onNovo} className="gradient-primary text-primary-foreground shadow-sm">
+            <UserPlus className="mr-2 h-4 w-4" />
+            Cadastrar primeiro colaborador
+          </Button>
+        )}
       </div>
     );
   }

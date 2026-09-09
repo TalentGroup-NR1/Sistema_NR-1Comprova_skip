@@ -25,6 +25,11 @@ export function CargoCascadeSelect({ form }: Props) {
   const { data: departamentos = [] } = useDepartamentos(companyId);
 
   const aplicarCargo = (id: string) => {
+    if (id === '_none_') {
+      form.setValue('cargo_id', null, { shouldDirty: true });
+      form.setValue('job_title', 'Não definido', { shouldDirty: true, shouldValidate: true });
+      return;
+    }
     const cargo = cargos.find((c) => c.id === id);
     form.setValue('cargo_id', id, { shouldDirty: true });
     if (cargo) form.setValue('job_title', cargo.nome, { shouldDirty: true, shouldValidate: true });
@@ -50,6 +55,7 @@ export function CargoCascadeSelect({ form }: Props) {
               <SelectValue placeholder="Selecione" />
             </SelectTrigger>
             <SelectContent className="z-50 bg-background">
+              <SelectItem value="Não definido">Não definido</SelectItem>
               {departamentos.map((d) => (
                 <SelectItem key={d.id} value={d.nome}>
                   {d.nome}
@@ -65,11 +71,15 @@ export function CargoCascadeSelect({ form }: Props) {
           render={() => (
             <FormItem>
               <FormLabel>Cargo *</FormLabel>
-              <Select value={cargoId ?? ''} onValueChange={aplicarCargo}>
+              <Select
+                value={cargoId ?? (form.watch('job_title') === 'Não definido' ? '_none_' : '')}
+                onValueChange={aplicarCargo}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione o cargo" />
                 </SelectTrigger>
                 <SelectContent className="z-50 bg-background">
+                  <SelectItem value="_none_">Não definido</SelectItem>
                   {cargos.map((c) => (
                     <SelectItem key={c.id} value={c.id}>
                       {c.cbo_codigo ? `${c.nome} (CBO ${c.cbo_codigo})` : c.nome}
