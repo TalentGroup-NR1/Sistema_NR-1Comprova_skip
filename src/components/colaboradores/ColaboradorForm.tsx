@@ -117,7 +117,7 @@ export function ColaboradorForm({
     pis: '',
     ctps_numero: '',
     ctps_serie: '',
-    contract_type: undefined,
+    contract_type: 'CLT',
     cargo_id: null,
     job_title: '',
     job_level: undefined,
@@ -189,7 +189,7 @@ export function ColaboradorForm({
         pis: (colaborador as any).pis || '',
         ctps_numero: (colaborador as any).ctps_numero || '',
         ctps_serie: (colaborador as any).ctps_serie || '',
-        contract_type: colaborador.contract_type as any,
+        contract_type: (colaborador.contract_type as any) || 'CLT',
         cargo_id: (colaborador as any).cargo_id || null,
         job_title: colaborador.job_title,
         job_level: colaborador.job_level as any,
@@ -265,7 +265,10 @@ export function ColaboradorForm({
   };
 
   const handleSubmit = async (data: ColaboradorFormData) => {
-    await onSubmit(data);
+    await onSubmit({
+      ...data,
+      contract_type: data.contract_type || 'CLT',
+    });
   };
 
   const handleRequestClose = useCallback(() => {

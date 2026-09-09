@@ -175,6 +175,7 @@ const Colaboradores = () => {
             onEdit={handleOpenForm}
             onView={handleView}
             onDelete={handleDelete}
+            onNovo={canManage ? () => handleOpenForm() : undefined}
           />
         </CardContent>
 

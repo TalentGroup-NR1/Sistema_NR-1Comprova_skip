@@ -282,7 +282,7 @@ export function DashboardColaborador() {
 
       {/* Área nobre: Meu Ponto (esq) + Campanhas Ativas (dir) — 50/50 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
-        {podeAcessarPonto ? <MeuPontoCard /> : <ProximasFeriasCard />}
+        {podeAcessarPonto?.podeAcessar ? <MeuPontoCard /> : <ProximasFeriasCard />}
         <CampanhasSection />
       </div>
 
@@ -291,7 +291,7 @@ export function DashboardColaborador() {
 
       {/* Linha de apoio: Férias · Pendências · Cuidar+ */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
-        {podeAcessarPonto && <ProximasFeriasCard />}
+        {podeAcessarPonto?.podeAcessar && <ProximasFeriasCard />}
         <MinhasPendenciasCard />
         <CuidarMaisQuickCard />
       </div>

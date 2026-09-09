@@ -26,7 +26,7 @@ import { ptBR } from "date-fns/locale";
 export default function PontoEletronico() {
   const { role } = useAuth();
   const isAdmin = role && ["admin_master", "admin_empresa", "analista_rh"].includes(role);
-  const { data: podeAcessar, isLoading: loadingGate } = usePodeAcessarPonto();
+  const { data: gateResult, isLoading: loadingGate } = usePodeAcessarPonto();
   const { isBancoHoras } = useMeuRegimePonto();
   const meuBancoLabel = isBancoHoras ? "Meu Banco" : "Minhas Horas Extras";
   const MeuBancoComponent = isBancoHoras ? MeuBancoHoras : MinhasHorasExtras;
@@ -63,19 +63,34 @@ export default function PontoEletronico() {
     }
   }, [location.search, isAdmin]);
 
-  if (!loadingGate && !podeAcessar) {
+  if (loadingGate) {
+    return (
+      <MainLayout>
+        <div className="flex items-center justify-center h-[50vh]">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      </MainLayout>
+    );
+  }
+
+  if (!gateResult?.podeAcessar) {
+    const isRegimeNaoDefinido = gateResult?.regimeNaoDefinido;
     return (
       <MainLayout>
         <div className="space-y-6">
           <h1 className="text-2xl font-bold text-foreground">Ponto Eletrônico</h1>
-          <Card>
+          <Card className={isRegimeNaoDefinido ? "border-amber-200 bg-amber-50/30" : undefined}>
             <CardContent className="py-12 flex flex-col items-center text-center gap-3">
-              <Lock className="h-10 w-10 text-muted-foreground" />
+              <Lock className={`h-10 w-10 ${isRegimeNaoDefinido ? "text-amber-500" : "text-muted-foreground"}`} />
               <p className="text-base font-medium text-foreground">
-                Seu vínculo não exige registro de ponto.
+                {isRegimeNaoDefinido
+                  ? "Regime não definido — contate o administrador"
+                  : "Seu vínculo não exige registro de ponto."}
               </p>
               <p className="text-sm text-muted-foreground max-w-md">
-                Este módulo é exclusivo para colaboradores com regime CLT, Estágio, Aprendiz ou Temporário.
+                {isRegimeNaoDefinido
+                  ? "Seu cadastro de colaborador ainda não possui um regime de contratação (CLT, Estágio, etc.) definido. Solicite ao administrador ou RH da empresa a definição do seu regime de trabalho."
+                  : "Este módulo é exclusivo para colaboradores com regime CLT, Estágio, Aprendiz ou Temporário."}
               </p>
             </CardContent>
           </Card>
