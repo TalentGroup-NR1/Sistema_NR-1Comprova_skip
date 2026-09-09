@@ -12,6 +12,8 @@ import { useEmployeePulseHistory, EMOJI_SCALE } from "@/hooks/usePulseCampaigns"
 import { useColaborador } from "@/hooks/useColaboradores";
 import { PulsoEvolutionChartEmployee } from "./PulsoEvolutionChartEmployee";
 import { cn } from "@/lib/utils";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AcompanhamentoForm } from "../acompanhamentos/AcompanhamentoForm";
 
 interface PulsoColaboradorDetailProps {
   colaboradorId: string;
@@ -31,6 +33,7 @@ export function PulsoColaboradorDetail({ colaboradorId, onBack }: PulsoColaborad
       if (!acc[key]) {
         acc[key] = {
           campaign_id: item.campaign_id,
+          response_id: item.response_id || null, // <--- Get response_id
           campaign_title: item.campaign_title,
           campaign_date: item.campaign_date,
           created_at: item.created_at,
@@ -276,6 +279,39 @@ export function PulsoColaboradorDetail({ colaboradorId, onBack }: PulsoColaborad
                         <p className="text-sm italic">"{campaign.comentario}"</p>
                       </div>
                     )}
+                    
+                    <div className="flex justify-end pt-2">
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button variant="outline" size="sm" className="gap-2">
+                            <MessageCircle className="h-4 w-4" />
+                            Criar Acompanhamento
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
+                          <DialogHeader>
+                            <DialogTitle>Novo Acompanhamento</DialogTitle>
+                          </DialogHeader>
+                          <AcompanhamentoForm
+                            colaboradorId={colaboradorId}
+                            respostaId={campaign.response_id || null} // Correct reference to pulse_surveys(id) instead of campaign_id
+                            contextoPulso={{
+                              emoji: campaignEmoji?.emoji || "📋",
+                              nome: colaborador.full_name
+                            }}
+                            onSuccess={() => {
+                              // We simulate going back and clicking the tab, or we can dispatch an event
+                              const tabTrigger = document.querySelector('[value="acompanhamentos"]') as HTMLElement;
+                              if (tabTrigger) tabTrigger.click();
+                              onBack();
+                            }}
+                            onCancel={() => {
+                              document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+                            }}
+                          />
+                        </DialogContent>
+                      </Dialog>
+                    </div>
                   </div>
                 );
               })}

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Smile, Calendar, Users, BookOpen, BarChart3 } from "lucide-react";
+import { Smile, Calendar, Users, BookOpen, BarChart3, ClipboardList } from "lucide-react";
 import { 
   PulsoCampanhasBuilder, 
   ColaboradorPulsoViewV2,
@@ -10,6 +10,7 @@ import {
 } from "@/components/cuidar-mais/pulso";
 import { MateriaisApoioAdmin } from "@/components/cuidar-mais/biblioteca/MateriaisApoioAdmin";
 import { ResultadosAgregadosTab } from "@/components/cuidar-mais/agregados/ResultadosAgregadosTab";
+import { AcompanhamentosList } from "@/components/cuidar-mais/acompanhamentos/AcompanhamentosList";
 import { useAuth } from "@/hooks/useAuth";
 
 export default function CuidarMais() {
@@ -30,7 +31,7 @@ export default function CuidarMais() {
       <div className="space-y-6">
         <Tabs defaultValue={defaultTab} className="space-y-6">
           {isAdmin && (
-            <TabsList className="grid w-full max-w-3xl grid-cols-5">
+            <TabsList className="grid w-full max-w-4xl grid-cols-6">
               <TabsTrigger value="pulso" className="flex items-center gap-2">
                 <Smile className="h-4 w-4" />
                 <span className="hidden sm:inline">Pulso</span>
@@ -42,6 +43,10 @@ export default function CuidarMais() {
               <TabsTrigger value="resultados" className="flex items-center gap-2">
                 <Users className="h-4 w-4" />
                 <span className="hidden sm:inline">Resultados</span>
+              </TabsTrigger>
+              <TabsTrigger value="acompanhamentos" className="flex items-center gap-2">
+                <ClipboardList className="h-4 w-4" />
+                <span className="hidden sm:inline">Acompanhamentos</span>
               </TabsTrigger>
               <TabsTrigger value="agregados" className="flex items-center gap-2">
                 <BarChart3 className="h-4 w-4" />
@@ -76,6 +81,12 @@ export default function CuidarMais() {
                   onSelectColaborador={(id) => setSelectedColaboradorId(id)}
                 />
               )}
+            </TabsContent>
+          )}
+
+          {isAdmin && (
+            <TabsContent value="acompanhamentos">
+              <AcompanhamentosList />
             </TabsContent>
           )}
 
