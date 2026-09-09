@@ -219,7 +219,8 @@ Deno.serve(async (req) => {
       email,
       password: randomPassword,
       email_confirm: true,
-      user_metadata: { full_name: data.admin_nome },
+      user_metadata: { full_name: data.admin_nome, company_id: companyId },
+      app_metadata: { company_id: companyId, role: "admin_empresa" },
     });
     if (userError || !created?.user) {
       const msg = (userError?.message || "").toLowerCase();
@@ -229,6 +230,12 @@ Deno.serve(async (req) => {
       throw new Error(userError?.message ?? "Falha ao criar usuário");
     }
     userId = created.user.id;
+
+    // Garante que o claim company_id e role estejam fixados no app_metadata do auth.users
+    await admin.auth.admin.updateUserById(userId, {
+      app_metadata: { company_id: companyId, role: "admin_empresa" },
+      user_metadata: { company_id: companyId, full_name: data.admin_nome },
+    });
 
     // 3. Perfil
     const { error: profileError } = await admin.from("profiles").upsert(

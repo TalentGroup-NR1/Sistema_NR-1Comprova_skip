@@ -100,13 +100,42 @@ function useProvideAuth(): AuthContextValue {
           await supabase.auth.signOut();
           return;
         }
-        
-        setCompanyId(profileData.company_id);
-        setMustChangePassword(profileData.must_change_password ?? false);
-        setIsBlocked(false);
-        setBlockReason(null);
+
+        setMustChangePassword(!!profileData.must_change_password);
       } else {
         console.warn('[useAuth] No profile found for user:', userId);
+      }
+        
+      let resolvedCompanyId = profileData?.company_id ?? null;
+
+      // Se profileData não tiver company_id, busca via RPC get_my_company_id (que avalia claims e vínculo por e-mail)
+      if (!resolvedCompanyId) {
+        try {
+          const { data: rpcCid } = await supabase.rpc('get_my_company_id' as never);
+          if (rpcCid) {
+            resolvedCompanyId = rpcCid as string;
+            await supabase.from('profiles').update({ company_id: resolvedCompanyId }).eq('user_id', userId);
+          }
+        } catch (e) {
+          console.warn('[useAuth] Falha ao resolver get_my_company_id fallback:', e);
+        }
+      }
+
+      if (resolvedCompanyId) {
+        setCompanyId(resolvedCompanyId);
+
+        // Se o claim estiver ausente no JWT em uso, sincroniza e renova a sessão
+        try {
+          const { data: authUser } = await supabase.auth.getUser();
+          const hasClaim = authUser.user?.app_metadata?.company_id || authUser.user?.user_metadata?.company_id;
+          if (!hasClaim) {
+            await supabase.auth.updateUser({ data: { company_id: resolvedCompanyId } });
+            await supabase.rpc('sincronizar_claim_company_id' as never);
+            await supabase.auth.refreshSession();
+          }
+        } catch (e) {
+          console.warn('[useAuth] Aviso ao sincronizar claim de sessão:', e);
+        }
       }
       
       lastFetchedUserIdRef.current = userId;

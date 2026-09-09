@@ -18,7 +18,65 @@ export function useCompanies() {
   });
 }
 
+export function useCreateCompany() {
+  const queryClient = useQueryClient();
 
+  return useMutation({
+    mutationFn: async (company: CompanyFormData) => {
+      const { data, error } = await supabase
+        .from("companies")
+        .insert({
+          name: company.name,
+          cnpj: company.cnpj,
+          contact_person: company.contact_person || null,
+          email: company.email || null,
+          status: company.status,
+          cep: company.cep || null,
+          logradouro: company.logradouro || null,
+          numero: company.numero || null,
+          complemento: company.complemento || null,
+          bairro: company.bairro || null,
+          cidade: company.cidade || null,
+          estado: company.estado ? company.estado.toUpperCase() : null,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Grava claim no usuário atual e sincroniza sessão
+      try {
+        await supabase.auth.updateUser({
+          data: { company_id: data.id },
+        });
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          await supabase
+            .from("profiles")
+            .update({ company_id: data.id })
+            .eq("user_id", user.id);
+        }
+        await supabase.rpc("sincronizar_claim_company_id" as never);
+        await supabase.auth.refreshSession();
+      } catch (e) {
+        console.warn("Aviso ao atualizar claim company_id:", e);
+      }
+
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["companies"] });
+      toast.success("Empresa cadastrada com sucesso!");
+    },
+    onError: (error: Error) => {
+      if (error.message.includes("duplicate key") || error.message.includes("unique")) {
+        toast.error("CNPJ já cadastrado no sistema.");
+      } else {
+        toast.error("Erro ao cadastrar empresa: " + error.message);
+      }
+    },
+  });
+}
 
 export function useUpdateCompany() {
   const queryClient = useQueryClient();
