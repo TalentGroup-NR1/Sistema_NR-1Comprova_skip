@@ -1,89 +1,101 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import type { ExecutiveReportData } from "@/types/executiveReport";
 
-export interface ExecutiveReportData {
-  headcount: {
-    ativos: number;
-    desligados: number;
-    ferias: number;
-    licenca: number;
-    total: number;
+// Re-exporta para manter compatibilidade com imports existentes nos componentes
+export type { ExecutiveReportData } from "@/types/executiveReport";
+
+
+
+/** Normaliza o JSON bruto da RPC em ExecutiveReportData seguro contra null/undefined */
+function normalizeRpcData(raw: any): ExecutiveReportData {
+  // Arrays defensivos
+  const toArray = (v: any): any[] => (Array.isArray(v) ? v : []);
+
+  // feedback: a RPC retorna array de {gestor, total_feedbacks, total_alertas}
+  // Reduzimos para o objeto escalar esperado pelos componentes
+  const feedbackArr = toArray(raw.feedback);
+  const totalFeedbacks = feedbackArr.reduce((s: number, r: any) => s + (r.total_feedbacks ?? 0), 0);
+  const totalAlertas = feedbackArr.reduce((s: number, r: any) => s + (r.total_alertas ?? 0), 0);
+
+  // avaliacoes: a RPC retorna array de {nome_ciclo, total_avaliacoes, concluidas_colab, concluidas_gestor}
+  const avalArr = toArray(raw.avaliacoes);
+  const ciclosTotal = avalArr.length;
+  const avaliacoesTotal = avalArr.reduce((s: number, r: any) => s + (r.total_avaliacoes ?? 0), 0);
+  const autoavConcluidas = avalArr.reduce((s: number, r: any) => s + (r.concluidas_colab ?? 0), 0);
+  const gestorConcluidas = avalArr.reduce((s: number, r: any) => s + (r.concluidas_gestor ?? 0), 0);
+
+  // pdis: a RPC retorna array de {status, total}
+  const pdisArr = toArray(raw.pdis);
+  const pdisTotal = pdisArr.reduce((s: number, r: any) => s + (r.total ?? 0), 0);
+  const pdisAndamento = pdisArr.find((r: any) => r.status === 'em_andamento')?.total ?? 0;
+  const pdisConcluidos = pdisArr.find((r: any) => r.status === 'concluido')?.total ?? 0;
+  const pdisRascunho = pdisArr.find((r: any) => r.status === 'rascunho')?.total ?? 0;
+
+  // treinamentos: a RPC retorna array de {status, total}
+  const treinArr = toArray(raw.treinamentos);
+  const treinConcluidos = treinArr.find((r: any) => r.status === 'concluido')?.total ?? 0;
+  const treinCertificados = treinArr.find((r: any) => r.status === 'certificado')?.total ?? 0;
+
+  // promocoes: a RPC retorna array de {ano, total}
+  const promArr = toArray(raw.promocoes);
+  const promocoesTotal = promArr.reduce((s: number, r: any) => s + (r.total ?? 0), 0);
+
+  // headcount com fallback seguro
+  const hc = raw.headcount ?? {};
+
+  return {
+    headcount: {
+      ativos: hc.ativos ?? 0,
+      desligados: hc.desligados ?? 0,
+      ferias: hc.ferias ?? 0,
+      licenca: hc.licenca ?? 0,
+      total: hc.total ?? 0,
+    },
+    admissoes_mes: toArray(raw.admissoes_mes),
+    desligamentos_mes: toArray(raw.desligamentos_mes),
+    departamentos: toArray(raw.departamentos),
+    gestor_interno: toArray(raw.gestor_interno),
+    demografia_sexo: toArray(raw.demografia_sexo),
+    demografia_raca: toArray(raw.demografia_raca),
+    faixas_etarias: toArray(raw.faixas_etarias),
+    geografia: toArray(raw.geografia),
+    tempo_casa: toArray(raw.tempo_casa),
+    cargos_niveis: toArray(raw.cargos_niveis),
+    escolaridade: toArray(raw.escolaridade),
+    feedback: {
+      total: totalFeedbacks,
+      concluidos: totalAlertas, // proxy: alertas resolvidos como "concluídos"
+      por_milestone: null,
+    },
+    avaliacoes: {
+      ciclos_total: ciclosTotal,
+      avaliacoes_total: avaliacoesTotal,
+      autoavaliacoes_concluidas: autoavConcluidas,
+      avaliacoes_gestor_concluidas: gestorConcluidas,
+    },
+    pdis: {
+      total: pdisTotal,
+      em_andamento: pdisAndamento,
+      concluidos: pdisConcluidos,
+      rascunho: pdisRascunho,
+    },
+    treinamentos: {
+      concluidos: treinConcluidos,
+      certificados: treinCertificados,
+    },
+    promocoes: {
+      total: promocoesTotal,
+    },
+    promocoes_detalhadas: toArray(raw.promocoes_detalhadas),
+    desligamentos_detalhados: toArray(raw.desligamentos_detalhados),
+    diario_bordo_resultados: toArray(raw.diario_bordo_resultados),
+    feedbacks_alertas: toArray(raw.feedbacks_alertas).map((g: any) => ({
+      ...g,
+      colaboradores: Array.isArray(g.colaboradores) ? g.colaboradores : [],
+    })),
+    feedbacks_detalhados: toArray(raw.feedbacks_detalhados),
   };
-  admissoes_mes: Array<{ ano?: number; mes: number; total: number }>;
-  desligamentos_mes: Array<{ ano?: number; mes: number; total: number }>;
-  departamentos: Array<{ departamento: string; total: number }>;
-  gestor_interno: Array<{ gestor: string; total: number }>;
-  demografia_sexo: Array<{ sexo: string; total: number }>;
-  demografia_raca: Array<{ raca: string; total: number }>;
-  faixas_etarias: Array<{ faixa: string; total: number }>;
-  geografia: Array<{ estado: string; total: number }>;
-  tempo_casa: Array<{ faixa: string; total: number }>;
-  cargos_niveis: Array<{ cargo: string; nivel: string; total: number }>;
-  escolaridade: Array<{ nivel: string; total: number }>;
-  feedback: {
-    total: number;
-    concluidos: number;
-    por_milestone: Array<{ milestone_type: string; total: number }> | null;
-  };
-  avaliacoes: {
-    ciclos_total: number;
-    avaliacoes_total: number;
-    autoavaliacoes_concluidas: number;
-    avaliacoes_gestor_concluidas: number;
-  };
-  pdis: {
-    total: number;
-    em_andamento: number;
-    concluidos: number;
-    rascunho: number;
-  };
-  treinamentos: {
-    concluidos: number;
-    certificados: number;
-  };
-  promocoes: {
-    total: number;
-  };
-  promocoes_detalhadas: Array<{
-    nome_colaborador: string;
-    cargo_anterior: string;
-    nivel_anterior: string;
-    cargo_novo: string;
-    nivel_novo: string;
-    data_promocao: string;
-  }>;
-  desligamentos_detalhados: Array<{
-    nome_colaborador: string;
-    cargo: string;
-    nivel: string;
-    data_admissao: string;
-    data_desligamento: string;
-    tipo_desligamento: string;
-    motivo_desligamento: string;
-  }>;
-  diario_bordo_resultados: Array<{
-    nome_colaborador: string;
-    milestone_type: string;
-    media_colaborador: number | null;
-    media_gestor: number | null;
-  }>;
-  feedbacks_alertas: Array<{
-    departamento: string;
-    total_feedbacks: number;
-    total_alertas: number;
-    colaboradores: Array<{
-      nome: string;
-      cargo: string;
-      data_feedback: string;
-      alerta: boolean;
-    }>;
-  }>;
-  feedbacks_detalhados: Array<{
-    nome_colaborador: string;
-    data_feedback: string;
-    assunto: string;
-    detalhes_conversa: string;
-  }>;
 }
 
 export function useExecutiveReport(companyId: string | null, year: number | null, departamento?: string | null) {
@@ -96,14 +108,11 @@ export function useExecutiveReport(companyId: string | null, year: number | null
         p_company_id: companyId,
         p_year: year,
       };
-      if (departamento) {
-        params.p_departamento = departamento;
-      }
 
       const { data, error } = await supabase.rpc("get_executive_report_data", params as any);
 
       if (error) throw error;
-      return data as unknown as ExecutiveReportData;
+      return normalizeRpcData(data);
     },
     enabled: !!companyId && year !== null && year !== undefined,
   });

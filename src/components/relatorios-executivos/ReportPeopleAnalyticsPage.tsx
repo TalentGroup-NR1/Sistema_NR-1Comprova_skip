@@ -95,11 +95,11 @@ export function ReportPeopleAnalyticsPage({ data, year }: Props) {
           <h3 className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color: TALENT_NAVY }}>
             Escolaridade
           </h3>
-          <ResponsiveContainer width="100%" height={Math.max(150, escolaridade.length * 28)}>
-            <BarChart data={escolaridade} layout="vertical" margin={{ right: 30 }}>
+          <ResponsiveContainer width="100%" height={Math.max(150, (escolaridade ?? []).length * 28)}>
+            <BarChart data={escolaridade ?? []} layout="vertical" margin={{ right: 30 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
               <XAxis type="number" tick={{ fontSize: 9 }} allowDecimals={false} />
-              <YAxis dataKey="nivel" type="category" width={120} tick={{ fontSize: 8 }} />
+              <YAxis dataKey="formacao" type="category" width={120} tick={{ fontSize: 8 }} />
               <Tooltip />
               <Bar dataKey="total" fill={TALENT_GOLD} radius={[0, 4, 4, 0]}>
                 <LabelList dataKey="total" position="right" style={{ fontSize: 10, fontWeight: 700, fill: TALENT_NAVY }} />

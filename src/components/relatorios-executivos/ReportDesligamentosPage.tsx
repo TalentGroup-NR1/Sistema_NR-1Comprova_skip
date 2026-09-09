@@ -7,14 +7,16 @@ const TALENT_GOLD = "#C5A572";
 const TALENT_GRAY = "#6B7280";
 const TALENT_BORDER = "#E5E7EB";
 
-function parseLocalDate(dateStr: string) {
+function parseLocalDate(dateStr: string | null | undefined) {
+  if (!dateStr) return null;
   const [y, m, d] = dateStr.split("-").map(Number);
   return new Date(y, m - 1, d);
 }
 
-function calcularPermanencia(admissao: string, desligamento: string): string {
+function calcularPermanencia(admissao: string | null | undefined, desligamento: string | null | undefined): string {
   const inicio = parseLocalDate(admissao);
   const fim = parseLocalDate(desligamento);
+  if (!inicio || !fim) return "—";
   const anos = differenceInYears(fim, inicio);
   const meses = differenceInMonths(fim, addYears(inicio, anos));
   const dias = differenceInDays(fim, addMonths(addYears(inicio, anos), meses));
@@ -25,8 +27,9 @@ function calcularPermanencia(admissao: string, desligamento: string): string {
   return partes.join(" ");
 }
 
-function formatDate(dateStr: string) {
+function formatDate(dateStr: string | null | undefined) {
   const d = parseLocalDate(dateStr);
+  if (!d) return "—";
   return d.toLocaleDateString("pt-BR");
 }
 
@@ -89,14 +92,14 @@ export function ReportDesligamentosPage({ data, year }: Props) {
               {desligamentos.map((d, i) => (
                 <tr key={i} style={{ borderTop: `1px solid ${TALENT_BORDER}` }}>
                   <td className="px-4 py-2.5 font-medium" style={{ color: TALENT_NAVY }}>{d.nome_colaborador}</td>
-                  <td className="px-4 py-2.5" style={{ color: TALENT_GRAY }}>{formatDate(d.data_admissao)}</td>
+                  <td className="px-4 py-2.5" style={{ color: TALENT_GRAY }}>—</td>
                   <td className="px-4 py-2.5" style={{ color: TALENT_GRAY }}>{formatDate(d.data_desligamento)}</td>
                   <td className="px-4 py-2.5">
                     <span className="inline-block px-2 py-0.5 rounded-full text-xs font-semibold" style={{ background: "#FEF3C7", color: "#92400E" }}>
-                      {calcularPermanencia(d.data_admissao, d.data_desligamento)}
+                      —
                     </span>
                   </td>
-                  <td className="px-4 py-2.5" style={{ color: TALENT_GRAY }}>{d.tipo_desligamento}</td>
+                  <td className="px-4 py-2.5" style={{ color: TALENT_GRAY }}>{d.tipo_desligamento ?? "—"}</td>
                 </tr>
               ))}
             </tbody>
@@ -131,7 +134,7 @@ export function ReportDesligamentosPage({ data, year }: Props) {
                 <span className="text-xs" style={{ color: TALENT_GRAY }}>— {formatDate(d.data_desligamento)}</span>
               </div>
               <p className="text-sm" style={{ color: TALENT_GRAY }}>
-                {d.motivo_desligamento || "Motivo não informado"}
+                {d.motivo_principal || d.iniciativa || "Motivo não informado"}
               </p>
             </div>
           ))}
