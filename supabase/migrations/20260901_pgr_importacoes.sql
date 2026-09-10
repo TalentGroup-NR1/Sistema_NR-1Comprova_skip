@@ -30,24 +30,26 @@ CREATE TABLE IF NOT EXISTS public.pgr_importacoes (
   updated_at      timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_pgr_importacoes_company
+CREATE INDEX IF NOT EXISTS idx_pgr_importacoes_company
   ON public.pgr_importacoes(company_id);
-CREATE INDEX idx_pgr_importacoes_status
+CREATE INDEX IF NOT EXISTS idx_pgr_importacoes_status
   ON public.pgr_importacoes(company_id, status);
 
 -- 2. GRANTS
-GRANT SELECT, INSERT, UPDATE ON public.pgr_importacoes TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.pgr_importacoes TO authenticated;
 GRANT ALL ON public.pgr_importacoes TO service_role;
 
 -- 3. RLS
 ALTER TABLE public.pgr_importacoes ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Admin master acessa todas as importacoes pgr" ON public.pgr_importacoes;
 CREATE POLICY "Admin master acessa todas as importacoes pgr"
   ON public.pgr_importacoes FOR ALL
   TO authenticated
   USING (has_role(auth.uid(), 'admin_master'::app_role))
   WITH CHECK (has_role(auth.uid(), 'admin_master'::app_role));
 
+DROP POLICY IF EXISTS "Admin e RH gerenciam importacoes da propria empresa" ON public.pgr_importacoes;
 CREATE POLICY "Admin e RH gerenciam importacoes da propria empresa"
   ON public.pgr_importacoes FOR ALL
   TO authenticated
@@ -61,6 +63,7 @@ CREATE POLICY "Admin e RH gerenciam importacoes da propria empresa"
   );
 
 -- 4. TRIGGER updated_at
+DROP TRIGGER IF EXISTS trg_pgr_importacoes_updated_at ON public.pgr_importacoes;
 CREATE TRIGGER trg_pgr_importacoes_updated_at
   BEFORE UPDATE ON public.pgr_importacoes
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();

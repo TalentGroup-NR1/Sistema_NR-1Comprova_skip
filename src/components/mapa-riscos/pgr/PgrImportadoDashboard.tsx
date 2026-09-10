@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { 
   ArrowLeft, FileText, Shield, KanbanSquare, CheckCircle, Loader2, 
-  Trash2, Plus, Clock, Edit2, Save, X
+  Trash2, Plus, Clock, Edit2, Save, X, PieChart
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -18,6 +18,8 @@ import { supabase } from "@/integrations/supabase/client";
 
 import { usePgrImportacoes, useUpdatePgrActions, type AcaoExtraida, type RiscoExtraido } from "@/hooks/usePgrImportacao";
 import { classificacaoClasse } from "@/components/mapa-riscos/pgr/pgrRiscoUtils";
+import { PlanoAcaoKanban } from "./PlanoAcaoKanban";
+import { PgrDashboardTab } from "./PgrDashboardTab";
 
 const CATEGORIAS: { value: string; label: string }[] = [
   { value: "fisico", label: "Físico" },
@@ -206,21 +208,25 @@ export function PgrImportadoDashboard({ pgrId, onBack }: { pgrId: string; onBack
         </div>
       </div>
 
-      <Tabs defaultValue="riscos" className="space-y-6">
-        <TabsList className="grid w-full max-w-2xl grid-cols-4">
+      <Tabs defaultValue="dashboard" className="space-y-6">
+        <TabsList className="grid w-full max-w-3xl grid-cols-4">
+          <TabsTrigger value="dashboard" className="flex items-center gap-2">
+            <PieChart className="h-4 w-4" /> Dashboard
+          </TabsTrigger>
           <TabsTrigger value="riscos" className="flex items-center gap-2">
             <Shield className="h-4 w-4" /> Riscos
           </TabsTrigger>
           <TabsTrigger value="plano" className="flex items-center gap-2">
             <KanbanSquare className="h-4 w-4" /> Plano de Ação
           </TabsTrigger>
-          <TabsTrigger value="concluidas" className="flex items-center gap-2">
-            <CheckCircle className="h-4 w-4" /> Concluídas
-          </TabsTrigger>
           <TabsTrigger value="documento" className="flex items-center gap-2">
             <FileText className="h-4 w-4" /> Documento Original
           </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="dashboard" className="space-y-4">
+          <PgrDashboardTab pgrImportacaoId={pgrId} />
+        </TabsContent>
 
         <TabsContent value="riscos" className="space-y-4">
           {riscos.length === 0 ? (
@@ -269,88 +275,7 @@ export function PgrImportadoDashboard({ pgrId, onBack }: { pgrId: string; onBack
         </TabsContent>
 
         <TabsContent value="plano" className="space-y-4">
-          <div className="flex justify-between items-center">
-            <h3 className="text-sm font-medium text-foreground">Ações Pendentes ({acoesPendentes.length})</h3>
-            <Button size="sm" onClick={() => startEditing(null)} disabled={editingAcaoId === "new"}>
-              <Plus className="h-4 w-4 mr-1" /> Nova Ação
-            </Button>
-          </div>
-          
-          {editingAcaoId === "new" && renderAcaoForm(draftAcao!)}
-
-          {acoesPendentes.length === 0 && editingAcaoId !== "new" && (
-            <div className="text-center py-8 border border-dashed rounded-lg">
-              <p className="text-muted-foreground text-sm">Nenhuma ação pendente.</p>
-            </div>
-          )}
-
-          <div className="space-y-3">
-            {acoesPendentes.map((a) => (
-              <div key={a.id}>
-                {editingAcaoId === a.id ? renderAcaoForm(draftAcao!) : (
-                  <Card className="border-border hover:border-orange-200 transition-colors">
-                    <CardContent className="pt-4 pb-4 px-4">
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex-1 min-w-0 space-y-2">
-                          <div className="flex items-center gap-2">
-                            <Badge className={`${PRIORIDADE_COR[a.prioridade]} text-xs capitalize`}>{a.prioridade}</Badge>
-                            {a.prazo_sugerido && (
-                              <span className="text-xs text-muted-foreground flex items-center">
-                                <Clock className="h-3 w-3 mr-1" /> {a.prazo_sugerido}
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-sm text-foreground font-medium">{a.medida}</p>
-                          {a.responsavel_sugerido && (
-                            <p className="text-xs text-muted-foreground">Responsável: {a.responsavel_sugerido}</p>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-1 shrink-0">
-                          <Button variant="ghost" size="icon" onClick={() => toggleStatus(a.id!, "concluida")} title="Marcar como concluída" className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50">
-                            <CheckCircle className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" onClick={() => startEditing(a)} title="Editar">
-                            <Edit2 className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" onClick={() => deleteAction(a.id!)} className="text-destructive hover:bg-red-50">
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-              </div>
-            ))}
-          </div>
-        </TabsContent>
-
-        <TabsContent value="concluidas" className="space-y-4">
-          <h3 className="text-sm font-medium text-foreground">Ações Concluídas ({acoesConcluidas.length})</h3>
-          
-          {acoesConcluidas.length === 0 ? (
-            <div className="text-center py-8 border border-dashed rounded-lg">
-              <p className="text-muted-foreground text-sm">Nenhuma ação concluída.</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {acoesConcluidas.map((a) => (
-                <Card key={a.id} className="border-border bg-muted/30">
-                  <CardContent className="pt-4 pb-4 px-4 opacity-80">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1 min-w-0 space-y-1">
-                        <p className="text-sm text-foreground line-through decoration-muted-foreground">{a.medida}</p>
-                        <Badge variant="outline" className="text-[10px] uppercase">Concluída</Badge>
-                      </div>
-                      <Button variant="ghost" size="sm" onClick={() => toggleStatus(a.id!, "pendente")} className="shrink-0 text-xs text-muted-foreground">
-                        Reabrir
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
+          <PlanoAcaoKanban pgrImportacaoId={pgrId} />
         </TabsContent>
 
         <TabsContent value="documento" className="h-[700px] border border-border rounded-lg overflow-hidden bg-muted">

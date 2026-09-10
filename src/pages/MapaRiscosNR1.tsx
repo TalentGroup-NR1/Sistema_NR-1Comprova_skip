@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
+import { ErrorBoundary } from "@/components/layout/ErrorBoundary";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Shield, LayoutDashboard, Flame, FileText, KanbanSquare, Brain, Library, Grid3X3, Upload, PenTool, CheckSquare } from "lucide-react";
 import { InstrumentosTab } from "@/components/mapa-riscos/psico/InstrumentosTab";
@@ -18,15 +19,17 @@ import { useAuth } from "@/hooks/useAuth";
 export default function MapaRiscosNR1() {
   const { role } = useAuth();
 
+  const isAdminMaster = role === "admin_master";
   const isAdmin = role === "admin_master" || role === "admin_empresa" || role === "analista_rh";
   const isColaborador = role === "colaborador" || role === "gestor_departamento";
 
   const defaultTab = isAdmin ? "dashboard" : "psico";
-  const [modoPgr, setModoPgr] = useState<"zero" | "existente">("zero");
+  const [modoPgr, setModoPgr] = useState<"zero" | "existente">(isAdminMaster ? "zero" : "existente");
 
   return (
     <MainLayout>
-      <div className="space-y-6">
+      <ErrorBoundary fallbackMessage="Ocorreu um erro ao carregar o Mapa de Riscos. Se o problema persistir, atualize a página.">
+        <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
             <Shield className="h-7 w-7 text-orange-500" />
@@ -40,13 +43,15 @@ export default function MapaRiscosNR1() {
         {isAdmin && (
           <div className="flex border-b border-border pb-1">
             <div className="flex gap-6">
-              <button
-                onClick={() => setModoPgr("zero")}
-                className={`pb-2 px-1 text-sm font-medium border-b-2 transition-colors flex items-center gap-2
-                  ${modoPgr === "zero" ? "border-orange-500 text-orange-600" : "border-transparent text-muted-foreground hover:text-foreground"}`}
-              >
-                <PenTool className="h-4 w-4" /> Construção do Zero
-              </button>
+              {isAdminMaster && (
+                <button
+                  onClick={() => setModoPgr("zero")}
+                  className={`pb-2 px-1 text-sm font-medium border-b-2 transition-colors flex items-center gap-2
+                    ${modoPgr === "zero" ? "border-orange-500 text-orange-600" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+                >
+                  <PenTool className="h-4 w-4" /> Construção do Zero
+                </button>
+              )}
               <button
                 onClick={() => setModoPgr("existente")}
                 className={`pb-2 px-1 text-sm font-medium border-b-2 transition-colors flex items-center gap-2
@@ -70,7 +75,7 @@ export default function MapaRiscosNR1() {
           </Tabs>
         )}
 
-        {isAdmin && modoPgr === "zero" && (
+        {isAdminMaster && modoPgr === "zero" && (
           <Tabs defaultValue={defaultTab} className="space-y-6">
             <TabsList className="grid w-full max-w-[1200px] grid-cols-9">
               <TabsTrigger value="dashboard" className="flex items-center gap-2">
@@ -129,6 +134,7 @@ export default function MapaRiscosNR1() {
           </div>
         )}
       </div>
+      </ErrorBoundary>
     </MainLayout>
   );
 }

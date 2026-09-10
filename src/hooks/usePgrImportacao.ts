@@ -27,9 +27,12 @@ export interface AcaoExtraida {
   medida: string;
   prazo_sugerido: string | null;
   responsavel_sugerido: string | null;
+  responsavel_id?: string | null;
   prioridade: "alta" | "media" | "baixa";
   risco_referenciado: string | null;
-  status?: "pendente" | "concluida";
+  status?: "pendente" | "em_andamento" | "concluida" | "validada";
+  evidencia_url?: string | null;
+  historico?: any[];
 }
 
 export interface ExtracaoRaw {
@@ -56,6 +59,26 @@ export interface PgrImportacao {
   plano_acao: AcaoExtraida[] | null;
   created_at: string;
   updated_at: string;
+}
+
+// ──────────────────────────────────────────────────────────────
+// Helpers
+// ──────────────────────────────────────────────────────────────
+export function mapPostgresError(error: any): string {
+  if (!error) return "Erro desconhecido.";
+  const code = error.code || error.status;
+  
+  if (code === "42501" || code === 403) {
+    return "Acesso negado: Você não tem permissão para realizar esta ação.";
+  }
+  if (code === "23503") {
+    return "Erro de referência: O registro associado não existe mais.";
+  }
+  if (code === "23505") {
+    return "Conflito: Já existe um registro com estes mesmos dados.";
+  }
+  
+  return error.message || "Ocorreu um erro inesperado ao processar a requisição.";
 }
 
 // ──────────────────────────────────────────────────────────────
@@ -125,11 +148,14 @@ export function useIniciarImportacaoPgr() {
       }
 
       // Upload para o Storage
-      const storagePath = `pgr-importacoes/${companyId}/${Date.now()}_${file.name}`;
+      const storagePath = `${companyId}/pgr-importacoes/${Date.now()}_${file.name}`;
       const { error: uploadError } = await supabase.storage
         .from("documentos_analise")
         .upload(storagePath, file, { upsert: false });
-      if (uploadError) throw new Error(`Falha no upload: ${uploadError.message}`);
+      if (uploadError) {
+        console.error("[usePgrImportacao] Upload error:", uploadError);
+        throw new Error(`Falha no upload: ${mapPostgresError(uploadError)}`);
+      }
 
       // Criar registro de importação
       const { data: importacao, error: insertError } = await (supabase as any)
@@ -144,7 +170,10 @@ export function useIniciarImportacaoPgr() {
         })
         .select()
         .single();
-      if (insertError) throw new Error(`Falha ao registrar: ${insertError.message}`);
+      if (insertError) {
+        console.error("[usePgrImportacao] Insert error:", insertError);
+        throw new Error(`Falha ao registrar: ${mapPostgresError(insertError)}`);
+      }
 
       // Invocar Edge Function de análise (fire-and-forget em background,
       // o polling abaixo aguarda o resultado sem bloquear o preflight).
@@ -180,6 +209,7 @@ export function useIniciarImportacaoPgr() {
 // Confirmar extração: salva dados revisados e ativa plano de ação
 // ──────────────────────────────────────────────────────────────
 export function useConfirmarImportacaoPgr() {
+  const companyId = useEffectiveCompanyId();
   const { user } = useAuth();
   const qc = useQueryClient();
 
@@ -196,6 +226,7 @@ export function useConfirmarImportacaoPgr() {
       planoAcao: AcaoExtraida[];
     }) => {
       if (!user?.id) throw new Error("Não autenticado.");
+      if (!companyId) throw new Error("Selecione uma empresa.");
 
       // Salva os dados confirmados na importação
       const actionsWithDefaults = planoAcao.map(a => ({
@@ -213,7 +244,43 @@ export function useConfirmarImportacaoPgr() {
           plano_acao: actionsWithDefaults,
         })
         .eq("id", importacaoId);
-      if (updateErr) throw updateErr;
+      if (updateErr) {
+        console.error("[usePgrImportacao] Confirm error:", updateErr);
+        throw new Error(`Erro ao confirmar: ${mapPostgresError(updateErr)}`);
+      }
+
+      // ── Persiste as Ações na tabela viva `pgr_plano_acao` ──
+      if (actionsWithDefaults.length > 0) {
+        const rowsToInsert = actionsWithDefaults.map((a) => {
+          let parsedDate = null;
+          if (a.prazo_sugerido && !isNaN(Date.parse(a.prazo_sugerido))) {
+             parsedDate = new Date(a.prazo_sugerido).toISOString().split('T')[0];
+          }
+
+          return {
+            id: a.id,
+            company_id: companyId,
+            pgr_importacao_id: importacaoId,
+            acao: a.medida,
+            responsavel_id: a.responsavel_id || null,
+            cargo_responsavel: a.responsavel_sugerido || null,
+            prazo: parsedDate,
+            prioridade: a.prioridade,
+            status: a.status,
+            evidencia_url: a.evidencia_url || null,
+            historico: a.historico || []
+          };
+        });
+
+        const { error: insertActionsErr } = await (supabase as any)
+          .from("pgr_plano_acao")
+          .upsert(rowsToInsert);
+          
+        if (insertActionsErr) {
+          console.error("[usePgrImportacao] Error inserting actions:", insertActionsErr);
+          throw new Error(`Erro ao salvar plano de ação: ${mapPostgresError(insertActionsErr)}`);
+        }
+      }
 
       return { importacaoId, totalRiscos: riscos.length, totalAcoes: planoAcao.length };
     },
@@ -240,7 +307,10 @@ export function useExcluirImportacaoPgr() {
       });
 
       const actualError = fnErr || (data && data.error ? new Error(data.error) : null);
-      if (actualError) throw actualError;
+      if (actualError) {
+        console.error("[usePgrImportacao] Delete error:", actualError);
+        throw new Error(`Erro ao excluir: ${mapPostgresError(actualError)}`);
+      }
 
       return data;
     },
@@ -262,7 +332,10 @@ export function useUpdatePgrActions() {
         .from("pgr_importacoes")
         .update({ plano_acao: planoAcao })
         .eq("id", importacaoId);
-      if (updateErr) throw updateErr;
+      if (updateErr) {
+        console.error("[usePgrImportacao] Update actions error:", updateErr);
+        throw new Error(`Erro ao atualizar ações: ${mapPostgresError(updateErr)}`);
+      }
       return { importacaoId };
     },
     onSuccess: () => {

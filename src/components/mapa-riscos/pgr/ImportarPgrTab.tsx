@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { Upload, FileText, CheckCircle, AlertCircle, Loader2, ChevronDown, ChevronUp, Shield, Clock, User, AlertTriangle, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -391,7 +391,9 @@ function PainelRevisao({
           </Badge>
           {raw?.modo_extracao && (
             <Badge variant="secondary" className="text-xs">
-              {raw.modo_extracao === "fallback_local" ? "⚠️ Processamento local" : "✅ IA OpenAI"}
+              {raw.modo_extracao === "fallback_local" 
+                ? `⚠️ Falha IA: ${(raw as any).erro?.motivo || "Processamento local"}` 
+                : "✅ Extraído com IA"}
             </Badge>
           )}
         </div>

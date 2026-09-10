@@ -75,66 +75,149 @@ function extractTextFromPDFBytes(bytes: Uint8Array): string {
 }
 
 /**
- * Usa OpenAI GPT-4o Vision para OCR de PDFs escaneados/imagem.
+ * Extrai dados do PGR (PDF) usando Gemini 2.5 Flash Multimodal.
+ * O PDF é enviado inteiramente como base64, dispensando OCR local ou extração manual.
  */
-async function extractPdfWithOpenAI(bytes: Uint8Array, apiKey: string): Promise<string> {
+async function analisarPgrComGemini(bytes: Uint8Array, apiKey: string): Promise<Record<string, unknown>> {
   let binary = "";
   for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
   const base64 = btoa(binary);
 
-  const response = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: "gpt-4o",
-      messages: [{
-        role: "user",
-        content: [
-          { type: "text", text: "Extraia TODO o texto deste documento PDF. Retorne apenas o texto, sem formatação adicional." },
-          { type: "image_url", image_url: { url: `data:application/pdf;base64,${base64}` } },
-        ],
-      }],
-      max_tokens: 8192,
-    }),
-  });
-  if (!response.ok) throw new Error(`OpenAI OCR error: ${response.status}`);
-  const result = await response.json();
-  return result.choices?.[0]?.message?.content ?? "";
-}
-
-/**
- * Analisa o texto do PGR e extrai estrutura (riscos + plano de ação) via GPT-4o.
- */
-async function analisarPgrComOpenAI(texto: string, apiKey: string): Promise<Record<string, unknown>> {
   const systemPrompt = `Você é um especialista em Segurança do Trabalho e NR-1 (Programa de Gerenciamento de Riscos — PGR).
-Analise o texto do documento PGR fornecido e extraia as seguintes informações em JSON estruturado:
-1. dados_empresa: { nome, cnpj, responsavel_tecnico, cargo_responsavel, data_elaboracao, validade }
-2. riscos: array de { categoria (fisico|quimico|biologico|ergonomico|acidente|psicossocial), nome, descricao, probabilidade (1-5), severidade (1-5), local_exposicao, medidas_existentes }
-3. plano_acao: array de { medida, prazo_sugerido (texto), responsavel_sugerido, prioridade (alta|media|baixa), risco_referenciado }
+Extraia do documento PGR todos os riscos e todas as ações do plano de ação, sem omitir nenhum.`;
 
-Se alguma informação não for encontrada no documento, use null para o campo. Não invente informações.`;
+  const schema = {
+    type: "OBJECT",
+    properties: {
+      dados_empresa: {
+        type: "OBJECT",
+        properties: {
+          nome_empresa: { type: "STRING" },
+          cnpj: { type: "STRING" },
+          responsavel_tecnico: { type: "STRING" },
+          cargo_responsavel: { type: "STRING" },
+          data_elaboracao: { type: "STRING" },
+          validade: { type: "STRING" }
+        }
+      },
+      riscos: {
+        type: "ARRAY",
+        items: {
+          type: "OBJECT",
+          properties: {
+            agente: { type: "STRING" },
+            tipo: { type: "STRING", description: "fisico, quimico, ergonomico, psicossocial, biologico ou acidente" },
+            descricao: { type: "STRING" },
+            fonte: { type: "STRING" },
+            meios_de_controle: { type: "STRING" },
+            classificacao: { type: "STRING" }
+          }
+        }
+      },
+      plano_acao: {
+        type: "ARRAY",
+        items: {
+          type: "OBJECT",
+          properties: {
+            acao: { type: "STRING" },
+            prazo: { type: "STRING" },
+            responsavel: { type: "STRING" },
+            status: { type: "STRING" }
+          }
+        }
+      }
+    }
+  };
 
-  const response = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: "gpt-4o",
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: `TEXTO DO PGR:\n${texto.slice(0, 30000)}` },
-      ],
-      response_format: { type: "json_object" },
-      max_tokens: 4096,
-    }),
-  });
+  const ac = new AbortController();
+  const timeoutId = setTimeout(() => ac.abort(), 120000); // 120s timeout
 
-  if (!response.ok) {
-    const err = await response.text();
-    throw new Error(`OpenAI análise error ${response.status}: ${err}`);
+  let response;
+  let retryCount = 0;
+  const inicio = Date.now();
+  try {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      retryCount = attempt;
+      const elapsed = Date.now() - inicio;
+      if (elapsed > 120000) {
+        console.warn(`[Gemini API] Timeout atingido (${elapsed}ms). Abortando retry e indo para o fallback.`);
+        throw new Error("tempo esgotado");
+      }
+
+      try {
+        response = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent", {
+          method: "POST",
+          headers: {
+            "x-goog-api-key": apiKey.trim(),
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            contents: [{
+              parts: [
+                { text: systemPrompt },
+                { inlineData: { mimeType: "application/pdf", data: base64 } }
+              ]
+            }],
+            generationConfig: {
+              responseMimeType: "application/json",
+              responseSchema: schema,
+              temperature: 0.2,
+              maxOutputTokens: 65536
+            }
+          }),
+          signal: ac.signal
+        });
+
+        if (response.ok) break;
+
+        // Se der 429 ou 5xx tenta mais uma vez
+        if (response.status === 429 || response.status >= 500) {
+          if (attempt < 2) {
+            const delay = 400 * Math.pow(2, attempt);
+            console.log(`[Gemini API] Retry trigger on status ${response.status} (attempt ${attempt + 1}/2). Waiting ${delay}ms...`);
+            await new Promise(r => setTimeout(r, delay));
+            continue;
+          }
+        }
+
+        const err = await response.text();
+        console.error(JSON.stringify({ 
+          error: "Gemini API Failure", 
+          status: response.status, 
+          retry_count: attempt, 
+          elapsed_ms: Date.now() - inicio,
+          details: err 
+        }));
+        throw new Error(`http_${response.status}`);
+      } catch (err) {
+        if (attempt === 2 || (err instanceof Error && err.name === 'AbortError')) throw err;
+      }
+    }
+  } finally {
+    clearTimeout(timeoutId);
   }
+
+  if (!response) {
+    throw new Error("api_error");
+  }
+
   const result = await response.json();
-  const content = result.choices?.[0]?.message?.content ?? "{}";
-  return JSON.parse(content);
+  const candidate = result.candidates?.[0];
+  
+  if (candidate?.finishReason === 'MAX_TOKENS') {
+    throw new Error('truncated');
+  }
+
+  let content = candidate?.content?.parts?.[0]?.text ?? "{}";
+  // Parse resiliente: tira possíveis blocos markdown q o Gemini possa ter retornado mesmo com schema
+  content = content.replace(/^```json/gmi, "").replace(/```$/gmi, "").trim();
+
+  try {
+    return JSON.parse(content);
+  } catch (err) {
+    console.error("[Gemini API] JSON Parse falhou. Content:", content.substring(0, 200) + "...");
+    throw new Error("parse_failed");
+  }
 }
 
 /**
@@ -169,13 +252,19 @@ serve(async (req) => {
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
-  const openAiApiKey = Deno.env.get("OPENAI_API_KEY");
+  const geminiApiKey = Deno.env.get("GEMINI_API_KEY");
 
   const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
   const jsonHeaders = { ...corsHeaders, "Content-Type": "application/json" };
 
   try {
+    if (!geminiApiKey || geminiApiKey.trim() === "") {
+      const msg = "Segredo GEMINI_API_KEY não configurado no runtime";
+      console.error(`[pgr-importar][${requestId}] ${msg}`);
+      return new Response(JSON.stringify({ error: msg }), { status: 400, headers: jsonHeaders });
+    }
+
     // ── AuthN ────────────────────────────────────────────────
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
@@ -273,42 +362,75 @@ serve(async (req) => {
     const bytes = new Uint8Array(arrayBuffer);
     console.log(`[pgr-importar][${requestId}] File downloaded: ${bytes.length} bytes`);
 
-    // ── Text extraction ────────────────────────────────────────
-    let textoExtraido = extractTextFromPDFBytes(bytes);
     let modoExtracao = "nativo";
-    console.log(`[pgr-importar][${requestId}] Native extraction: ${textoExtraido.length} chars`);
-
-    if (textoExtraido.trim().length < 100 && openAiApiKey) {
-      console.log(`[pgr-importar][${requestId}] Insufficient text, falling back to OpenAI Vision OCR`);
-      try {
-        textoExtraido = await extractPdfWithOpenAI(bytes, openAiApiKey);
-        modoExtracao = "ocr_openai";
-        console.log(`[pgr-importar][${requestId}] OCR extracted: ${textoExtraido.length} chars`);
-      } catch (ocrErr) {
-        console.warn(`[pgr-importar][${requestId}] OCR failed, keeping native text:`, ocrErr);
-      }
-    }
-
-    // ── PGR Analysis ───────────────────────────────────────────
     let extracao_raw: Record<string, unknown>;
+    const startTime = Date.now();
 
-    if (!openAiApiKey) {
-      console.log(`[pgr-importar][${requestId}] OPENAI_API_KEY absent — using local fallback`);
-      extracao_raw = fallbackLocalAnalise(textoExtraido, "chave_ia_ausente");
-      modoExtracao = "fallback_local";
-    } else {
-      try {
-        console.log(`[pgr-importar][${requestId}] Calling OpenAI for PGR analysis`);
-        extracao_raw = await analisarPgrComOpenAI(textoExtraido, openAiApiKey);
-        extracao_raw.modo_extracao = modoExtracao === "ocr_openai" ? "ia_openai_ocr" : "ia_openai_nativo";
+    // ── PGR Analysis via Gemini ────────────────────────────────
+    try {
+      console.log(`[pgr-importar][${requestId}] Calling Gemini for PGR analysis`);
+      const rawGemini = await analisarPgrComGemini(bytes, geminiApiKey);
+        
+        // Mapeia do JSON Gemini para o formato esperado pelo frontend (extracao_raw original)
+        extracao_raw = {
+          dados_empresa: {
+            nome: rawGemini.dados_empresa?.nome_empresa ?? null,
+            cnpj: rawGemini.dados_empresa?.cnpj ?? null,
+            responsavel_tecnico: rawGemini.dados_empresa?.responsavel_tecnico ?? null,
+            cargo_responsavel: rawGemini.dados_empresa?.cargo_responsavel ?? null,
+            data_elaboracao: rawGemini.dados_empresa?.data_elaboracao ?? null,
+            validade: rawGemini.dados_empresa?.validade ?? null
+          },
+          riscos: (rawGemini.riscos || []).map((r: any) => ({
+            categoria: r.tipo ?? "outros",
+            nome: r.agente ?? "Risco não especificado",
+            descricao: r.descricao ?? null,
+            probabilidade: 3, // fallback padrao
+            severidade: 3,
+            local_exposicao: r.fonte ?? null,
+            medidas_existentes: r.meios_de_controle ?? null,
+          })),
+          plano_acao: (rawGemini.plano_acao || []).map((a: any) => ({
+            medida: a.acao ?? "Ação não especificada",
+            prazo_sugerido: a.prazo ?? null,
+            responsavel_sugerido: a.responsavel ?? null,
+            prioridade: "media",
+            risco_referenciado: null,
+            status: a.status === "concluida" || a.status === "concluído" ? "concluida" : "pendente"
+          })),
+          modo_extracao: "ia_gemini_multimodal"
+        };
+        modoExtracao = "ia_gemini_multimodal";
         const riscoCount = Array.isArray(extracao_raw.riscos) ? extracao_raw.riscos.length : 0;
-        console.log(`[pgr-importar][${requestId}] OpenAI analysis done: ${riscoCount} risks found`);
-      } catch (iaErr) {
-        console.warn(`[pgr-importar][${requestId}] OpenAI analysis failed, using fallback:`, iaErr);
-        extracao_raw = fallbackLocalAnalise(textoExtraido, `openai_error: ${iaErr}`);
+        console.log(`[pgr-importar][${requestId}] Gemini analysis done: ${riscoCount} risks found`);
+      } catch (iaErr: any) {
+        console.warn(`[pgr-importar][${requestId}] Gemini analysis failed, using fallback:`, iaErr);
+        
+        let motivo = "api_error";
+        if (iaErr?.name === "AbortError") motivo = "tempo esgotado";
+        else if (iaErr?.message?.includes("truncated")) motivo = "resposta truncada";
+        else if (iaErr?.message?.includes("parse_failed")) motivo = "parse_failed";
+        else if (iaErr?.message?.includes("http_429")) motivo = "limite por minuto";
+        else if (iaErr?.message) motivo = iaErr.message;
+        
+        const textoExtraido = extractTextFromPDFBytes(bytes);
+        const fbLocal = fallbackLocalAnalise(textoExtraido, motivo);
+        
+        // Mesclagem de extracao_raw para não destruir o que tinha, adicionando o erro real.
+        const prevExtracaoRaw = importacao.extracao_raw && typeof importacao.extracao_raw === 'object' ? importacao.extracao_raw : {};
+        extracao_raw = {
+          ...prevExtracaoRaw,
+          ...fbLocal,
+          metodo: "local",
+          erro: {
+            mensagem: iaErr?.message || String(iaErr),
+            duracao_ms: Date.now() - startTime,
+            bytes_pdf: bytes.length,
+            motivo
+          }
+        };
         modoExtracao = "fallback_local";
       }
-    }
 
     // ── Persist result ─────────────────────────────────────────
     const { error: updateErr } = await supabaseAdmin
