@@ -4,43 +4,9 @@ import { z } from "https://esm.sh/zod@3.23.8";
 import { maskName } from "../_shared/mask.ts";
 import { GoogleGenerativeAI } from "npm:@google/generative-ai";
 import { mapGeminiRiscos } from "../_shared/pgrMapper.ts";
+import { buildCorsHeaders } from "../_shared/cors.ts";
 
 const MAX_FILE_SIZE_BYTES = 10 * 1_048_576; // 10 MB
-
-// ──────────────────────────────────────────────────────────────
-// CORS — resposta correta para preflight e para requisições reais.
-// Supabase Edge Functions recebem chamadas diretas de JS no browser;
-// o supabase-js client envia Authorization + content-type, então
-// todos os requests são "non-simple" e disparam preflight OPTIONS.
-// ──────────────────────────────────────────────────────────────
-
-/** Origens de produção permitidas (lista estrita). */
-const PRODUCTION_ORIGINS = [
-  "https://nr1pronto.com.br",
-  "https://www.nr1pronto.com.br",
-];
-
-/** Em dev: aceita qualquer localhost independente da porta (5173, 8080, 8081, 3000…). */
-const LOCALHOST_REGEX = /^https?:\/\/localhost(:\d+)?$/;
-
-function isAllowedOrigin(origin: string): boolean {
-  if (!origin) return true;                            // curl / Postman: sem origin
-  if (LOCALHOST_REGEX.test(origin)) return true;       // qualquer localhost
-  return PRODUCTION_ORIGINS.includes(origin);          // produção: lista estrita
-}
-
-function buildCorsHeaders(req: Request): Record<string, string> {
-  const origin = req.headers.get("origin") ?? "";
-  const allowedOrigin = isAllowedOrigin(origin) ? (origin || "*") : "";
-
-  return {
-    "Access-Control-Allow-Origin": allowedOrigin,
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
-    "Access-Control-Allow-Headers":
-      "authorization, x-client-info, apikey, content-type",
-    "Access-Control-Max-Age": "86400",
-  };
-}
 
 
 const RequestSchema = z.object({
@@ -258,7 +224,7 @@ serve(async (req) => {
   // ── Preflight CORS ─────────────────────────────────────────
   if (req.method === "OPTIONS") {
     console.log(`[pgr-importar][${requestId}] OPTIONS preflight from origin=${req.headers.get("origin") ?? "no-origin"}`);
-    return new Response(null, { status: 204, headers: corsHeaders });
+    return new Response(null, { status: 200, headers: corsHeaders });
   }
 
   console.log(`[pgr-importar][${requestId}] ${req.method} request started`);

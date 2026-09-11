@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.87.3";
 import { z } from "https://deno.land/x/zod@v3.23.8/mod.ts";
+import { buildCorsHeaders } from "../_shared/cors.ts";
 
 const RequestSchema = z.object({
   importacao_id: z.string().uuid(),
@@ -14,30 +15,13 @@ function maskName(emailOrId: string): string {
   return `${name.slice(0, 3)}***@${domain}`;
 }
 
-const buildCorsHeaders = (req: Request) => {
-  const origin = req.headers.get("origin") || "";
-  const allowedOrigins = [
-    "https://nr1pronto.com.br",
-    "https://www.nr1pronto.com.br"
-  ];
-  const isLocalhost = /^https?:\/\/localhost(:\d+)?$/.test(origin);
-  const allowOrigin = (isLocalhost || allowedOrigins.includes(origin)) ? origin : allowedOrigins[0];
-
-  return {
-    "Access-Control-Allow-Origin": allowOrigin,
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
-    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-    "Access-Control-Max-Age": "86400",
-  };
-};
-
 serve(async (req) => {
   const requestId = crypto.randomUUID().slice(0, 8);
   const corsHeaders = buildCorsHeaders(req);
   const jsonHeaders = { ...corsHeaders, "Content-Type": "application/json" };
 
   if (req.method === "OPTIONS") {
-    return new Response(null, { status: 204, headers: corsHeaders });
+    return new Response(null, { status: 200, headers: corsHeaders });
   }
 
   try {
