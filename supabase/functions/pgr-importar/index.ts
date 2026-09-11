@@ -5,8 +5,10 @@ import { maskName } from "../_shared/mask.ts";
 import { GoogleGenerativeAI } from "npm:@google/generative-ai";
 import { mapGeminiRiscos } from "../_shared/pgrMapper.ts";
 import { buildCorsHeaders } from "../_shared/cors.ts";
+import { fallbackLocalAnalise } from "../_shared/pgrFallback.ts";
 
 const MAX_FILE_SIZE_BYTES = 10 * 1_048_576; // 10 MB
+const TIMEOUT_MS = 240000; // 240 segundos (4 minutos) - teto de espera da IA
 
 
 const RequestSchema = z.object({
@@ -110,7 +112,7 @@ Nunca armazene ou extraia nomes de trabalhadores identificados (dado de saúde s
   };
 
   const ac = new AbortController();
-  const timeoutId = setTimeout(() => ac.abort(), 120000); // 120s timeout
+  const timeoutId = setTimeout(() => ac.abort(), TIMEOUT_MS);
 
   let response;
   let retryCount = 0;
@@ -119,7 +121,7 @@ Nunca armazene ou extraia nomes de trabalhadores identificados (dado de saúde s
     for (let attempt = 0; attempt < 3; attempt++) {
       retryCount = attempt;
       const elapsed = Date.now() - inicio;
-      if (elapsed > 120000) {
+      if (elapsed > TIMEOUT_MS) {
         console.warn(`[Gemini API] Timeout atingido (${elapsed}ms). Abortando retry e indo para o fallback.`);
         throw new Error("tempo esgotado");
       }
@@ -200,22 +202,7 @@ Nunca armazene ou extraia nomes de trabalhadores identificados (dado de saúde s
   }
 }
 
-/**
- * Fallback local: estrutura mínima quando a IA não está disponível.
- * Nunca lança exceção — garante que o status sempre avança para aguardando_revisao.
- */
-function fallbackLocalAnalise(texto: string, motivo: string): Record<string, unknown> {
-  const linhas = texto.split("\n").filter((l) => l.trim().length > 0);
-  return {
-    dados_empresa: { nome: null, cnpj: null, responsavel_tecnico: null, cargo_responsavel: null, data_elaboracao: null, validade: null },
-    riscos: [],
-    plano_acao: [],
-    modo_extracao: "fallback_local",
-    motivo_fallback: motivo,
-    linhas_extraidas: linhas.length,
-    aviso: "O OCR com IA não estava disponível. O texto foi extraído localmente. Revise e preencha os dados manualmente antes de confirmar.",
-  };
-}
+
 
 serve(async (req) => {
   const requestId = crypto.randomUUID().slice(0, 8);
