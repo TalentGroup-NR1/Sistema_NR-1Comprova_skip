@@ -21,6 +21,7 @@ import { classificacaoClasse } from "@/components/mapa-riscos/pgr/pgrRiscoUtils"
 import { classifyRisk } from "@/lib/riskMatrix";
 import { PlanoAcaoKanban } from "./PlanoAcaoKanban";
 import { PgrDashboardTab } from "./PgrDashboardTab";
+import { type PgrImportacao } from "@/hooks/usePgrImportacao";
 
 const CONFIANCA_MINIMA_REVISAO = 70;
 
@@ -33,7 +34,7 @@ const CATEGORIAS: { value: string; label: string }[] = [
   { value: "psicossocial", label: "Psicossocial" },
 ];
 
-export function PgrImportadoDashboard({ pgrId, onBack }: { pgrId: string; onBack: () => void }) {
+export function PgrImportadoDashboard({ pgrId, onBack, onRevisar }: { pgrId: string; onBack: () => void; onRevisar?: (importacao: PgrImportacao) => void; }) {
   const { data: importacoes } = usePgrImportacoes();
   const updateActions = useUpdatePgrActions();
 
@@ -232,7 +233,20 @@ export function PgrImportadoDashboard({ pgrId, onBack }: { pgrId: string; onBack
         </TabsContent>
 
         <TabsContent value="riscos" className="space-y-4">
-          {riscos.length === 0 ? (
+          {pgr.status === "aguardando_revisao" ? (
+            <div className="flex flex-col items-center justify-center py-16 text-center space-y-4 border-2 border-dashed rounded-xl border-orange-200 bg-orange-50/50">
+              <div className="bg-orange-100 p-4 rounded-full">
+                <Clock className="h-8 w-8 text-orange-600" />
+              </div>
+              <div className="space-y-1 max-w-md">
+                <h3 className="text-lg font-semibold text-orange-900">Este PGR ainda não foi confirmado</h3>
+                <p className="text-sm text-orange-700">A IA já identificou os riscos, mas precisamos que você os revise antes de exibir o inventário definitivo.</p>
+              </div>
+              <Button onClick={() => onRevisar?.(pgr)} className="bg-orange-600 hover:bg-orange-700 mt-2">
+                Revisar agora
+              </Button>
+            </div>
+          ) : riscos.length === 0 ? (
             <p className="text-muted-foreground text-sm py-4">Nenhum risco identificado.</p>
           ) : (
             <div className="grid gap-3">

@@ -34,6 +34,14 @@ const STATUS_CONFIG = {
   erro: { label: "Erro", icon: AlertCircle, spin: false, color: "bg-red-100 text-red-800" },
 };
 
+const FASES_EM_MS = { ENVIANDO: 3000, LENDO: 8000, EXTRAINDO: 40000 };
+const FASES_PROGRESSO = [
+  { id: 0, label: "Enviando documento", duration: FASES_EM_MS.ENVIANDO },
+  { id: 1, label: "Lendo PDF", duration: FASES_EM_MS.LENDO },
+  { id: 2, label: "Extraindo riscos com IA", duration: FASES_EM_MS.EXTRAINDO },
+  { id: 3, label: "Preparando revisão", duration: 0 },
+];
+
 const CATEGORIAS: { value: string; label: string }[] = [
   { value: "fisico", label: "Físico" },
   { value: "quimico", label: "Químico" },
@@ -43,9 +51,32 @@ const CATEGORIAS: { value: string; label: string }[] = [
   { value: "psicossocial", label: "Psicossocial" },
 ];
 
-// ────────── Upload Zone ──────────
 function UploadZone({ onFile, isPending }: { onFile: (file: File) => void; isPending: boolean }) {
   const [drag, setDrag] = useState(false);
+  const [faseId, setFaseId] = useState(0);
+
+  useEffect(() => {
+    if (!isPending) {
+      setFaseId(0);
+      return;
+    }
+
+    let timeout: NodeJS.Timeout;
+    const advance = (currentFase: number) => {
+      const ms = FASES_PROGRESSO[currentFase].duration;
+      if (ms > 0) {
+        timeout = setTimeout(() => {
+          setFaseId(prev => {
+            const next = prev + 1;
+            if (next < FASES_PROGRESSO.length) advance(next);
+            return next;
+          });
+        }, ms);
+      }
+    };
+    advance(0);
+    return () => clearTimeout(timeout);
+  }, [isPending]);
 
   const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -85,13 +116,30 @@ function UploadZone({ onFile, isPending }: { onFile: (file: File) => void; isPen
         </p>
         <p className="text-sm text-muted-foreground mt-1">
           {isPending
-            ? "Extraindo riscos e plano de ação — pode levar até 1 minuto"
+            ? "Processando documento..."
             : "PDF de até 10MB — pode ser escaneado, a IA fará o OCR"}
         </p>
         {isPending && (
-          <div className="mt-3 w-48 mx-auto space-y-1">
-            <Progress value={undefined} className="h-1.5 bg-orange-100 [&>div]:bg-orange-500" />
-            <p className="text-xs text-orange-500 font-medium">Aguardando processamento…</p>
+          <div className="mt-4 w-64 mx-auto space-y-2 text-left bg-background/50 p-4 rounded-xl border border-border">
+            {FASES_PROGRESSO.map((fase) => {
+              const isPast = faseId > fase.id;
+              const isCurrent = faseId === fase.id;
+              const isFuture = faseId < fase.id;
+              return (
+                <div key={fase.id} className={`flex items-center gap-2 text-sm ${isFuture ? "opacity-40" : ""}`}>
+                  {isPast ? (
+                    <CheckCircle className="h-4 w-4 text-emerald-500 shrink-0" />
+                  ) : isCurrent ? (
+                    <Loader2 className="h-4 w-4 text-orange-500 animate-spin shrink-0" />
+                  ) : (
+                    <div className="h-4 w-4 rounded-full border-2 border-muted-foreground shrink-0" />
+                  )}
+                  <span className={isCurrent ? "font-medium text-orange-600" : isPast ? "text-muted-foreground" : ""}>
+                    {fase.label}
+                  </span>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
@@ -382,6 +430,16 @@ function PainelRevisao({
           </Alert>
         )}
 
+        {raw?.modo_extracao === "fallback_local" && (
+          <Alert className="border-red-300 bg-red-50 text-red-900 shadow-sm">
+            <AlertTriangle className="h-5 w-5 text-red-600" />
+            <AlertDescription>
+              <span className="font-semibold block mb-1">Confiança baixa na extração inteligente</span>
+              Não foi possível extrair todos os dados com IA ({(raw as any).erro?.motivo || "Erro de processamento"}). Por favor, revise manualmente ou adicione os riscos não lidos.
+            </AlertDescription>
+          </Alert>
+        )}
+
         <div className="flex flex-wrap gap-2 items-center">
           <Badge variant="outline" className="flex items-center gap-1">
             <Shield className="h-3 w-3" /> {totalPreenchido} risco(s) identificado(s)
@@ -389,11 +447,9 @@ function PainelRevisao({
           <Badge variant="outline" className="flex items-center gap-1">
             <CheckCircle className="h-3 w-3" /> {totalAcoes} ação(ões) do plano
           </Badge>
-          {raw?.modo_extracao && (
+          {raw?.modo_extracao && raw.modo_extracao !== "fallback_local" && (
             <Badge variant="secondary" className="text-xs">
-              {raw.modo_extracao === "fallback_local" 
-                ? `⚠️ Falha IA: ${(raw as any).erro?.motivo || "Processamento local"}` 
-                : "✅ Extraído com IA"}
+              ✅ Extraído com IA
             </Badge>
           )}
         </div>
@@ -479,14 +535,25 @@ export function ImportarPgrTab() {
   const confirmar = useConfirmarImportacaoPgr();
   const [importacaoEmRevisao, setImportacaoEmRevisao] = useState<PgrImportacao | null>(null);
   const [selectedPgrId, setSelectedPgrId] = useState<string | null>(null);
+  const revisaoRef = useRef<HTMLDivElement>(null);
 
   const aguardandoRevisao = importacoes.find((i) => i.status === "aguardando_revisao");
+
+  const handleRevisarAgora = (importacao: PgrImportacao) => {
+    setImportacaoEmRevisao(importacao);
+    setTimeout(() => {
+      revisaoRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      revisaoRef.current?.focus();
+    }, 100);
+  };
 
   const handleFile = async (file: File) => {
     try {
       const resultado = await iniciar.mutateAsync(file);
-      toast.success(`"${file.name}" enviado para análise.`);
-      if (resultado.status === "aguardando_revisao") setImportacaoEmRevisao(resultado);
+      toast.success(`"${file.name}" lido. Preparando revisão...`);
+      if (resultado.status === "aguardando_revisao") {
+        handleRevisarAgora(resultado);
+      }
     } catch (err: any) {
       toast.error(err.message ?? "Erro ao processar o arquivo.");
     }
@@ -503,7 +570,16 @@ export function ImportarPgrTab() {
   };
 
   if (selectedPgrId) {
-    return <PgrImportadoDashboard pgrId={selectedPgrId} onBack={() => setSelectedPgrId(null)} />;
+    return (
+      <PgrImportadoDashboard 
+        pgrId={selectedPgrId} 
+        onBack={() => setSelectedPgrId(null)} 
+        onRevisar={(importacao) => {
+          setSelectedPgrId(null);
+          handleRevisarAgora(importacao);
+        }}
+      />
+    );
   }
 
   return (
@@ -524,15 +600,18 @@ export function ImportarPgrTab() {
 
           {/* Aviso de revisão pendente */}
           {(aguardandoRevisao && !importacaoEmRevisao) && (
-            <Alert className="border-amber-200 bg-amber-50">
-              <Clock className="h-4 w-4 text-amber-600" />
-              <AlertDescription className="flex items-center justify-between">
-                <span className="text-amber-800">
-                  Há uma importação aguardando sua revisão: <strong>{aguardandoRevisao.arquivo_nome}</strong>
+            <Alert className="border-orange-500 bg-orange-50 shadow-sm" aria-live="polite">
+              <CheckCircle className="h-5 w-5 text-orange-600 mt-0.5" />
+              <AlertDescription className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <span className="text-orange-900 font-medium">
+                  A IA leu o documento e identificou os riscos. Revise e confirme para liberar o plano de ação.
+                  <span className="block text-sm text-orange-800/80 font-normal mt-1">
+                    Documento: {aguardandoRevisao.arquivo_nome}
+                  </span>
                 </span>
-                <Button id="pgr-retomar-revisao" size="sm" variant="outline"
-                  onClick={() => setImportacaoEmRevisao(aguardandoRevisao)}
-                  className="ml-3 border-amber-300 text-amber-700 hover:bg-amber-100">
+                <Button id="pgr-retomar-revisao" size="sm" 
+                  onClick={() => handleRevisarAgora(aguardandoRevisao)}
+                  className="bg-orange-600 hover:bg-orange-700 text-white shrink-0">
                   Revisar agora
                 </Button>
               </AlertDescription>
@@ -543,7 +622,7 @@ export function ImportarPgrTab() {
 
       {/* Painel de revisão da extração */}
       {importacaoEmRevisao && importacaoEmRevisao.status === "aguardando_revisao" && (
-        <Card className="border-orange-200">
+        <Card className="border-orange-200 shadow-md scroll-mt-6" ref={revisaoRef} tabIndex={-1}>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <FileText className="h-5 w-5 text-orange-500" />
