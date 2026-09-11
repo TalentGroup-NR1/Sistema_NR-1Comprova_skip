@@ -2,6 +2,8 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.87.3";
 import { z } from "https://esm.sh/zod@3.23.8";
 import { maskName } from "../_shared/mask.ts";
+import { GoogleGenerativeAI } from "npm:@google/generative-ai";
+import { mapGeminiRiscos } from "../_shared/pgrMapper.ts";
 
 const MAX_FILE_SIZE_BYTES = 10 * 1_048_576; // 10 MB
 
@@ -84,7 +86,13 @@ async function analisarPgrComGemini(bytes: Uint8Array, apiKey: string): Promise<
   const base64 = btoa(binary);
 
   const systemPrompt = `Você é um especialista em Segurança do Trabalho e NR-1 (Programa de Gerenciamento de Riscos — PGR).
-Extraia do documento PGR todos os riscos e todas as ações do plano de ação, sem omitir nenhum.`;
+Extraia do documento PGR todos os riscos e todas as ações do plano de ação, sem omitir nenhum.
+Seja agnóstico à estrutura do documento. Resolva a seção por significado e não por título literal (ex. "Inventário de Riscos", "Levantamento de Perigos", "Matriz", etc).
+Normalize sinônimos (ex. perigo, fator de risco, agente nocivo).
+Percorra o documento inteiro, incluindo anexos e tabelas embutidas.
+Não invente valores; se o campo estiver ausente, retorne nulo ou vazio.
+Identifique a escala da matriz de risco no documento (ex. 3x3, 4x4, 5x5).
+Nunca armazene ou extraia nomes de trabalhadores identificados (dado de saúde sensível). Em riscos psicossociais, não armazene resposta individual identificada.`;
 
   const schema = {
     type: "OBJECT",
@@ -105,12 +113,18 @@ Extraia do documento PGR todos os riscos e todas as ações do plano de ação, 
         items: {
           type: "OBJECT",
           properties: {
-            agente: { type: "STRING" },
-            tipo: { type: "STRING", description: "fisico, quimico, ergonomico, psicossocial, biologico ou acidente" },
-            descricao: { type: "STRING" },
-            fonte: { type: "STRING" },
-            meios_de_controle: { type: "STRING" },
-            classificacao: { type: "STRING" }
+            perigo: { type: "STRING", description: "Perigo, agente ou fator de risco" },
+            categoria: { type: "STRING", description: "fisico, quimico, ergonomico, psicossocial, biologico ou acidente" },
+            descricao: { type: "STRING", description: "Descrição do risco ou possíveis lesões" },
+            grupo_exposto: { type: "STRING" },
+            probabilidade: { type: "NUMBER" },
+            severidade: { type: "NUMBER" },
+            nivel: { type: "NUMBER" },
+            classificacao: { type: "STRING" },
+            escala_matriz: { type: "STRING", description: "Ex: 3x3, 4x4, 5x5" },
+            medidas_existentes: { type: "STRING" },
+            fonte: { type: "STRING", description: "Página ou seção de onde foi extraído" },
+            confianca: { type: "NUMBER", description: "Nível de confiança na extração, de 0 a 100" }
           }
         }
       },
@@ -381,15 +395,7 @@ serve(async (req) => {
             data_elaboracao: rawGemini.dados_empresa?.data_elaboracao ?? null,
             validade: rawGemini.dados_empresa?.validade ?? null
           },
-          riscos: (rawGemini.riscos || []).map((r: any) => ({
-            categoria: r.tipo ?? "outros",
-            nome: r.agente ?? "Risco não especificado",
-            descricao: r.descricao ?? null,
-            probabilidade: 3, // fallback padrao
-            severidade: 3,
-            local_exposicao: r.fonte ?? null,
-            medidas_existentes: r.meios_de_controle ?? null,
-          })),
+          riscos: mapGeminiRiscos(rawGemini.riscos),
           plano_acao: (rawGemini.plano_acao || []).map((a: any) => ({
             medida: a.acao ?? "Ação não especificada",
             prazo_sugerido: a.prazo ?? null,

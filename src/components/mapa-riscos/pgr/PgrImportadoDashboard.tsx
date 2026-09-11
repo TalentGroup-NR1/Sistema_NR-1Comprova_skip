@@ -18,8 +18,11 @@ import { supabase } from "@/integrations/supabase/client";
 
 import { usePgrImportacoes, useUpdatePgrActions, type AcaoExtraida, type RiscoExtraido } from "@/hooks/usePgrImportacao";
 import { classificacaoClasse } from "@/components/mapa-riscos/pgr/pgrRiscoUtils";
+import { classifyRisk } from "@/lib/riskMatrix";
 import { PlanoAcaoKanban } from "./PlanoAcaoKanban";
 import { PgrDashboardTab } from "./PgrDashboardTab";
+
+const CONFIANCA_MINIMA_REVISAO = 70;
 
 const CATEGORIAS: { value: string; label: string }[] = [
   { value: "fisico", label: "Físico" },
@@ -234,39 +237,66 @@ export function PgrImportadoDashboard({ pgrId, onBack }: { pgrId: string; onBack
           ) : (
             <div className="grid gap-3">
               {riscos.map((r, i) => {
-                const nivelNum = r.probabilidade * r.severidade;
-                const cls = classificacaoClasse(nivelNum <= 2 ? "Irrelevante" : nivelNum <= 4 ? "Baixo" : nivelNum <= 9 ? "Moderado" : nivelNum <= 14 ? "Alto" : "Crítico");
+                const { nivel, classificacao, cor, probLabel, sevLabel, bgClasse, textClasse } = classifyRisk(r.probabilidade, r.severidade, r.escala_matriz);
+                const needsReview = (r.confianca ?? 100) < CONFIANCA_MINIMA_REVISAO;
+                
                 return (
-                  <Card key={i} className="border-border">
+                  <Card key={i} className={`border-border ${needsReview ? 'border-orange-300 bg-orange-50/20' : ''}`}>
                     <CardHeader className="py-3 px-4">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2 flex-1 min-w-0">
-                          <Badge className={`${cls} text-xs shrink-0`}>
-                            {CATEGORIAS.find(c => c.value === r.categoria)?.label ?? r.categoria}
+                          <Badge className={`${bgClasse} ${textClasse} text-xs shrink-0 hover:${bgClasse}`}>
+                            {classificacao}
                           </Badge>
                           <span className="text-sm font-medium">{r.nome || "Risco sem nome"}</span>
+                          <span className="text-xs text-muted-foreground ml-2">
+                            ({CATEGORIAS.find(c => c.value === r.categoria)?.label ?? r.categoria})
+                          </span>
                         </div>
-                        <Badge variant="outline" className="text-xs shrink-0">
-                          P{r.probabilidade}×S{r.severidade}={nivelNum}
-                        </Badge>
+                        <div className="flex flex-col items-end gap-1">
+                          {needsReview && (
+                            <Badge variant="outline" className="text-orange-600 border-orange-200 bg-orange-50 text-[10px] uppercase">
+                              Revisar extração
+                            </Badge>
+                          )}
+                        </div>
                       </div>
                     </CardHeader>
-                    {(r.descricao || r.medidas_existentes) && (
-                      <CardContent className="px-4 pb-4 pt-0 text-sm space-y-2">
-                        {r.descricao && (
-                          <div>
-                            <span className="font-semibold block text-xs text-muted-foreground uppercase">Descrição</span>
-                            <p className="text-foreground mt-0.5">{r.descricao}</p>
-                          </div>
+                    <CardContent className="px-4 pb-4 pt-0 text-sm space-y-3">
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/50 p-2 rounded-md border border-border/50">
+                        <div className="flex items-center gap-1.5" style={{ color: cor }}>
+                          <Shield className="h-3.5 w-3.5" />
+                          <span className="font-semibold text-foreground">Nível: P × S = {nivel}</span>
+                        </div>
+                        <span className="text-border mx-1">•</span>
+                        <span>Probabilidade: <strong className="text-foreground">{probLabel}</strong> (P)</span>
+                        <span className="text-border mx-1">•</span>
+                        <span>Severidade: <strong className="text-foreground">{sevLabel}</strong> (S)</span>
+                        {r.escala_matriz && (
+                          <>
+                            <span className="text-border mx-1">•</span>
+                            <span className="text-muted-foreground/70">Escala: {r.escala_matriz}</span>
+                          </>
                         )}
-                        {r.medidas_existentes && (
-                          <div>
-                            <span className="font-semibold block text-xs text-muted-foreground uppercase">Medidas Existentes</span>
-                            <p className="text-foreground mt-0.5">{r.medidas_existentes}</p>
-                          </div>
-                        )}
-                      </CardContent>
-                    )}
+                      </div>
+                      
+                      {(r.descricao || r.medidas_existentes) && (
+                        <div className="space-y-2 mt-3 pt-3 border-t border-border/50">
+                          {r.descricao && (
+                            <div>
+                              <span className="font-semibold block text-xs text-muted-foreground uppercase">Descrição</span>
+                              <p className="text-foreground mt-0.5">{r.descricao}</p>
+                            </div>
+                          )}
+                          {r.medidas_existentes && (
+                            <div>
+                              <span className="font-semibold block text-xs text-muted-foreground uppercase">Medidas Existentes</span>
+                              <p className="text-foreground mt-0.5">{r.medidas_existentes}</p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </CardContent>
                   </Card>
                 );
               })}

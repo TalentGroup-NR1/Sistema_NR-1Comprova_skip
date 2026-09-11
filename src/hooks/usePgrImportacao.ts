@@ -16,10 +16,16 @@ export interface RiscoExtraido {
   categoria: string;
   nome: string;
   descricao: string | null;
-  probabilidade: number;
-  severidade: number;
+  grupo_exposto?: string | null;
+  probabilidade: number | null;
+  severidade: number | null;
+  nivel?: number | null;
+  classificacao?: string | null;
+  escala_matriz?: string | null;
   local_exposicao: string | null;
   medidas_existentes: string | null;
+  fonte?: string | null;
+  confianca?: number | null;
 }
 
 export interface AcaoExtraida {
