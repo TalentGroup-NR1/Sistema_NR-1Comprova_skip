@@ -55,6 +55,7 @@ import AdminPlataforma from "./pages/AdminPlataforma";
 import NotFound from "./pages/NotFound";
 import LaudoAepPage from "./pages/LaudoAepPage";
 import ConfiguracoesEmpresa from "./pages/ConfiguracoesEmpresa";
+import Evidencias from "./pages/Evidencias";
 
 const queryClient = new QueryClient();
 
@@ -206,6 +207,7 @@ const App = () => (
                   <AdminPlataforma />
                 </ProtectedRoute>
               } />
+              <Route path="/evidencias" element={<Evidencias />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>

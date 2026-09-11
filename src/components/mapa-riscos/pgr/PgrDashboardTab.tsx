@@ -1,10 +1,13 @@
-import React from "react";
-import { useAcoesPgr } from "@/hooks/usePgrAcoes";
+import { useAcoesPgr, useGerarRelatorioEvidenciaPgr } from "@/hooks/usePgrAcoes";
+import { validarPreRequisitosRelatorio } from "@/lib/relatorioPgrAggregators";
+import { useEffectiveCompanyId } from "@/hooks/useEffectiveCompanyId";
+import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { calcScore, calcFarol, getAcoesCriticas, FarolStatus } from "@/lib/dashboardUtils";
-import { CalendarIcon, AlertCircle, Clock, CheckCircle2, Circle } from "lucide-react";
+import { CalendarIcon, AlertCircle, Clock, CheckCircle2, Circle, FileText, Loader2 } from "lucide-react";
 import { formatHistoricDate } from "@/lib/dateUtils";
 
 interface PgrDashboardTabProps {
@@ -25,7 +28,9 @@ function FarolBadge({ status }: { status: FarolStatus }) {
 }
 
 export function PgrDashboardTab({ pgrImportacaoId }: PgrDashboardTabProps) {
+  const companyId = useEffectiveCompanyId();
   const { data: acoes, isLoading } = useAcoesPgr(pgrImportacaoId);
+  const { mutate: gerarPdf, isPending: isGerandoPdf } = useGerarRelatorioEvidenciaPgr();
 
   if (isLoading) {
     return (
@@ -87,6 +92,25 @@ export function PgrDashboardTab({ pgrImportacaoId }: PgrDashboardTabProps) {
 
   return (
     <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h3 className="text-lg font-medium">Dashboard de Ações</h3>
+        <Button 
+          variant="outline" 
+          disabled={isGerandoPdf}
+          onClick={() => {
+            const err = validarPreRequisitosRelatorio({ companyId, pgrImportacaoId, acoes });
+            if (err) {
+              toast.error(err);
+              return;
+            }
+            gerarPdf({ pgrImportacaoId, acoes });
+          }}
+        >
+          {isGerandoPdf ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <FileText className="w-4 h-4 mr-2" />}
+          {isGerandoPdf ? "Gerando PDF..." : "Gerar Relatório de Execução (PDF)"}
+        </Button>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* KPI: Total */}
         <Card>

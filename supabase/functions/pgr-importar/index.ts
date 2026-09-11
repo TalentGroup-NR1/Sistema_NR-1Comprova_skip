@@ -104,7 +104,11 @@ Nunca armazene ou extraia nomes de trabalhadores identificados (dado de saúde s
             acao: { type: "STRING" },
             prazo: { type: "STRING" },
             responsavel: { type: "STRING" },
-            status: { type: "STRING" }
+            status: { type: "STRING" },
+            por_que: { type: "STRING" },
+            onde: { type: "STRING" },
+            como: { type: "STRING" },
+            custo_estimado: { type: "NUMBER", description: "Custo orçado numérico se houver, ou 0" }
           }
         }
       }
@@ -122,7 +126,7 @@ Nunca armazene ou extraia nomes de trabalhadores identificados (dado de saúde s
       retryCount = attempt;
       const elapsed = Date.now() - inicio;
       if (elapsed > TIMEOUT_MS) {
-        console.warn(`[Gemini API] Timeout atingido (${elapsed}ms). Abortando retry e indo para o fallback.`);
+        console.warn(`[Gemini API] Timeout atingido (${elapsed}ms). Abortando retry.`);
         throw new Error("tempo esgotado");
       }
 
@@ -207,6 +211,7 @@ Nunca armazene ou extraia nomes de trabalhadores identificados (dado de saúde s
 serve(async (req) => {
   const requestId = crypto.randomUUID().slice(0, 8);
   const corsHeaders = buildCorsHeaders(req);
+  const jsonHeaders = { ...corsHeaders, "Content-Type": "application/json" };
 
   // ── Preflight CORS ─────────────────────────────────────────
   if (req.method === "OPTIONS") {
@@ -216,16 +221,26 @@ serve(async (req) => {
 
   console.log(`[pgr-importar][${requestId}] ${req.method} request started`);
 
-  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-  const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-  const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
-  const geminiApiKey = Deno.env.get("GEMINI_API_KEY");
-
-  const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
-
-  const jsonHeaders = { ...corsHeaders, "Content-Type": "application/json" };
+  let supabaseAdminGlobal: ReturnType<typeof createClient> | null = null;
+  let importacaoIdGlobal: string | null = null;
 
   try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
+    const geminiApiKey = Deno.env.get("GEMINI_API_KEY");
+
+    if (!supabaseUrl || !supabaseServiceKey || !supabaseAnonKey) {
+      console.error(`[pgr-importar][${requestId}] Variáveis de ambiente ausentes`);
+      return new Response(
+        JSON.stringify({ error: "Configuração do servidor incompleta" }),
+        { status: 200, headers: jsonHeaders }
+      );
+    }
+
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+    supabaseAdminGlobal = supabaseAdmin;
+
     if (!geminiApiKey || geminiApiKey.trim() === "") {
       const msg = "Segredo GEMINI_API_KEY não configurado no runtime";
       console.error(`[pgr-importar][${requestId}] ${msg}`);
@@ -251,9 +266,6 @@ serve(async (req) => {
     console.log(`[pgr-importar][${requestId}] Caller: ${maskName(caller.email ?? caller.id)}`);
 
     // ── Role check ────────────────────────────────────────────
-    const hasServiceKey = !!Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    console.log(`[pgr-importar][${requestId}] hasServiceKey: ${hasServiceKey}`);
-
     const { data: roleRows, error: roleErr } = await supabaseAdmin
       .from("user_roles").select("role").eq("user_id", caller.id);
     
@@ -274,7 +286,7 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: `Forbidden: ${errMsg}` }), { status: 200, headers: jsonHeaders });
     }
 
-    const callerRole = dbRoles.find(r => allowedRoles.includes(r)) || dbRoles[0]; // pick the valid one for later logging
+    const callerRole = dbRoles.find(r => allowedRoles.includes(r)) || dbRoles[0];
 
     // ── Parse payload ─────────────────────────────────────────
     const rawBody = await req.json().catch(() => null);
@@ -284,6 +296,7 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: `Invalid payload: ${JSON.stringify(parsed.error.flatten())}` }), { status: 200, headers: jsonHeaders });
     }
     const { importacao_id } = parsed.data;
+    importacaoIdGlobal = importacao_id;
     console.log(`[pgr-importar][${requestId}] Processing importacao_id=${importacao_id}`);
 
     // ── Fetch importacao record ───────────────────────────────
@@ -331,65 +344,59 @@ serve(async (req) => {
 
     let modoExtracao = "nativo";
     let extracao_raw: Record<string, unknown>;
-    const startTime = Date.now();
 
     // ── PGR Analysis via Gemini ────────────────────────────────
     try {
       console.log(`[pgr-importar][${requestId}] Calling Gemini for PGR analysis`);
       const rawGemini = await analisarPgrComGemini(bytes, geminiApiKey);
+      
+      // Mapeia do JSON Gemini para o formato esperado pelo frontend (extracao_raw original)
+      extracao_raw = {
+        dados_empresa: {
+          nome: rawGemini.dados_empresa?.nome_empresa ?? null,
+          cnpj: rawGemini.dados_empresa?.cnpj ?? null,
+          responsavel_tecnico: rawGemini.dados_empresa?.responsavel_tecnico ?? null,
+          cargo_responsavel: rawGemini.dados_empresa?.cargo_responsavel ?? null,
+          data_elaboracao: rawGemini.dados_empresa?.data_elaboracao ?? null,
+          validade: rawGemini.dados_empresa?.validade ?? null
+        },
+        riscos: mapGeminiRiscos(rawGemini.riscos),
+        plano_acao: (rawGemini.plano_acao || []).map((a: any) => ({
+          medida: a.acao ?? "Ação não especificada",
+          prazo_sugerido: a.prazo ?? null,
+          responsavel_sugerido: a.responsavel ?? null,
+          prioridade: "media",
+          risco_referenciado: null,
+          status: a.status === "concluida" || a.status === "concluído" ? "concluida" : "pendente"
+        })),
+        modo_extracao: "ia_gemini_multimodal"
+      };
+      modoExtracao = "ia_gemini_multimodal";
+      const riscoCount = Array.isArray(extracao_raw.riscos) ? extracao_raw.riscos.length : 0;
+      console.log(`[pgr-importar][${requestId}] Gemini analysis done: ${riscoCount} risks found`);
+
+    } catch (iaErr: any) {
+      console.warn(`[pgr-importar][${requestId}] Gemini analysis failed:`, iaErr);
+      
+      const isTimeout = iaErr?.name === "AbortError" || iaErr?.message === "tempo esgotado";
+      const isUnavailable = iaErr?.message?.includes("http_5") || iaErr?.message?.includes("http_429");
+      
+      let amigavelMsg = "Falha na extração de dados do PGR.";
+      if (isTimeout) amigavelMsg = "A IA demorou muito para responder. Tente reimportar um arquivo menor ou em outro momento.";
+      if (isUnavailable) amigavelMsg = "A IA está indisponível no momento. Tente reimportar em alguns minutos.";
+
+      const msgErro = `${amigavelMsg} (Detalhe: ${iaErr?.message || "erro interno"})`;
+      
+      // Atualiza diretamente para erro para não prender o usuário em "processando" ou "aguardando revisão"
+      await supabaseAdmin.from("pgr_importacoes")
+        .update({ status: "erro", erro_mensagem: msgErro })
+        .eq("id", importacao_id);
         
-        // Mapeia do JSON Gemini para o formato esperado pelo frontend (extracao_raw original)
-        extracao_raw = {
-          dados_empresa: {
-            nome: rawGemini.dados_empresa?.nome_empresa ?? null,
-            cnpj: rawGemini.dados_empresa?.cnpj ?? null,
-            responsavel_tecnico: rawGemini.dados_empresa?.responsavel_tecnico ?? null,
-            cargo_responsavel: rawGemini.dados_empresa?.cargo_responsavel ?? null,
-            data_elaboracao: rawGemini.dados_empresa?.data_elaboracao ?? null,
-            validade: rawGemini.dados_empresa?.validade ?? null
-          },
-          riscos: mapGeminiRiscos(rawGemini.riscos),
-          plano_acao: (rawGemini.plano_acao || []).map((a: any) => ({
-            medida: a.acao ?? "Ação não especificada",
-            prazo_sugerido: a.prazo ?? null,
-            responsavel_sugerido: a.responsavel ?? null,
-            prioridade: "media",
-            risco_referenciado: null,
-            status: a.status === "concluida" || a.status === "concluído" ? "concluida" : "pendente"
-          })),
-          modo_extracao: "ia_gemini_multimodal"
-        };
-        modoExtracao = "ia_gemini_multimodal";
-        const riscoCount = Array.isArray(extracao_raw.riscos) ? extracao_raw.riscos.length : 0;
-        console.log(`[pgr-importar][${requestId}] Gemini analysis done: ${riscoCount} risks found`);
-      } catch (iaErr: any) {
-        console.warn(`[pgr-importar][${requestId}] Gemini analysis failed, using fallback:`, iaErr);
-        
-        let motivo = "api_error";
-        if (iaErr?.name === "AbortError") motivo = "tempo esgotado";
-        else if (iaErr?.message?.includes("truncated")) motivo = "resposta truncada";
-        else if (iaErr?.message?.includes("parse_failed")) motivo = "parse_failed";
-        else if (iaErr?.message?.includes("http_429")) motivo = "limite por minuto";
-        else if (iaErr?.message) motivo = iaErr.message;
-        
-        const textoExtraido = extractTextFromPDFBytes(bytes);
-        const fbLocal = fallbackLocalAnalise(textoExtraido, motivo);
-        
-        // Mesclagem de extracao_raw para não destruir o que tinha, adicionando o erro real.
-        const prevExtracaoRaw = importacao.extracao_raw && typeof importacao.extracao_raw === 'object' ? importacao.extracao_raw : {};
-        extracao_raw = {
-          ...prevExtracaoRaw,
-          ...fbLocal,
-          metodo: "local",
-          erro: {
-            mensagem: iaErr?.message || String(iaErr),
-            duracao_ms: Date.now() - startTime,
-            bytes_pdf: bytes.length,
-            motivo
-          }
-        };
-        modoExtracao = "fallback_local";
-      }
+      return new Response(
+        JSON.stringify({ error: msgErro }),
+        { status: 200, headers: jsonHeaders }
+      );
+    }
 
     // ── Persist result ─────────────────────────────────────────
     const { error: updateErr } = await supabaseAdmin
@@ -409,9 +416,21 @@ serve(async (req) => {
     );
 
   } catch (err) {
-    console.error(`[pgr-importar][${requestId}] Unexpected error:`, err);
+    console.error(`[pgr-importar][${requestId}] Unexpected error no catch global:`, err);
     const errorMsg = err instanceof Error ? err.message : "Erro desconhecido";
-    // Retorna 200 com payload de erro para o supabase-js client não esconder o erro
+    
+    // Tenta atualizar para 'erro' no banco usando os globals
+    if (supabaseAdminGlobal && importacaoIdGlobal) {
+      try {
+        await supabaseAdminGlobal.from("pgr_importacoes")
+          .update({ status: "erro", erro_mensagem: `Falha interna: ${errorMsg}` })
+          .eq("id", importacaoIdGlobal);
+      } catch (dbErr) {
+        console.error(`[pgr-importar][${requestId}] Falha ao tentar marcar status como erro:`, dbErr);
+      }
+    }
+    
+    // Retorna 200 com payload de erro para o supabase-js client não esconder o erro de rede
     return new Response(
       JSON.stringify({ error: errorMsg }),
       { status: 200, headers: jsonHeaders }

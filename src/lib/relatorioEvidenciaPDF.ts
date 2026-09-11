@@ -6,6 +6,7 @@ import { ptBR } from "date-fns/locale";
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import { supabase } from "@/integrations/supabase/client";
 import { getShareBaseUrl } from "@/lib/appUrl";
+import { sha256Hex, sha256HexFromBytes, loadImage, fetchHash, fitImage, generateVerificationQRCode } from "./pdfHelpers";
 
 // Tenta baixar a URL. Se for um link público para um bucket privado do Supabase
 // Storage (retorna 400/404 "Bucket not found"), refaz via signed URL.
@@ -197,75 +198,7 @@ function htmlToSegments(html?: string | null): Segment[] {
   return segs;
 }
 
-async function sha256Hex(text: string): Promise<string> {
-  const enc = new TextEncoder().encode(text);
-  const buf = await crypto.subtle.digest("SHA-256", enc);
-  return Array.from(new Uint8Array(buf))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-}
 
-async function sha256HexFromBytes(bytes: ArrayBuffer): Promise<string> {
-  const buf = await crypto.subtle.digest("SHA-256", bytes);
-  return Array.from(new Uint8Array(buf))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-}
-
-interface LoadedImage {
-  dataUrl: string;
-  w: number;
-  h: number;
-}
-
-async function loadImage(url?: string | null): Promise<LoadedImage | null> {
-  if (!url) return null;
-  try {
-    const res = await fetch(url, { mode: "cors" });
-    if (!res.ok) return null;
-    const blob = await res.blob();
-    const dataUrl = await new Promise<string | null>((resolve) => {
-      const r = new FileReader();
-      r.onload = () => resolve(r.result as string);
-      r.onerror = () => resolve(null);
-      r.readAsDataURL(blob);
-    });
-    if (!dataUrl) return null;
-    const dims = await new Promise<{ w: number; h: number }>((resolve) => {
-      const img = new Image();
-      img.onload = () => resolve({ w: img.naturalWidth, h: img.naturalHeight });
-      img.onerror = () => resolve({ w: 0, h: 0 });
-      img.src = dataUrl;
-    });
-    if (!dims.w || !dims.h) return null;
-    return { dataUrl, w: dims.w, h: dims.h };
-  } catch {
-    return null;
-  }
-}
-
-async function fetchHash(url?: string | null): Promise<string | null> {
-  if (!url) return null;
-  try {
-    const res = await fetch(url);
-    if (!res.ok) return null;
-    const buf = await res.arrayBuffer();
-    return await sha256HexFromBytes(buf);
-  } catch {
-    return null;
-  }
-}
-
-function fitImage(img: LoadedImage, maxW: number, maxH: number) {
-  const ratio = img.w / img.h;
-  let w = maxW;
-  let h = w / ratio;
-  if (h > maxH) {
-    h = maxH;
-    w = h * ratio;
-  }
-  return { w, h };
-}
 
 export async function gerarRelatorioEvidenciaPDF(params: GerarRelatorioParams) {
   const { tipo, rows, verificacaoUrlBase } = params;
@@ -315,16 +248,7 @@ export async function gerarRelatorioEvidenciaPDF(params: GerarRelatorioParams) {
   // QR Code de verificação (renderizado no rodapé da ÚLTIMA página)
   const baseUrl = params.verificacaoUrlBase || getShareBaseUrl();
   const verificacaoPayload = `TALENT-EVID|${tipo}|${docId}|${hashCurto}|${baseUrl}/comunicados?verificar=${docId}`;
-  let qrDataUrl: string | null = null;
-  try {
-    qrDataUrl = await QRCode.toDataURL(verificacaoPayload, {
-      margin: 1,
-      width: 220,
-      color: { dark: "#1F2937", light: "#FFFFFF" },
-    });
-  } catch {
-    qrDataUrl = null;
-  }
+  let qrDataUrl: string | null = await generateVerificationQRCode(verificacaoPayload);
 
   // Estatísticas
   const total = rows.length;

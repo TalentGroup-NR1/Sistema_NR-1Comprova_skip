@@ -28,7 +28,7 @@ const COLUNAS = [
   { id: "pendente", title: "Pendente", color: "border-l-4 border-l-slate-400" },
   { id: "em_andamento", title: "Em Andamento", color: "border-l-4 border-l-blue-400" },
   { id: "concluida", title: "Concluída", color: "border-l-4 border-l-green-400" },
-  { id: "validada", title: "Validada", color: "border-l-4 border-l-purple-400" },
+  { id: "validada", title: "Eficácia verificada", color: "border-l-4 border-l-purple-400" },
 ];
 
 const collisionDetectionStrategy: CollisionDetection = (args) => {
