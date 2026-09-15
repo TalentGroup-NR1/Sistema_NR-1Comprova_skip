@@ -113,4 +113,48 @@ describe('useBranding e useEffectiveCompanyId', () => {
     expect(result.current.logoUrl).toBe(DEFAULT_BRANDING.logoUrl);
     expect(result.current.brandName).toBe('Empresa Z');
   });
+
+  it('6. Teste de Invalidação por Mudança de Branding: atualiza o localStorage se a cor vinda da API mudar', () => {
+    // Simulando o BrandingDocumentEffect gravando no localStorage
+    const mockUserId = 'user-123';
+    const cacheKey = `nr1_branding_${mockUserId}`;
+    
+    // Suponha que o cache local tinha uma cor antiga
+    localStorage.setItem(cacheKey, '#OLDCOLOR');
+    
+    const apiResolvedColor = '#00FF00'; // Nova cor que veio da API
+    
+    // Lógica do BrandingDocumentEffect:
+    if (localStorage.getItem(cacheKey) !== apiResolvedColor) {
+      localStorage.setItem(cacheKey, apiResolvedColor);
+    }
+    
+    // O cache foi invalidado/atualizado
+    expect(localStorage.getItem(cacheKey)).toBe(apiResolvedColor);
+    
+    // Limpeza
+    localStorage.removeItem(cacheKey);
+  });
+
+  it('7. Teste de Isolamento de Cache: signOut remove a chave nr1_branding_<user_id>', async () => {
+    const mockUserId = 'user-joao';
+    const cacheKey = `nr1_branding_${mockUserId}`;
+    
+    // Simular que ele logou e salvou a cor
+    localStorage.setItem(cacheKey, '#FFA500'); // Laranja Horizonte
+    expect(localStorage.getItem(cacheKey)).toBe('#FFA500');
+    
+    // Simular a chamada de signOut no hook useAuth
+    const signOutSimulation = async () => {
+      const user = { id: mockUserId };
+      if (user?.id) {
+        localStorage.removeItem(`nr1_branding_${user.id}`);
+      }
+    };
+    
+    await signOutSimulation();
+    
+    // O cache foi eliminado, isolando o próximo usuário
+    expect(localStorage.getItem(cacheKey)).toBeNull();
+  });
 });

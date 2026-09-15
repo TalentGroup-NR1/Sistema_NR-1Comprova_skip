@@ -1,7 +1,8 @@
 import { useCompanyContext } from "@/contexts/CompanyContext";
 import { useCompanies } from "@/hooks/useCompanies";
 import { useEffectiveCompanyId } from "@/hooks/useEffectiveCompanyId";
-
+import { useAuth } from "@/hooks/useAuth";
+import { useMyColaborador } from "@/hooks/useMyFeedbackCycles";
 /** NR1-Pronto defaults — used when no company branding is available. */
 export const DEFAULT_BRANDING = {
   brandName: "Gestão Ativa",
@@ -25,7 +26,10 @@ export interface Branding {
  * (e.g. login screen) or when the company has no branding configured.
  */
 export function useBranding(): Branding {
-  const { data: companies, isLoading } = useCompanies();
+  const { data: companies, isLoading: isCompaniesLoading } = useCompanies();
+  const { loading: isAuthLoading } = useAuth();
+  const { isLoading: isColaboradorLoading } = useMyColaborador();
+  
   const effectiveCompanyId = useEffectiveCompanyId();
   const { selectedCompanyId } = useCompanyContext();
 
@@ -33,6 +37,10 @@ export function useBranding(): Branding {
   const company = companyId
     ? (companies?.find((c) => c.id === companyId) as any)
     : undefined;
+
+  // Unifica a cascata para o Loading Gate: o branding está carregando enquanto 
+  // os profiles (auth), o vínculo (colaborador) OU os temas (companies) estiverem rodando
+  const isLoading = isAuthLoading || isColaboradorLoading || isCompaniesLoading;
 
   return {
     brandName: company?.brand_name || DEFAULT_BRANDING.brandName,

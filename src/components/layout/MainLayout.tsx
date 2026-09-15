@@ -1,4 +1,4 @@
-import { Component, ReactNode, useState } from "react";
+import { Component, ReactNode, useState, useEffect, useMemo } from "react";
 import { Menu } from "lucide-react";
 import { Sidebar } from "./Sidebar";
 import { Header } from "./Header";
@@ -39,6 +39,62 @@ export function MainLayout({ children }: MainLayoutProps) {
   useTaskReminderWatcher();
   const branding = useBranding();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+
+  // Verifica de forma determinística e síncrona se existe cache para o usuário atual
+  const hasCache = useMemo(() => {
+    try {
+      let currentUserId: string | null = null;
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      if (supabaseUrl) {
+        const projectRef = new URL(supabaseUrl).hostname.split('.')[0];
+        const authKey = `sb-${projectRef}-auth-token`;
+        const tokenStr = localStorage.getItem(authKey);
+        if (tokenStr) {
+          const tokenData = JSON.parse(tokenStr);
+          currentUserId = tokenData?.user?.id || null;
+        }
+      }
+      if (currentUserId) {
+        const cachedColor = localStorage.getItem(`nr1_branding_${currentUserId}`);
+        return !!(cachedColor && /^#([0-9A-F]{3}){1,2}$/i.test(cachedColor));
+      }
+    } catch (e) {
+      // Ignorar erros
+    }
+    return false;
+  }, []);
+
+  // Inicia o gate aberto se o cache existe (pula o loading)
+  const [gateOpen, setGateOpen] = useState(hasCache);
+
+  useEffect(() => {
+    // Se o gate já abriu pelo cache, não precisamos re-abrir
+    if (gateOpen) return;
+
+    if (!branding.isLoading) {
+      setGateOpen(true);
+      return;
+    }
+    
+    // Timeout de segurança: 800ms
+    const timer = setTimeout(() => {
+      console.warn("[MainLayout] Timeout do Branding Loading Gate estourou (800ms). Liberando UI forçadamente.");
+      setGateOpen(true);
+    }, 800);
+
+    return () => clearTimeout(timer);
+  }, [branding.isLoading, gateOpen]);
+
+  if (!gateOpen) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-4">
+          <div className="h-8 w-8 rounded-full border-4 border-slate-200 border-t-slate-400 animate-spin" />
+          <p className="text-sm text-slate-500 font-medium animate-pulse">Carregando ambiente...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">

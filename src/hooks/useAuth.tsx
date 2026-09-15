@@ -226,6 +226,9 @@ function useProvideAuth(): AuthContextValue {
   };
 
   const signOut = async () => {
+    if (user?.id) {
+      localStorage.removeItem(`nr1_branding_${user.id}`);
+    }
     const { error } = await supabase.auth.signOut();
     return { error };
   };
