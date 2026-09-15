@@ -59,6 +59,21 @@ const emptyForm: FormState = {
   ativo: true,
 };
 
+export const getMutFor = <T,>(
+  t: Tabela,
+  mutDep: T,
+  mutCargo: T,
+  mutGhe: T,
+  mutNivel: T
+): T =>
+  t === 'departamentos'
+    ? mutDep
+    : t === 'cargos'
+      ? mutCargo
+      : t === 'ghes'
+        ? mutGhe
+        : mutNivel;
+
 interface Props {
   companyId: string | null;
   podeEditar: boolean;
@@ -70,10 +85,14 @@ export function ConfiguracaoTab({ companyId, podeEditar, podeExcluir }: Props) {
   const cargos = useCargos(companyId);
   const ghes = useGhes(companyId);
   const niveis = useNiveisMaturidade(companyId);
+  const mutDep = useEntidadeMutations('departamentos', companyId);
+  const mutCargo = useEntidadeMutations('cargos', companyId);
+  const mutGhe = useEntidadeMutations('ghes', companyId);
   const mutNivel = useEntidadeMutations('niveis_maturidade', companyId);
 
   const [dialog, setDialog] = useState<{ tabela: Tabela; row: Row | null } | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     if (!dialog) return;
@@ -91,44 +110,45 @@ export function ConfiguracaoTab({ companyId, podeEditar, podeExcluir }: Props) {
     });
   }, [dialog]);
 
-  const mutFor = (t: Tabela) =>
-    t === 'departamentos'
-      ? mutDep
-      : t === 'cargos'
-        ? mutCargo
-        : t === 'ghes'
-          ? mutGhe
-          : mutNivel;
+  const mutFor = (t: Tabela) => getMutFor(t, mutDep, mutCargo, mutGhe, mutNivel);
 
   const salvar = async () => {
-    if (!dialog || !form.nome.trim()) return;
-    const t = dialog.tabela;
-    const values: Record<string, unknown> =
-      t === 'departamentos'
-        ? { nome: form.nome.trim(), codigo: form.codigo.trim() || null, ativo: form.ativo }
-        : t === 'cargos'
-          ? {
-              nome: form.nome.trim(),
-              cbo_codigo: form.cbo_codigo.trim() || null,
-              cbo_descricao: form.cbo_descricao.trim() || null,
-              ativo: form.ativo,
-            }
-          : t === 'niveis_maturidade'
-          ? {
-              nome: form.nome.trim(),
-              descricao: form.descricao.trim() || null,
-              ordem: Number(form.ordem) || 0,
-              ativo: form.ativo,
-            }
-          : {
-              codigo: form.codigo.trim() || null,
-              nome: form.nome.trim(),
-              descricao: form.descricao.trim() || null,
-              tipo_exposicao: form.tipo_exposicao,
-              ativo: form.ativo,
-            };
-    await mutFor(t).salvar.mutateAsync({ id: dialog.row?.id, values });
-    setDialog(null);
+    if (!dialog || !form.nome.trim() || isSaving) return;
+    setIsSaving(true);
+    try {
+      const t = dialog.tabela;
+      const values: Record<string, unknown> =
+        t === 'departamentos'
+          ? { nome: form.nome.trim(), codigo: form.codigo.trim() || null, ativo: form.ativo }
+          : t === 'cargos'
+            ? {
+                nome: form.nome.trim(),
+                cbo_codigo: form.cbo_codigo.trim() || null,
+                cbo_descricao: form.cbo_descricao.trim() || null,
+                ativo: form.ativo,
+              }
+            : t === 'niveis_maturidade'
+            ? {
+                nome: form.nome.trim(),
+                descricao: form.descricao.trim() || null,
+                ordem: Number(form.ordem) || 0,
+                ativo: form.ativo,
+              }
+            : {
+                codigo: form.codigo.trim() || null,
+                nome: form.nome.trim(),
+                descricao: form.descricao.trim() || null,
+                tipo_exposicao: form.tipo_exposicao,
+                ativo: form.ativo,
+              };
+      await mutFor(t).salvar.mutateAsync({ id: dialog.row?.id, values });
+      setDialog(null);
+    } catch (error) {
+      console.error('Erro ao salvar entidade:', error);
+      // Nota: o toast de erro já é disparado pelo onError da useMutation no hook useEstruturaConfig.
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const titulos: Record<Tabela, string> = {
@@ -363,7 +383,7 @@ export function ConfiguracaoTab({ companyId, podeEditar, podeExcluir }: Props) {
             <Button variant="outline" onClick={() => setDialog(null)}>
               Cancelar
             </Button>
-            <Button onClick={salvar} disabled={!form.nome.trim()}>
+            <Button onClick={salvar} disabled={!form.nome.trim() || isSaving}>
               Salvar
             </Button>
           </DialogFooter>
