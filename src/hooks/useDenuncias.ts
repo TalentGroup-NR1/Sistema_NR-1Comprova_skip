@@ -158,8 +158,15 @@ export function useDenunciasMonitor() {
     }
   }, [query.data, isAdminLike, storageKey]);
 
+  const denunciasNovas = (query.data ?? []).filter(
+    (d) => d.status === "novo" && d.tipo === "denuncia"
+  ).length;
+  const faleConoscoNovos = (query.data ?? []).filter(
+    (d) => d.status === "novo" && d.tipo !== "denuncia"
+  ).length;
   const novoCount = (query.data ?? []).filter((d) => d.status === "novo").length;
-  return { novoCount, enabled: isAdminLike };
+
+  return { novoCount, denunciasNovas, faleConoscoNovos, enabled: isAdminLike };
 }
 
 export function useAtualizarStatusDenuncia() {

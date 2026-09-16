@@ -88,7 +88,7 @@ export function Sidebar() {
   const unreadCount = useUnreadCount();
   const { data: adminNotifications } = useAdminNotifications();
   const totalUnread = unreadCount + (adminNotifications ?? []).filter((n) => !n.is_read).length;
-  const { novoCount: denunciasNovas } = useDenunciasMonitor();
+  const { denunciasNovas, faleConoscoNovos } = useDenunciasMonitor();
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
     departamentoPessoal: true,
     desenvolvimento: true,
@@ -152,11 +152,15 @@ export function Sidebar() {
         ]
       : []),
     ...filterByRole(configuracoesItems),
-  ].map(item =>
-    item.href === "/denuncias" && denunciasNovas > 0
-      ? { ...item, badge: denunciasNovas }
-      : item
-  );
+  ].map(item => {
+    if (item.href === "/denuncias" && faleConoscoNovos > 0) {
+      return { ...item, badge: faleConoscoNovos };
+    }
+    if (item.href === "/comportamentos-ofensivos" && denunciasNovas > 0) {
+      return { ...item, badge: denunciasNovas };
+    }
+    return item;
+  });
 
   const userName = user?.email?.split("@")[0] ?? "usuário";
   const roleLabel = role ? roleLabels[role] ?? "Usuário" : "Usuário";
