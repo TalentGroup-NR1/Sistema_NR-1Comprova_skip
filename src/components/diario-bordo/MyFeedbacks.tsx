@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -11,7 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Calendar, Clock, CheckCircle2, AlertCircle, User, AlertTriangle, Eye } from 'lucide-react';
+import { Calendar, Clock, CheckCircle2, AlertCircle, User, AlertTriangle, Eye, PenLine } from 'lucide-react';
 import { useMyFeedbackCycles } from '@/hooks/useMyFeedbackCycles';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -146,9 +147,9 @@ export function MyFeedbacks() {
               ) : (
                 cycles?.map((cycle) => {
                   const statusInfo = getStatusInfo(cycle.status);
+                  const canRespond = (cycle.status === 'LINKS_GERADOS' || cycle.status === 'GESTOR_RESPONDIDO') && !!cycle.collaborator_token;
                   const canViewResults = cycle.status === 'CONCLUIDO' || 
-                    cycle.status === 'COLAB_RESPONDIDO' || 
-                    cycle.status === 'GESTOR_RESPONDIDO';
+                    cycle.status === 'COLAB_RESPONDIDO';
                   
                   return (
                     <TableRow key={cycle.id}>
@@ -171,7 +172,18 @@ export function MyFeedbacks() {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        {canViewResults ? (
+                        {canRespond ? (
+                          <Button
+                            asChild
+                            size="sm"
+                            className="h-8 text-xs font-medium flex items-center gap-1.5"
+                          >
+                            <Link to={`/feedback/${cycle.collaborator_token}`}>
+                              <PenLine className="h-3.5 w-3.5" />
+                              Responder
+                            </Link>
+                          </Button>
+                        ) : canViewResults ? (
                           <Button
                             variant="ghost"
                             size="sm"

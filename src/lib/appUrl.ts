@@ -4,8 +4,9 @@
  * Avaliações, Certificados) devem usar esta base — nunca window.location.origin,
  * que pode apontar para o preview e gerar "Access denied" para quem recebe.
  */
-export const PRODUCTION_URL = 'https://nr1pronto.com.br';
+export const PRODUCTION_URL = 'https://www.nr-1pronto.com.br';
 
 export function getShareBaseUrl(): string {
   return PRODUCTION_URL;
 }
+
