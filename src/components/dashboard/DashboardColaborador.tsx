@@ -106,7 +106,7 @@ function CampanhasSection() {
             Campanhas Ativas
           </h2>
           <Button asChild size="sm" variant="ghost" className="text-[#DC2626] hover:text-[#B91C1C] hover:bg-red-50">
-            <Link to="/comunicados">
+            <Link to="/campanhas">
               Ver todas as campanhas
               <ArrowRight className="ml-1 h-4 w-4" />
             </Link>

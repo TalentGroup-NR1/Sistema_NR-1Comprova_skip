@@ -21,6 +21,7 @@ import CuidarMais from "./pages/CuidarMais";
 import MapaRiscosNR1 from "./pages/MapaRiscosNR1";
 import EstruturaOrganizacional from "./pages/EstruturaOrganizacional";
 import Comunicados from "./pages/Comunicados";
+import Campanhas from "./pages/Campanhas";
 import Organograma from "./pages/Organograma";
 import GerenciamentoAcessos from "./pages/GerenciamentoAcessos";
 import Empresas from "./pages/Empresas";
@@ -97,6 +98,7 @@ const App = () => (
                 </ProtectedRoute>
               } />
               <Route path="/comunicados" element={<ProtectedRoute><Comunicados /></ProtectedRoute>} />
+              <Route path="/campanhas" element={<ProtectedRoute><Campanhas /></ProtectedRoute>} />
               <Route path="/organograma" element={<ProtectedRoute><Organograma /></ProtectedRoute>} />
               <Route path="/ferias" element={
                 <ProtectedRoute allowedRoles={['admin_master', 'admin_empresa', 'analista_rh', 'gestor_departamento']}>

@@ -2,7 +2,7 @@
 
 **Plataforma:** NR1-Pronto (SaaS Multi-tenant de Gestão de RH, SST e Comunicação)  
 **Empresa Mantenedora:** Talent Group  
-**Domínio Oficial de Produção:** `https://nr1pronto.com.br`  
+**Domínio Oficial de Produção:** `https://www.nr-1pronto.com.br` (Canônico; o apex `https://nr-1pronto.com.br` responde com redirect permanente HTTP 308)  
 **Supabase Project Ref:** `alneozvrsuwszlkisbyo`
 
 ---
@@ -32,7 +32,7 @@
 
 | Secret | Finalidade | Escopo / Acesso |
 |---|---|---|
-| `APP_ORIGIN` | Domínio oficial (`https://nr1pronto.com.br`) usado em links de e-mail e validação estrita de CORS | Obrigatório |
+| `APP_ORIGIN` | Domínio canônico oficial (`https://www.nr-1pronto.com.br`) usado em links transacionais de e-mail e validação estrita de CORS nas Edge Functions (atenção: o apex `https://nr-1pronto.com.br` sofre redirect 308 na borda Vercel, logo as requisições SPA e callbacks originam de `https://www.nr-1pronto.com.br`) | Obrigatório |
 | `CRON_SECRET` | Chave de autenticação passada no header `x-cron-secret` para disparo dos crons (ex.: `cuidar-ativar-campanhas`) | Obrigatório |
 | `WEBHOOK_SECRET` | Validação de assinatura em webhooks externos (`handle-email-suppression`) | Obrigatório |
 | `RESEND_API_KEY` | Chave de envio transacional via Resend (`process-email-queue`, `send-pulse-reminder`) | *Pendente (ativação comercial)* |
