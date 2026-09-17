@@ -47,12 +47,14 @@ const departamentoPessoalItems: NavItem[] = [
   { icon: Briefcase, label: "Benefícios", href: "/beneficios" },
   { icon: Clock, label: "Ponto Eletrônico", href: "/ponto-eletronico" },
   { icon: ListChecks, label: "Minhas Tarefas", href: "/minhas-tarefas" },
-  { icon: ClipboardList, label: "Minhas Atividades", href: "/minhas-atividades" },
+  // [HIDDEN-FOR-PRESENTATION] Revert: remove comment from the line below to restore
+  // { icon: ClipboardList, label: "Minhas Atividades", href: "/minhas-atividades" },
   { icon: Megaphone, label: "Comunicados", href: "/comunicados" },
 ];
 
 const desenvolvimentoItems: NavItem[] = [
-  { icon: UserSearch, label: "Análise de Perfil", href: "/analise-perfil", roles: ['admin_master', 'admin_empresa', 'analista_rh'] },
+  // [HIDDEN-FOR-PRESENTATION] Revert: remove comment from the line below to restore
+  // { icon: UserSearch, label: "Análise de Perfil", href: "/analise-perfil", roles: ['admin_master', 'admin_empresa', 'analista_rh'] },
   { icon: FileText, label: "Diário de Bordo", href: "/diario-bordo" },
   { icon: ClipboardList, label: "Avaliação", href: "/avaliacoes" },
   { icon: MessageSquare, label: "Feedback", href: "/feedback-gestao", roles: ['admin_master', 'admin_empresa', 'analista_rh', 'gestor_departamento'] },
