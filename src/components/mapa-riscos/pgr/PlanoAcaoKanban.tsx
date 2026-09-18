@@ -13,7 +13,7 @@ import {
 } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy, useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { useAcoesPgr, useUpdateAcao, useSincronizarAcoes, PgrPlanoAcao } from "@/hooks/usePgrAcoes";
+import { useAcoesPgr, useUpdateAcao, useSincronizarAcoes, PgrPlanoAcao, calcularProgresso5W2H } from "@/hooks/usePgrAcoes";
 import { mapColumnToStatus, resolveTargetStatus } from "@/lib/statusMapper";
 import { usePgrImportacoes } from "@/hooks/usePgrImportacao";
 import { AcaoDialog } from "./AcaoDialog";
@@ -48,6 +48,13 @@ function SortableItem({ acao, onClick }: { acao: PgrPlanoAcao; onClick: () => vo
     touchAction: 'none'
   };
 
+  const progresso = calcularProgresso5W2H(acao);
+  const badgeColor = progresso.completo 
+    ? "bg-emerald-500 hover:bg-emerald-600 text-white border-transparent" 
+    : progresso.preenchidos > 0 
+      ? "bg-amber-500 hover:bg-amber-600 text-white border-transparent" 
+      : "text-muted-foreground";
+
   return (
     <Card 
       ref={setNodeRef} 
@@ -61,9 +68,15 @@ function SortableItem({ acao, onClick }: { acao: PgrPlanoAcao; onClick: () => vo
         <p className="text-sm font-medium leading-tight">{acao.acao}</p>
         
         <div className="flex flex-wrap gap-2 items-center justify-between text-xs text-muted-foreground mt-2">
-          {acao.prioridade === 'alta' && <Badge variant="destructive" className="text-[10px]">Alta</Badge>}
-          {acao.prioridade === 'media' && <Badge variant="secondary" className="text-[10px]">Média</Badge>}
-          {acao.prioridade === 'baixa' && <Badge variant="outline" className="text-[10px]">Baixa</Badge>}
+          <div className="flex gap-2">
+            {acao.prioridade === 'alta' && <Badge variant="destructive" className="text-[10px]">Alta</Badge>}
+            {acao.prioridade === 'media' && <Badge variant="secondary" className="text-[10px]">Média</Badge>}
+            {acao.prioridade === 'baixa' && <Badge variant="outline" className="text-[10px]">Baixa</Badge>}
+            
+            <Badge variant="outline" className={`text-[10px] ${badgeColor}`}>
+              5W2H: {progresso.preenchidos}/{progresso.total}
+            </Badge>
+          </div>
           
           <div className="flex gap-2">
             {acao.prazo && <span className="flex items-center gap-1"><CalendarIcon className="w-3 h-3" /> {new Date(acao.prazo).toLocaleDateString()}</span>}

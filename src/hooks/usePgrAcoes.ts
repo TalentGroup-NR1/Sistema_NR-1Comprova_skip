@@ -51,6 +51,43 @@ export interface PgrAcaoExecucao {
   } | null;
 }
 
+export function appendHistorico(historicoAtual: any[] | null, mudanca: string, autorId: string): any[] {
+  return [
+    ...(historicoAtual || []),
+    {
+      data: new Date().toISOString(),
+      autor_id: autorId,
+      mudanca
+    }
+  ];
+}
+
+export function calcularProgresso5W2H(acao: Partial<PgrPlanoAcao>): { preenchidos: number; total: number; completo: boolean } {
+  const total = 6;
+  let preenchidos = 0;
+  
+  if (acao.por_que && acao.por_que.trim().length > 0) preenchidos++;
+  if (acao.onde && acao.onde.trim().length > 0) preenchidos++;
+  if (acao.como && acao.como.trim().length > 0) preenchidos++;
+  if (acao.prazo) preenchidos++;
+  if (acao.responsavel_id) preenchidos++;
+  // custo_estimado só conta se for estritamente maior que 0, pois 0 é o default para itens não orçados.
+  if (typeof acao.custo_estimado === 'number' && acao.custo_estimado > 0) preenchidos++;
+
+  return { preenchidos, total, completo: preenchidos === total };
+}
+
+export function validarMudancaStatus(acao: Partial<PgrPlanoAcao>, novoStatus: string): { permitido: boolean; mostrarAviso: boolean } {
+  if (novoStatus === "concluida" || novoStatus === "validada") {
+    const progresso = calcularProgresso5W2H(acao);
+    if (!progresso.completo) {
+      // Modo Warning decidido: permite a mudança mas avisa
+      return { permitido: true, mostrarAviso: true };
+    }
+  }
+  return { permitido: true, mostrarAviso: false };
+}
+
 export function useAcoesPgr(pgrImportacaoId: string) {
   const companyId = useEffectiveCompanyId();
   return useQuery({
@@ -109,15 +146,9 @@ export function useUpdateAcao() {
       if (fetchErr) throw new Error(mapPostgresError(fetchErr));
       
       const historicoAtual = currentData?.historico || [];
-      const novoHistorico = [...historicoAtual];
-      
-      if (mensagemLog) {
-        novoHistorico.push({
-          data: new Date().toISOString(),
-          autor_id: user.id,
-          mudanca: mensagemLog
-        });
-      }
+      const novoHistorico = mensagemLog 
+        ? appendHistorico(historicoAtual, mensagemLog, user.id)
+        : [...historicoAtual];
 
       const { data, error: updateErr } = await (supabase as any)
         .from("pgr_plano_acao")
@@ -250,14 +281,24 @@ export function useCreateExecucao() {
       // Let's do it in a transaction-like or just update the action directly.
       const { data: currentAcao, error: fetchAcaoErr } = await (supabase as any)
         .from("pgr_plano_acao")
-        .select("custo_real")
+        .select("custo_real, historico")
         .eq("id", execucao.acao_id)
         .single();
         
       if (!fetchAcaoErr && currentAcao) {
+         const novoCusto = Number(currentAcao.custo_real || 0) + Number(execucao.custo);
+         const novoHistorico = appendHistorico(
+           currentAcao.historico,
+           `Custo real atualizado via execução automática`,
+           user.id
+         );
+
          await (supabase as any)
            .from("pgr_plano_acao")
-           .update({ custo_real: Number(currentAcao.custo_real || 0) + Number(execucao.custo) })
+           .update({ 
+             custo_real: novoCusto,
+             historico: novoHistorico 
+           })
            .eq("id", execucao.acao_id);
       }
 
@@ -285,7 +326,7 @@ export function useGerarRelatorioEvidenciaPgr() {
       
       const { data: imp, error: errImp } = await supabase
         .from("pgr_importacoes")
-        .select("id, status, dados_empresa")
+        .select("id, status, dados_empresa, riscos, plano_acao")
         .eq("id", pgrImportacaoId)
         .maybeSingle();
       if (errImp) throw new Error("Falha no Supabase: " + errImp.message);
@@ -298,6 +339,15 @@ export function useGerarRelatorioEvidenciaPgr() {
         .maybeSingle();
       if (errEmp) throw new Error("Falha no Supabase ao buscar empresa: " + errEmp.message);
       if (!emp) throw new Error("Empresa não encontrada");
+
+      // Buscar PGR base (pgr_documentos) como fallback de metadados
+      const { data: pgrDoc } = await supabase
+        .from("pgr_documentos")
+        .select("created_at, vigencia_inicio, responsavel_tecnico")
+        .eq("company_id", companyId)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
       const { data: prof, error: errProf } = await supabase
         .from("profiles")
@@ -314,17 +364,19 @@ export function useGerarRelatorioEvidenciaPgr() {
 
       const pgrInfo = {
         id: imp.id,
-        data_elaboracao: imp.dados_empresa?.data_elaboracao || imp.data_elaboracao,
+        data_elaboracao: imp.dados_empresa?.data_elaboracao || (pgrDoc as any)?.data_elaboracao || pgrDoc?.vigencia_inicio || pgrDoc?.created_at || imp.data_elaboracao,
         validade: imp.dados_empresa?.validade || imp.validade,
-        responsavel_tecnico: imp.dados_empresa?.responsavel_tecnico || imp.responsavel_tecnico,
-        cargo_responsavel: imp.dados_empresa?.cargo_responsavel || imp.cargo_responsavel,
-        registro_profissional: imp.dados_empresa?.registro_profissional,
+        responsavel_tecnico: imp.dados_empresa?.responsavel_tecnico || (pgrDoc?.responsavel_tecnico as any)?.nome || imp.responsavel_tecnico,
+        cargo_responsavel: imp.dados_empresa?.cargo_responsavel || (pgrDoc?.responsavel_tecnico as any)?.titulo || imp.cargo_responsavel,
+        registro_profissional: imp.dados_empresa?.registro_profissional || (pgrDoc?.responsavel_tecnico as any)?.registro,
         status: imp.status
       };
 
       const { blob: pdfBlob, docId } = await gerarRelatorioPgrPDF({
         pgrInfo,
         acoes,
+        riscos: imp.riscos || [],
+        planoAcao: imp.plano_acao || [],
         empresa: emp,
         emitente,
         verificacaoUrlBase: getShareBaseUrl(),

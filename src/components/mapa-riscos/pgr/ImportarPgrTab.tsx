@@ -360,7 +360,7 @@ function HistoricoCard({ importacao, onOpen }: { importacao: PgrImportacao; onOp
             e.stopPropagation();
             if (confirm("Tem certeza que deseja excluir esta importação? Esta ação não pode ser desfeita.")) {
               excluir.mutateAsync(importacao.id)
-                .then(() => toast.success("Importação excluída com sucesso."))
+                .then(() => toast.success("PGR excluído com sucesso."))
                 .catch(err => toast.error(err.message ?? "Erro ao excluir importação."));
             }
           }}
@@ -385,7 +385,7 @@ function PainelRevisao({
 }) {
   const raw = (importacao.extracao_raw || {}) as ExtracaoRaw;
   const [dadosEmpresa, setDadosEmpresa] = useState<DadosEmpresaPgr>(raw?.dados_empresa ?? {
-    nome: null, cnpj: null, responsavel_tecnico: null, cargo_responsavel: null, data_elaboracao: null, validade: null,
+    nome: null, cnpj: null, responsavel_tecnico: null, cargo_responsavel: null, registro_profissional: null, data_elaboracao: null, validade: null,
   });
   
   const initialRiscos = Array.isArray(raw?.riscos) ? raw.riscos : [];
@@ -470,6 +470,7 @@ function PainelRevisao({
               { key: "nome", label: "Nome da empresa" },
               { key: "cnpj", label: "CNPJ" },
               { key: "responsavel_tecnico", label: "Responsável técnico" },
+              { key: "registro_profissional", label: "Registro Profissional (Ex: CREA/CRM)" },
               { key: "cargo_responsavel", label: "Cargo do responsável" },
               { key: "data_elaboracao", label: "Data de elaboração" },
               { key: "validade", label: "Validade" },
@@ -491,7 +492,15 @@ function PainelRevisao({
         <div className="mt-auto pt-4 pb-2">
           <Separator className="mb-4" />
           <div className="flex justify-end gap-3">
-            <Button id="pgr-confirmar-importacao" onClick={() => onConfirmar({ dadosEmpresa, riscos, planoAcao })}
+            <Button id="pgr-confirmar-importacao" onClick={() => {
+              const validacao = validarMetadadosObrigatoriosPgr(dadosEmpresa);
+              if (!validacao.valido) {
+                toast.error(validacao.erro);
+                setSecao("empresa");
+                return;
+              }
+              onConfirmar({ dadosEmpresa, riscos, planoAcao });
+            }}
               disabled={isPending || totalPreenchido === 0}
               className="bg-orange-600 hover:bg-orange-700 text-white w-full">
               {isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <CheckCircle className="h-4 w-4 mr-2" />}
@@ -528,6 +537,7 @@ function PainelRevisao({
 
 // ────────── Componente Principal ──────────
 import { PgrImportadoDashboard } from "./PgrImportadoDashboard";
+import { validarMetadadosObrigatoriosPgr } from "@/lib/pgrImportacaoValidation";
 
 export function ImportarPgrTab() {
   const { data: importacoes = [], isLoading } = usePgrImportacoes();

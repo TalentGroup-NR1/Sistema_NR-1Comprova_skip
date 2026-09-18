@@ -264,13 +264,13 @@ async function mockProcessImport(mockFetch: typeof fetch, dbStatus: { status: st
 describe("pgr-importar: Lógica de Resiliência (Etapa 3)", () => {
   it("(a) IA retorna 503 -> retry dispara -> após esgotar, status vira erro", async () => {
     let calls = 0;
-    const mockFetch = async () => {
+    const mockFetch = async (input?: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
       calls++;
       return new Response(null, { status: 503 });
     };
     
-    const db = { status: "processando" };
-    await mockProcessImport(mockFetch as any, db);
+    const db: { status: string; msg?: string } = { status: "processando" };
+    await mockProcessImport(mockFetch as unknown as typeof fetch, db); // as unknown as typeof fetch usado devido à complexidade da tipagem global do fetch, mas o db agora respeita a assinatura real
     
     expect(calls).toBe(3); // 1 tentativa + 2 retries
     expect(db.status).toBe("erro");
@@ -279,24 +279,24 @@ describe("pgr-importar: Lógica de Resiliência (Etapa 3)", () => {
 
   it("(b) IA retorna 503 e depois 200 -> sucesso no retry, status aguardando_revisao", async () => {
     let calls = 0;
-    const mockFetch = async () => {
+    const mockFetch = async (input?: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
       calls++;
       if (calls <= 2) return new Response(null, { status: 503 });
       return new Response(null, { status: 200 }); // sucesso na 3ª tentativa
     };
     
-    const db = { status: "processando" };
-    await mockProcessImport(mockFetch as any, db);
+    const db: { status: string; msg?: string } = { status: "processando" };
+    await mockProcessImport(mockFetch as unknown as typeof fetch, db); // as unknown as typeof fetch usado para compatibilidade com o tipo nativo
     
     expect(calls).toBe(3);
     expect(db.status).toBe("aguardando_revisao");
   });
 
   it("(c) exceção inesperada no meio -> status erro, nunca processando", async () => {
-    const db = { status: "processando", msg: "force_unexpected" };
+    const db: { status: string; msg?: string } = { status: "processando", msg: "force_unexpected" };
     
     try {
-      await mockProcessImport({} as any, db);
+      await mockProcessImport({} as unknown as typeof fetch, db); // fetch não é chamado neste teste, objeto vazio satisfaz a compilação
     } catch(err) {
       // simulate global catch
       db.status = "erro";
@@ -307,3 +307,101 @@ describe("pgr-importar: Lógica de Resiliência (Etapa 3)", () => {
     expect(db.msg).toContain("Falha interna");
   });
 });
+
+// ────────────────────────────────────────────────────────────
+// Mapeamento 5W2H — espelha a lógica de rowsToInsert do hook
+// ────────────────────────────────────────────────────────────
+function mapActionToRow(a: {
+  id: string;
+  medida: string;
+  responsavel_id?: string | null;
+  responsavel_sugerido?: string | null;
+  prazo_sugerido?: string | null;
+  prioridade: string;
+  status: string;
+  evidencia_url?: string | null;
+  historico?: unknown[];
+  por_que?: string | null;
+  onde?: string | null;
+  como?: string | null;
+  custo_estimado?: number | null;
+}, companyId: string, importacaoId: string) {
+  let parsedDate = null;
+  if (a.prazo_sugerido && !isNaN(Date.parse(a.prazo_sugerido))) {
+    parsedDate = new Date(a.prazo_sugerido).toISOString().split("T")[0];
+  }
+  return {
+    id: a.id,
+    company_id: companyId,
+    pgr_importacao_id: importacaoId,
+    acao: a.medida,
+    responsavel_id: a.responsavel_id || null,
+    cargo_responsavel: a.responsavel_sugerido || null,
+    prazo: parsedDate,
+    prioridade: a.prioridade,
+    status: a.status,
+    evidencia_url: a.evidencia_url || null,
+    historico: a.historico || [],
+    // Campos 5W2H
+    por_que: a.por_que || null,
+    onde: a.onde || null,
+    como: a.como || null,
+    custo_estimado: a.custo_estimado ?? 0,
+  };
+}
+
+describe("pgr-importar: Mapeamento 5W2H (rowsToInsert)", () => {
+  const BASE = {
+    id: "uuid-acao-1",
+    medida: "Instalar EPC na area de risco",
+    prioridade: "alta",
+    status: "pendente",
+    prazo_sugerido: "2025-09-30",
+    responsavel_sugerido: "Engenheiro de Seguranca",
+  };
+
+  it("deve mapear todos os campos 5W2H quando presentes", () => {
+    const row = mapActionToRow(
+      { ...BASE, por_que: "Reduzir acidentalidade no setor", onde: "Galpao B - linha 3", como: "Aquisicao e instalacao de guard-rail", custo_estimado: 3200 },
+      "company-abc", "import-xyz"
+    );
+    expect(row.por_que).toBe("Reduzir acidentalidade no setor");
+    expect(row.onde).toBe("Galpao B - linha 3");
+    expect(row.como).toBe("Aquisicao e instalacao de guard-rail");
+    expect(row.custo_estimado).toBe(3200);
+  });
+
+  it("deve usar custo_estimado = 0 quando ausente (null)", () => {
+    const row = mapActionToRow({ ...BASE, custo_estimado: null }, "company-abc", "import-xyz");
+    expect(row.custo_estimado).toBe(0);
+  });
+
+  it("deve usar custo_estimado = 0 quando nao informado (undefined)", () => {
+    const row = mapActionToRow(BASE, "company-abc", "import-xyz");
+    expect(row.custo_estimado).toBe(0);
+  });
+
+  it("deve mapear por_que/onde/como como null quando ausentes", () => {
+    const row = mapActionToRow(BASE, "company-abc", "import-xyz");
+    expect(row.por_que).toBeNull();
+    expect(row.onde).toBeNull();
+    expect(row.como).toBeNull();
+  });
+
+  it("deve converter prazo_sugerido ISO para formato YYYY-MM-DD", () => {
+    const row = mapActionToRow(
+      { ...BASE, prazo_sugerido: "2025-09-30T00:00:00.000Z" },
+      "company-abc", "import-xyz"
+    );
+    expect(row.prazo).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+
+  it("deve definir prazo como null quando prazo_sugerido invalido", () => {
+    const row = mapActionToRow(
+      { ...BASE, prazo_sugerido: "data-invalida" },
+      "company-abc", "import-xyz"
+    );
+    expect(row.prazo).toBeNull();
+  });
+});
+

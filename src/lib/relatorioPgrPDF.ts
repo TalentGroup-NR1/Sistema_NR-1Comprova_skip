@@ -6,6 +6,7 @@ import { getShareBaseUrl } from "@/lib/appUrl";
 import { sha256Hex, fetchHash, loadImage, fitImage, generateVerificationQRCode, sha256HexFromBytes } from "./pdfHelpers";
 import { AcaoComExecucoes, aggregatePgrData } from "./relatorioPgrAggregators";
 import { supabase } from "@/integrations/supabase/client";
+import { RiscoExtraido, AcaoExtraida } from "@/hooks/usePgrImportacao";
 
 export interface EvidenciaEmpresa {
   name?: string | null;
@@ -32,6 +33,8 @@ export interface PgrInfo {
 export interface GerarRelatorioPgrParams {
   pgrInfo: PgrInfo;
   acoes: AcaoComExecucoes[];
+  riscos?: RiscoExtraido[];
+  planoAcao?: AcaoExtraida[];
   empresa: EvidenciaEmpresa;
   emitente: EvidenciaEmitente;
   verificacaoUrlBase?: string;
@@ -87,7 +90,7 @@ function statusLabel(st: string) {
 }
 
 export async function gerarRelatorioPgrPDF(params: GerarRelatorioPgrParams) {
-  const { pgrInfo, acoes, empresa, emitente } = params;
+  const { pgrInfo, acoes, empresa, emitente, riscos = [], planoAcao = [] } = params;
 
   // Cálculos prévios
   const stats = aggregatePgrData(acoes);
@@ -165,11 +168,11 @@ export async function gerarRelatorioPgrPDF(params: GerarRelatorioPgrParams) {
 
   autoTable(doc, {
     startY: 150,
-    head: [["Informações do Relatório"]],
+    head: [[{ content: "Informações do Relatório", colSpan: 2 }]],
     body: [
       ["ID do PGR Base", pgrInfo.id],
-      ["Data de Elaboração PGR", fmtDate(pgrInfo.data_elaboracao)],
-      ["Validade PGR", fmtDate(pgrInfo.validade)],
+      ["Data de Elaboração PGR", fmtDate(pgrInfo.data_elaboracao === "null" ? null : pgrInfo.data_elaboracao)],
+      ["Validade PGR", fmtDate(pgrInfo.validade === "null" ? null : pgrInfo.validade)],
       ["Responsável Técnico", pgrInfo.responsavel_tecnico || "—"],
       ...(pgrInfo.registro_profissional ? [["Registro Profissional", pgrInfo.registro_profissional]] : []),
       ["Emitido em", geradoEm],
@@ -195,7 +198,7 @@ export async function gerarRelatorioPgrPDF(params: GerarRelatorioPgrParams) {
   const splitted = doc.splitTextToSize(txtFinalidade, pageW - 2 * M);
   doc.text(splitted, M, termsY + 15);
 
-  // --- PÁGINA 2: Dashboard e Indicadores ---
+  // --- PÁGINA: Dashboard e Indicadores ---
   doc.addPage();
   renderHeader();
   
@@ -219,6 +222,77 @@ export async function gerarRelatorioPgrPDF(params: GerarRelatorioPgrParams) {
     margin: { left: M, right: M },
   });
 
+  // --- SEÇÃO: Riscos Mapeados ---
+  doc.addPage();
+  renderHeader();
+  doc.setFontSize(14);
+  doc.setFont("helvetica", "bold");
+  doc.text("Riscos Mapeados", M, 90);
+  
+  doc.setFontSize(10);
+  doc.setFont("helvetica", "normal");
+  doc.text(riscos.length > 0 ? `${riscos.length} riscos identificados` : "Sem dados mapeados.", M, 105);
+
+  if (riscos.length > 0) {
+    const riscosBody = riscos.map(r => {
+      const riscoTxt = `${sanitizeText(r.nome)}${r.descricao ? `\n${sanitizeText(r.descricao)}` : ""}`;
+      const cat = sanitizeText(r.categoria) || "—";
+      const classNivel = (r.nivel === 0 || String(r.nivel) === "0" || r.nivel == null) ? (sanitizeText(r.classificacao) || "—") : String(r.nivel);
+      const grupo = sanitizeText(r.grupo_exposto) || "—";
+      const local = sanitizeText(r.local_exposicao || r.fonte) || "—";
+      const medidas = (r.medidas_existentes === "null" || !r.medidas_existentes) ? "—" : sanitizeText(r.medidas_existentes);
+
+      return [riscoTxt, cat, classNivel, grupo, local, medidas];
+    });
+
+    autoTable(doc, {
+      startY: 115,
+      head: [["Risco (Nome e Descrição)", "Categoria", "Nível/Classificação", "Grupo Exposto", "Local/Fonte", "Medidas Existentes"]],
+      body: riscosBody,
+      theme: "grid",
+      styles: { fontSize: 8, cellPadding: 4, textColor: DARK },
+      headStyles: { fillColor: PRIMARY, textColor: 255, fontStyle: "bold" },
+      margin: { left: M, right: M },
+    });
+  }
+
+  // --- SEÇÃO: Ações Mapeadas ---
+  doc.addPage();
+  renderHeader();
+  doc.setFontSize(14);
+  doc.setFont("helvetica", "bold");
+  doc.text("Ações Mapeadas", M, 90);
+  
+  doc.setFontSize(10);
+  doc.setFont("helvetica", "normal");
+  doc.text(planoAcao.length > 0 ? `${planoAcao.length} ações do plano` : "Sem dados mapeados.", M, 105);
+
+  if (planoAcao.length > 0) {
+    const planoBody = planoAcao.map(a => {
+      const medida = sanitizeText(a.medida) || "—";
+      const status = sanitizeText(a.status) || "—";
+      const prioridade = sanitizeText(a.prioridade) || "—";
+      let prazo = sanitizeText(a.prazo_sugerido) || "—";
+      if (/^\d+$/.test(prazo)) {
+        prazo = `${prazo} dias`;
+      }
+      const resp = sanitizeText(a.responsavel_sugerido) || "—";
+      const riscoRef = (a.risco_referenciado === "null" || !a.risco_referenciado) ? "—" : sanitizeText(a.risco_referenciado);
+      
+      return [medida, status, prioridade, prazo, resp, riscoRef];
+    });
+
+    autoTable(doc, {
+      startY: 115,
+      head: [["Medida", "Status", "Prioridade", "Prazo", "Responsável", "Risco Ref."]],
+      body: planoBody,
+      theme: "grid",
+      styles: { fontSize: 8, cellPadding: 4, textColor: DARK },
+      headStyles: { fillColor: PRIMARY, textColor: 255, fontStyle: "bold" },
+      margin: { left: M, right: M },
+    });
+  }
+
   // --- PÁGINAS SEGUINTES: 5W2H e Log de Execução ---
   if (!acoes || acoes.length === 0) {
     doc.addPage();
@@ -226,16 +300,37 @@ export async function gerarRelatorioPgrPDF(params: GerarRelatorioPgrParams) {
     doc.setFont("helvetica", "italic");
     doc.text("Nenhuma ação cadastrada para este PGR", M, 100);
   } else {
-    // Add page for the start of the action blocks
     doc.addPage();
     renderHeader();
     let currentY = 90;
+    
+    // Lista Resumo do Plano de Ação
+    doc.setFontSize(12);
+    doc.setFont("helvetica", "bold");
+    doc.text("Plano de Ação (Resumo)", M, currentY);
+    
+    autoTable(doc, {
+      startY: currentY + 15,
+      head: [["#", "Ação (Medida)", "Status", "Prioridade"]],
+      body: acoes.map((a, i) => [
+        String(i + 1),
+        sanitizeText(a.acao),
+        statusLabel(a.status),
+        a.prioridade ? sanitizeText(a.prioridade).toUpperCase() : "—"
+      ]),
+      theme: "striped",
+      styles: { fontSize: 9, cellPadding: 4, textColor: DARK },
+      headStyles: { fillColor: ZEBRA, textColor: PRIMARY, fontStyle: "bold" },
+      margin: { left: M, right: M },
+    });
+    
+    currentY = (doc as any).lastAutoTable.finalY + 30;
 
     for (let i = 0; i < acoes.length; i++) {
       const acao = acoes[i];
       
       // If we are too close to bottom, add page
-      if (currentY > 230) {
+      if (currentY > pageH - 200) {
         doc.addPage();
         renderHeader();
         currentY = 90;
@@ -243,14 +338,18 @@ export async function gerarRelatorioPgrPDF(params: GerarRelatorioPgrParams) {
 
       doc.setFontSize(12);
       doc.setFont("helvetica", "bold");
-      doc.text(`Ação ${i + 1}: ${sanitizeText(acao.acao)}`, M, currentY);
+      // Formata em bloco legível com quebra de linha se for muito longo
+      const titleLines = doc.splitTextToSize(`Ação ${i + 1}: ${sanitizeText(acao.acao)}`, pageW - 2 * M);
+      doc.text(titleLines, M, currentY);
+      
+      const titleHeight = titleLines.length * 14;
 
       // Tratamento do responsável
       const responsavel = acao.colaboradores?.full_name || "Não informado";
       
       // Tabela 5W2H
       autoTable(doc, {
-        startY: currentY + 5,
+        startY: currentY + titleHeight + 10,
         body: [
           ["Onde (Local)", sanitizeText(acao.onde || "Não informado"), "Por que (Justificativa)", sanitizeText(acao.por_que || "Não informado")],
           ["Como (Método)", sanitizeText(acao.como || "Não informado"), "Prazo", acao.prazo ? fmtDate(acao.prazo) : "Não informado"],

@@ -115,6 +115,7 @@ export function PulsoColaboradoresList({ onSelectColaborador }: PulsoColaborador
                 <TableRow>
                   <TableHead>Colaborador</TableHead>
                   <TableHead className="hidden md:table-cell">Departamento</TableHead>
+                  <TableHead className="text-center">Esfera</TableHead>
                   <TableHead className="text-center">Respostas</TableHead>
                   <TableHead className="text-center">Média</TableHead>
                   <TableHead className="hidden sm:table-cell">Última Resposta</TableHead>
@@ -149,6 +150,31 @@ export function PulsoColaboradoresList({ onSelectColaborador }: PulsoColaborador
                         <Badge variant="outline" className="font-normal">
                           {colaborador.departamento || "Sem departamento"}
                         </Badge>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {(() => {
+                          const esferas = Array.from(
+                            new Set(colaborador.responses?.map((r: any) => r.esfera).filter(Boolean))
+                          );
+                          if (esferas.length === 0) return <span className="text-muted-foreground text-sm">—</span>;
+                          return (
+                            <div className="flex items-center justify-center gap-1 flex-wrap">
+                              {esferas.map((esfera, idx) => (
+                                <Badge 
+                                  key={idx}
+                                  variant="outline" 
+                                  className={
+                                    esfera === "pessoal" 
+                                      ? "bg-violet-50 text-violet-700 border-violet-200" 
+                                      : "bg-amber-50 text-amber-700 border-amber-200"
+                                  }
+                                >
+                                  {esfera === "pessoal" ? "Pessoal" : "Trabalho"}
+                                </Badge>
+                              ))}
+                            </div>
+                          );
+                        })()}
                       </TableCell>
                       <TableCell className="text-center">
                         <div className="flex items-center justify-center gap-1">

@@ -46,14 +46,15 @@ export function PulsoCampanhaModal({
   const progress = ((currentStep + 1) / totalSteps) * 100;
 
   // Detecta resposta negativa (score <= 2) em qualquer questão escala_0_5 respondida
-  const isNegativeScore = useMemo(() => {
-    return questions.some((q) => {
+  const isNegativeScore = useMemo(() =>
+    questions.some((q) => {
       if (q.tipo !== "escala_0_5") return false;
       const raw = responses[q.id];
       if (raw === undefined || raw === "") return false;
       return Number(raw) <= 2;
-    });
-  }, [questions, responses]);
+    }),
+    [questions, responses]
+  );
 
   const canProceed = () => {
     if (isComentarioStep) {
@@ -196,10 +197,24 @@ export function PulsoCampanhaModal({
         <Progress value={progress} className="h-2" />
 
         <div className="py-6 min-h-[200px]">
+          {(() => {
+            if (isComentarioStep) {
+              console.log(`\n=== RENDER LOG [${campaign.titulo}] ===`);
+              console.log(`(a) isComentarioStep:`, isComentarioStep);
+              console.log(`(b) isNegativeScore:`, isNegativeScore);
+              console.log(`(d) responses:`, JSON.stringify(responses));
+              console.log(`(d) esfera:`, esfera);
+            }
+            return null;
+          })()}
           {isComentarioStep ? (
             <div className="space-y-5">
               {/* Flag de esfera — exibida apenas quando score <= 2 */}
               {isNegativeScore && (
+                (() => {
+                  console.log(`(c) BLOCO {isNegativeScore && (...)} FOI ENTRADO!`);
+                  return null;
+                })() || (
                 <div className="space-y-3">
                   <Label className="text-sm font-semibold">
                     Em que esfera isso acontece?{" "}
@@ -249,6 +264,7 @@ export function PulsoCampanhaModal({
                     </p>
                   )}
                 </div>
+                )
               )}
 
               {/* Comentário — sempre presente */}

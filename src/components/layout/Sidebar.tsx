@@ -148,10 +148,10 @@ export function Sidebar() {
   const visibleConfiguracoesItems = [
     ...(isSuperAdmin
       ? [
-          { icon: Server, label: "Plataforma", href: "/admin-plataforma" } as NavItem,
-          { icon: Building2, label: "Cadastro de Empresa", href: "/cadastro-empresa" } as NavItem,
-          { icon: Building2, label: "Listar Empresas", href: "/empresas" } as NavItem,
-        ]
+        { icon: Server, label: "Plataforma", href: "/admin-plataforma" } as NavItem,
+        { icon: Building2, label: "Cadastro de Empresa", href: "/cadastro-empresa" } as NavItem,
+        { icon: Building2, label: "Listar Empresas", href: "/empresas" } as NavItem,
+      ]
       : []),
     ...filterByRole(configuracoesItems),
   ].map(item => {

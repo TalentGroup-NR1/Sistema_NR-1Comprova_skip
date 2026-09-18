@@ -8,6 +8,7 @@ export interface DadosEmpresaPgr {
   cnpj: string | null;
   responsavel_tecnico: string | null;
   cargo_responsavel: string | null;
+  registro_profissional: string | null;
   data_elaboracao: string | null;
   validade: string | null;
 }
@@ -39,6 +40,11 @@ export interface AcaoExtraida {
   status?: "pendente" | "em_andamento" | "concluida" | "validada";
   evidencia_url?: string | null;
   historico?: any[];
+  // Campos 5W2H (vindos do Gemini, opcionais)
+  por_que?: string | null;
+  onde?: string | null;
+  como?: string | null;
+  custo_estimado?: number | null;
 }
 
 export interface ExtracaoRaw {
@@ -274,7 +280,12 @@ export function useConfirmarImportacaoPgr() {
             prioridade: a.prioridade,
             status: a.status,
             evidencia_url: a.evidencia_url || null,
-            historico: a.historico || []
+            historico: a.historico || [],
+            // Campos 5W2H
+            por_que: a.por_que || null,
+            onde: a.onde || null,
+            como: a.como || null,
+            custo_estimado: a.custo_estimado ?? 0,
           };
         });
 

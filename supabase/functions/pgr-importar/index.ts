@@ -72,7 +72,8 @@ Nunca armazene ou extraia nomes de trabalhadores identificados (dado de saúde s
           cnpj: { type: "STRING" },
           responsavel_tecnico: { type: "STRING" },
           cargo_responsavel: { type: "STRING" },
-          data_elaboracao: { type: "STRING" },
+          registro_profissional: { type: "STRING", description: "CREA, CRM, MTE ou similar do responsável técnico" },
+          data_elaboracao: { type: "STRING", description: "Formato YYYY-MM-DD se possível" },
           validade: { type: "STRING" }
         }
       },
@@ -131,7 +132,7 @@ Nunca armazene ou extraia nomes de trabalhadores identificados (dado de saúde s
       }
 
       try {
-        response = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent", {
+        response = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent", {
           method: "POST",
           headers: {
             "x-goog-api-key": apiKey.trim(),
@@ -166,15 +167,11 @@ Nunca armazene ou extraia nomes de trabalhadores identificados (dado de saúde s
           }
         }
 
-        const err = await response.text();
-        console.error(JSON.stringify({ 
-          error: "Gemini API Failure", 
-          status: response.status, 
-          retry_count: attempt, 
-          elapsed_ms: Date.now() - inicio,
-          details: err 
-        }));
-        throw new Error(`http_${response.status}`);
+        const body = await response.text();
+        const snippet = body.substring(0, 500);
+        console.error(`[Gemini API Error] status=${response.status} time=${new Date().toISOString()} bodySnippet=${snippet}`);
+
+        throw new Error(`http_${response.status}|${snippet}`);
       } catch (err) {
         if (attempt === 2 || (err instanceof Error && err.name === 'AbortError')) throw err;
       }
@@ -351,17 +348,19 @@ serve(async (req) => {
       const rawGemini = await analisarPgrComGemini(bytes, geminiApiKey);
       
       // Mapeia do JSON Gemini para o formato esperado pelo frontend (extracao_raw original)
+      const r = rawGemini as any;
       extracao_raw = {
         dados_empresa: {
-          nome: rawGemini.dados_empresa?.nome_empresa ?? null,
-          cnpj: rawGemini.dados_empresa?.cnpj ?? null,
-          responsavel_tecnico: rawGemini.dados_empresa?.responsavel_tecnico ?? null,
-          cargo_responsavel: rawGemini.dados_empresa?.cargo_responsavel ?? null,
-          data_elaboracao: rawGemini.dados_empresa?.data_elaboracao ?? null,
-          validade: rawGemini.dados_empresa?.validade ?? null
+          nome: r.dados_empresa?.nome_empresa ?? null,
+          cnpj: r.dados_empresa?.cnpj ?? null,
+          responsavel_tecnico: r.dados_empresa?.responsavel_tecnico ?? null,
+          cargo_responsavel: r.dados_empresa?.cargo_responsavel ?? null,
+          registro_profissional: r.dados_empresa?.registro_profissional ?? null,
+          data_elaboracao: r.dados_empresa?.data_elaboracao ?? null,
+          validade: r.dados_empresa?.validade ?? null
         },
-        riscos: mapGeminiRiscos(rawGemini.riscos),
-        plano_acao: (rawGemini.plano_acao || []).map((a: any) => ({
+        riscos: mapGeminiRiscos(r.riscos),
+        plano_acao: (r.plano_acao || []).map((a: any) => ({
           medida: a.acao ?? "Ação não especificada",
           prazo_sugerido: a.prazo ?? null,
           responsavel_sugerido: a.responsavel ?? null,

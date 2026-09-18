@@ -6,13 +6,46 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { PgrPlanoAcao, useUpdateAcao, useUploadEvidenciaAcao } from "@/hooks/usePgrAcoes";
+import { PgrPlanoAcao, useUpdateAcao, useUploadEvidenciaAcao, calcularProgresso5W2H, validarMudancaStatus } from "@/hooks/usePgrAcoes";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { formatHistoricDate, normalizeDateToISO, cleanHistoricMessageText } from "@/lib/dateUtils";
 import { supabase } from "@/integrations/supabase/client";
 import { useResponsaveisRH } from "@/hooks/useResponsaveisRH";
 import { ExecucoesTab } from "./ExecucoesTab";
+import { Loader2, CheckCircle2, AlertCircle } from "lucide-react";
+
+export function useSaveIndicator() {
+  const [saveStatus, setSaveStatus] = useState<Record<string, "saving" | "success" | "error" | undefined>>({});
+  const [saveError, setSaveError] = useState<Record<string, string>>({});
+
+  const trackSave = async (field: string, promise: Promise<any>) => {
+    setSaveStatus(prev => ({ ...prev, [field]: "saving" }));
+    try {
+      await promise;
+      setSaveStatus(prev => ({ ...prev, [field]: "success" }));
+      setSaveError(prev => ({ ...prev, [field]: "" }));
+      setTimeout(() => setSaveStatus(prev => ({ ...prev, [field]: undefined })), 3000);
+    } catch (err: any) {
+      setSaveStatus(prev => ({ ...prev, [field]: "error" }));
+      setSaveError(prev => ({ ...prev, [field]: err.message }));
+      throw err;
+    }
+  };
+
+  const SaveIndicator = ({ field }: { field: string }) => {
+    if (saveStatus[field] === "saving") return <Loader2 data-testid="save-spinner" className="w-4 h-4 animate-spin text-muted-foreground ml-2 inline" />;
+    if (saveStatus[field] === "success") return <CheckCircle2 data-testid="save-success" className="w-4 h-4 text-emerald-500 ml-2 inline" />;
+    if (saveStatus[field] === "error") return (
+      <span data-testid="save-error" className="inline-flex items-center ml-2 text-destructive text-xs gap-1">
+        <AlertCircle className="w-4 h-4 inline" /> {saveError[field]}
+      </span>
+    );
+    return null;
+  };
+
+  return { trackSave, SaveIndicator };
+}
 
 interface AcaoDialogProps {
   acao: PgrPlanoAcao | null;
@@ -22,6 +55,7 @@ interface AcaoDialogProps {
 
 export function AcaoDialog({ acao, open, onOpenChange }: AcaoDialogProps) {
   const [isUploading, setIsUploading] = useState(false);
+  const { trackSave, SaveIndicator } = useSaveIndicator();
   const updateMutation = useUpdateAcao();
   const uploadMutation = useUploadEvidenciaAcao();
   const { user } = useAuth();
@@ -29,17 +63,17 @@ export function AcaoDialog({ acao, open, onOpenChange }: AcaoDialogProps) {
 
   if (!acao) return null;
 
-  const handleUpdate = async (field: keyof PgrPlanoAcao, value: any, logMsg: string) => {
+  const handleUpdate = async (field: keyof PgrPlanoAcao, value: any, logMsg: string, silentToast = false) => {
     try {
-      await updateMutation.mutateAsync({
+      await trackSave(field, updateMutation.mutateAsync({
         id: acao.id,
         pgrImportacaoId: acao.pgr_importacao_id,
         updates: { [field]: value },
         mensagemLog: logMsg
-      });
-      toast.success("Ação atualizada");
+      }));
+      if (!silentToast) toast.success("Ação atualizada");
     } catch (err: any) {
-      toast.error(err.message);
+      if (!silentToast) toast.error(err.message);
     }
   };
 
@@ -113,7 +147,20 @@ export function AcaoDialog({ acao, open, onOpenChange }: AcaoDialogProps) {
                   <Label>Status</Label>
                   <Select 
                     value={acao.status} 
-                    onValueChange={(val) => handleUpdate("status", val, `Status alterado de ${acao.status} para ${val}`)}
+                    onValueChange={(val) => {
+                      const { permitido, mostrarAviso } = validarMudancaStatus(acao, val);
+                      
+                      if (!permitido) {
+                        toast.error("Preencha o 5W2H antes de concluir a ação");
+                        return;
+                      }
+                      
+                      if (mostrarAviso) {
+                        toast.warning("Ação concluída, mas o 5W2H está incompleto. Considere preenchê-lo para melhor gestão.");
+                      }
+                      
+                      handleUpdate("status", val, `Status alterado de ${acao.status} para ${val}`);
+                    }}
                   >
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
@@ -180,12 +227,12 @@ export function AcaoDialog({ acao, open, onOpenChange }: AcaoDialogProps) {
 
               {/* Novos Campos 5W2H */}
               <div className="space-y-2">
-                <Label>Por que? (Motivador)</Label>
+                <Label className="flex items-center">Por que? (Motivador) <SaveIndicator field="por_que" /></Label>
                 <Textarea 
                   defaultValue={acao.por_que || ""} 
                   onBlur={(e) => {
                     if (e.target.value !== (acao.por_que || "")) {
-                      handleUpdate("por_que", e.target.value, `Atualizou "Por que"`);
+                      handleUpdate("por_que", e.target.value, `Atualizou "Por que"`, true);
                     }
                   }}
                   maxLength={500}
@@ -195,12 +242,12 @@ export function AcaoDialog({ acao, open, onOpenChange }: AcaoDialogProps) {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Onde? (Local)</Label>
+                  <Label className="flex items-center">Onde? (Local) <SaveIndicator field="onde" /></Label>
                   <Input 
                     defaultValue={acao.onde || ""}
                     onBlur={(e) => {
                       if (e.target.value !== (acao.onde || "")) {
-                        handleUpdate("onde", e.target.value, `Atualizou "Onde"`);
+                        handleUpdate("onde", e.target.value, `Atualizou "Onde"`, true);
                       }
                     }}
                     maxLength={255}
@@ -208,12 +255,12 @@ export function AcaoDialog({ acao, open, onOpenChange }: AcaoDialogProps) {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Como? (Método)</Label>
+                  <Label className="flex items-center">Como? (Método) <SaveIndicator field="como" /></Label>
                   <Input 
                     defaultValue={acao.como || ""}
                     onBlur={(e) => {
                       if (e.target.value !== (acao.como || "")) {
-                        handleUpdate("como", e.target.value, `Atualizou "Como"`);
+                        handleUpdate("como", e.target.value, `Atualizou "Como"`, true);
                       }
                     }}
                     maxLength={255}

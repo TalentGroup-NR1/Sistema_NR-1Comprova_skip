@@ -7,7 +7,7 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { calcScore, calcFarol, getAcoesCriticas, FarolStatus } from "@/lib/dashboardUtils";
-import { CalendarIcon, AlertCircle, Clock, CheckCircle2, Circle, FileText, Loader2 } from "lucide-react";
+import { AlertCircle, Clock, CheckCircle2, Circle, FileText, Loader2 } from "lucide-react";
 import { formatHistoricDate } from "@/lib/dateUtils";
 
 interface PgrDashboardTabProps {
@@ -58,7 +58,7 @@ export function PgrDashboardTab({ pgrImportacaoId }: PgrDashboardTabProps) {
     validada: acoes.filter(a => a.status === "validada").length,
   };
 
-  const getAcoesByPrioridade = (pri: string) => 
+  const getAcoesByPrioridade = (pri: string) =>
     acoes.filter(a => (a.prioridade || "").toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, "") === pri);
 
   const farois = {
@@ -70,9 +70,12 @@ export function PgrDashboardTab({ pgrImportacaoId }: PgrDashboardTabProps) {
   const score = calcScore(acoes);
   const { vencidas, vencendo } = getAcoesCriticas(acoes);
 
+  const normalizePri = (v: string) =>
+    (v || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
   const getAcoesAbertas = (prioridade: "alta" | "media" | "baixa") => {
     return acoes.filter(
-      (a) => a.prioridade === prioridade && (a.status === "pendente" || a.status === "em_andamento")
+      (a) => normalizePri(a.prioridade) === prioridade && (a.status === "pendente" || a.status === "em_andamento")
     ).length;
   };
 
@@ -94,10 +97,14 @@ export function PgrDashboardTab({ pgrImportacaoId }: PgrDashboardTabProps) {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h3 className="text-lg font-medium">Dashboard de Ações</h3>
-        <Button 
-          variant="outline" 
+        <Button
+          variant="outline"
           disabled={isGerandoPdf}
           onClick={() => {
+            if (!companyId) {
+              toast.error("Empresa não identificada. Verifique sua sessão.");
+              return;
+            }
             const err = validarPreRequisitosRelatorio({ companyId, pgrImportacaoId, acoes });
             if (err) {
               toast.error(err);
@@ -121,7 +128,7 @@ export function PgrDashboardTab({ pgrImportacaoId }: PgrDashboardTabProps) {
           <CardContent>
             <div className="text-2xl font-bold">{acoes.length}</div>
             <p className="text-xs text-muted-foreground mt-1">
-              No plano de ação
+              cadastradas no PGR
             </p>
           </CardContent>
         </Card>
@@ -152,9 +159,9 @@ export function PgrDashboardTab({ pgrImportacaoId }: PgrDashboardTabProps) {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{score.pct}%</div>
-            <Progress 
-              value={score.pct} 
-              className="h-2 mt-2" 
+            <Progress
+              value={score.pct}
+              className="h-2 mt-2"
               indicatorClassName={`${score.cor === 'vermelho' ? 'bg-red-500' : score.cor === 'amarelo' ? 'bg-amber-500' : score.cor === 'verde' ? 'bg-emerald-500' : 'bg-slate-400'}`}
             />
           </CardContent>

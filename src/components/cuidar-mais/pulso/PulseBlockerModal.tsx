@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { Loader2, ArrowLeft, ArrowRight, Send, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -49,6 +49,7 @@ function BlockerDialog({ campaign }: BlockerDialogProps) {
   const [currentStep, setCurrentStep] = useState(0);
   const [responses, setResponses] = useState<Record<string, string>>({});
   const [comentario, setComentario] = useState("");
+  const [esfera, setEsfera] = useState<"pessoal" | "trabalho" | null>(null);
   const submitResponses = useSubmitCampaignResponses();
 
   const questions = campaign.questions || [];
@@ -58,8 +59,21 @@ function BlockerDialog({ campaign }: BlockerDialogProps) {
   const isComentarioStep = currentStep === questions.length;
   const progress = ((currentStep + 1) / totalSteps) * 100;
 
+  const isNegativeScore = useMemo(() =>
+    questions.some((q) => {
+      if (q.tipo !== "escala_0_5") return false;
+      const raw = responses[q.id];
+      if (raw === undefined || raw === "") return false;
+      return Number(raw) <= 2;
+    }),
+    [questions, responses]
+  );
+
   const canProceed = () => {
-    if (isComentarioStep) return true;
+    if (isComentarioStep) {
+      if (isNegativeScore && esfera === null) return false;
+      return true;
+    }
     if (!currentQuestion) return false;
     if (!currentQuestion.obrigatoria) return true;
     return !!responses[currentQuestion.id];
@@ -83,6 +97,7 @@ function BlockerDialog({ campaign }: BlockerDialogProps) {
       campaignId: campaign.campaign_id,
       responses: formattedResponses,
       comentario: comentario.trim() || undefined,
+      esfera: isNegativeScore ? esfera : null,
     });
     // Sucesso → invalida `active-pulse-campaign` (no hook) → has_responded=true → modal desmonta.
   };
@@ -201,11 +216,60 @@ function BlockerDialog({ campaign }: BlockerDialogProps) {
 
           <div className="py-4 min-h-[200px]">
             {isComentarioStep ? (
-              <div className="space-y-2">
-                <Label htmlFor="comentario-blocker">
-                  Quer nos contar mais?{" "}
-                  <span className="text-muted-foreground">(Opcional)</span>
-                </Label>
+              <div className="space-y-6">
+                {(() => {
+                  console.log(`\n=== RENDER LOG [${campaign.titulo} - BLOCKER] ===`);
+                  console.log(`(a) isComentarioStep:`, isComentarioStep);
+                  console.log(`(b) isNegativeScore:`, isNegativeScore);
+                  console.log(`(d) responses:`, JSON.stringify(responses));
+                  console.log(`(d) esfera:`, esfera);
+                  return null;
+                })()}
+
+                {isNegativeScore && (
+                  (() => {
+                    console.log(`(c) BLOCO {isNegativeScore && (...)} FOI ENTRADO!`);
+                    return null;
+                  })() || (
+                  <div className="space-y-3">
+                    <Label className="text-sm font-semibold">
+                      Em que esfera isso acontece? <span className="text-destructive">*</span>
+                    </Label>
+                    <div className="grid grid-cols-2 gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setEsfera("pessoal")}
+                        className={cn(
+                          "flex flex-col items-center justify-center gap-2 rounded-xl border-2 px-4 py-4 text-sm font-medium transition-all duration-200 hover:scale-[1.02] hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                          esfera === "pessoal"
+                            ? "border-violet-500 bg-violet-50 text-violet-700 ring-2 ring-violet-300"
+                            : "border-border bg-background text-muted-foreground hover:border-violet-300 hover:bg-violet-50/50"
+                        )}
+                      >
+                        É algo pessoal?
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEsfera("trabalho")}
+                        className={cn(
+                          "flex flex-col items-center justify-center gap-2 rounded-xl border-2 px-4 py-4 text-sm font-medium transition-all duration-200 hover:scale-[1.02] hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                          esfera === "trabalho"
+                            ? "border-amber-500 bg-amber-50 text-amber-700 ring-2 ring-amber-300"
+                            : "border-border bg-background text-muted-foreground hover:border-amber-300 hover:bg-amber-50/50"
+                        )}
+                      >
+                        É algo com o trabalho/empresa?
+                      </button>
+                    </div>
+                  </div>
+                  )
+                )}
+
+                <div className="space-y-2">
+                  <Label htmlFor="comentario-blocker">
+                    Quer nos contar mais?{" "}
+                    <span className="text-muted-foreground">(Opcional)</span>
+                  </Label>
                 <Textarea
                   id="comentario-blocker"
                   placeholder="Compartilhe pensamentos adicionais..."
@@ -218,6 +282,7 @@ function BlockerDialog({ campaign }: BlockerDialogProps) {
                 <p className="text-xs text-muted-foreground text-right">
                   {comentario.length}/500 caracteres
                 </p>
+              </div>
               </div>
             ) : (
               <div className="space-y-6">

@@ -284,7 +284,9 @@ export function useMeusBeneficios() {
       const ctIds = new Set(contractTypeBenefits.map((b: any) => b.beneficio_id));
 
       return {
-        individual: individualBeneficios.map((i: any) => ({ ...i, tipo_atribuicao: 'individual' })),
+        individual: individualBeneficios
+          .filter((i: any) => i.beneficio?.ativo)
+          .map((i: any) => ({ ...i, tipo_atribuicao: 'individual' })),
         departamento: departmentBenefits,
         tipoContrato: contractTypeBenefits,
       };
