@@ -177,15 +177,17 @@ export function PulsoResultsTable({ campaignId, filters }: PulsoResultsTableProp
           </TableHeader>
           <TableBody>
             {groupedByEmployee.map((employee, idx) => {
-              const hasNegative = employee.responses.some(
+              const hasNegative = employee.responses?.some(
                 (r) => r.resposta_numerica !== null && r.resposta_numerica <= 2
               );
-              // Como a esfera é gravada por resposta mas se refere à submissão (mesmo step),
-              // pegamos a primeira esfera não nula do grupo, ou "-" se nenhuma.
-              const esferaRaw = employee.responses.find(r => r.esfera)?.esfera;
-              const esferaFormatted = esferaRaw === 'pessoal' ? 'Pessoal' 
-                                    : esferaRaw === 'trabalho' ? 'Trabalho' 
-                                    : '-';
+              // Pega todos os valores distintos de esfera (ignorando nulos)
+              const esferasUnicas = Array.from(
+                new Set(
+                  employee.responses
+                    ?.map((r) => r.esfera)
+                    .filter((e): e is "pessoal" | "trabalho" => e === "pessoal" || e === "trabalho") || []
+                )
+              );
 
               return (
                 <TableRow key={idx} className={hasNegative ? "bg-red-50 dark:bg-red-950/20" : ""}>
@@ -200,10 +202,14 @@ export function PulsoResultsTable({ campaignId, filters }: PulsoResultsTableProp
                   </TableCell>
                   <TableCell>{employee.departamento || "-"}</TableCell>
                   <TableCell>
-                    {esferaFormatted !== '-' ? (
-                      <Badge variant="outline" className="font-normal bg-background">
-                        {esferaFormatted}
-                      </Badge>
+                    {esferasUnicas.length > 0 ? (
+                      <div className="flex flex-wrap gap-1">
+                        {esferasUnicas.map((e) => (
+                          <Badge key={e} variant="outline" className="font-normal bg-background">
+                            {e === "pessoal" ? "Pessoal" : "Trabalho"}
+                          </Badge>
+                        ))}
+                      </div>
                     ) : (
                       "-"
                     )}
