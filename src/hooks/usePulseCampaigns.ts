@@ -100,6 +100,7 @@ export interface PulseColaborador {
   cargo: string | null;
   foto_url: string | null;
   total_respostas: number;
+  esferas_identificadas: string[];
   media_geral: number | null;
   ultima_resposta: string | null;
 }

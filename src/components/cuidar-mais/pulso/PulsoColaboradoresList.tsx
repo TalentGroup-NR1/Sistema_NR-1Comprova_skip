@@ -153,9 +153,7 @@ export function PulsoColaboradoresList({ onSelectColaborador }: PulsoColaborador
                       </TableCell>
                       <TableCell className="text-center">
                         {(() => {
-                          const esferas = Array.from(
-                            new Set(colaborador.responses?.map((r: any) => r.esfera).filter(Boolean))
-                          );
+                          const esferas = colaborador.esferas_identificadas || [];
                           if (esferas.length === 0) return <span className="text-muted-foreground text-sm">—</span>;
                           return (
                             <div className="flex items-center justify-center gap-1 flex-wrap">
