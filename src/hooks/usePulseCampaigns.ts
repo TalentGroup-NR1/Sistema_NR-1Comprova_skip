@@ -484,7 +484,7 @@ export function useToggleCampaignActive() {
   });
 }
 
-// Mutation: Submeter respostas da campanha (sem ambiente)
+// Mutation: Submeter respostas da campanha
 export function useSubmitCampaignResponses() {
   const queryClient = useQueryClient();
 
@@ -493,15 +493,18 @@ export function useSubmitCampaignResponses() {
       campaignId,
       responses,
       comentario,
+      esfera,
     }: {
       campaignId: string;
       responses: Array<{ question_id: string; resposta: string }>;
       comentario?: string;
+      esfera?: "pessoal" | "trabalho" | null;
     }) => {
       const { data, error } = await supabase.rpc("submit_pulse_campaign_response", {
         p_campaign_id: campaignId,
         p_responses: responses,
         p_comentario: comentario || null,
+        p_esfera: esfera ?? null,
       });
 
       if (error) throw error;

@@ -195,16 +195,20 @@ export function useSubmitPulse() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ 
-      colaboradorId, 
-      companyId, 
-      score, 
-      comment 
-    }: { 
-      colaboradorId: string; 
-      companyId: string; 
-      score: number; 
+    mutationFn: async ({
+      colaboradorId,
+      companyId,
+      score,
+      comment,
+      // esfera é aceita na assinatura (consistência com PulsoSemanaModal)
+      // mas não gravada — pulse_surveys é fluxo legado sem a coluna
+      esfera: _esfera,
+    }: {
+      colaboradorId: string;
+      companyId: string;
+      score: number;
       comment?: string;
+      esfera?: "pessoal" | "trabalho" | null;
     }) => {
       const { weekNumber, year } = getCurrentWeekInfo();
 

@@ -10,8 +10,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Heart, Briefcase, Loader2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { useSubmitPulse, EMOJI_SCALE } from "@/hooks/usePulseSurvey";
-import { Loader2 } from "lucide-react";
 
 interface PulsoSemanaModalProps {
   open: boolean;
@@ -29,11 +30,17 @@ export function PulsoSemanaModal({
   companyId,
 }: PulsoSemanaModalProps) {
   const [comment, setComment] = useState("");
+  const [esfera, setEsfera] = useState<"pessoal" | "trabalho" | null>(null);
   const submitPulse = useSubmitPulse();
 
-  const emojiData = selectedScore !== null 
-    ? EMOJI_SCALE.find(e => e.score === selectedScore) 
-    : null;
+  const emojiData =
+    selectedScore !== null ? EMOJI_SCALE.find((e) => e.score === selectedScore) : null;
+
+  // Score negativo: 0 (Muito Mal), 1 (Mal), 2 (Regular)
+  const isNegativeScore = selectedScore !== null && selectedScore <= 2;
+
+  // Envio bloqueado se score negativo e esfera não escolhida
+  const canSubmit = !isNegativeScore || esfera !== null;
 
   const handleSubmit = async () => {
     if (selectedScore === null) return;
@@ -43,9 +50,11 @@ export function PulsoSemanaModal({
       companyId,
       score: selectedScore,
       comment: comment.trim() || undefined,
+      esfera: isNegativeScore ? esfera : null,
     });
 
     setComment("");
+    setEsfera(null);
     onOpenChange(false);
   };
 
@@ -62,10 +71,65 @@ export function PulsoSemanaModal({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-4">
+        <div className="space-y-5 py-4">
+          {/* Flag de esfera — exibida apenas quando score <= 2 */}
+          {isNegativeScore && (
+            <div className="space-y-3">
+              <Label className="text-sm font-semibold">
+                Em que esfera isso acontece?{" "}
+                <span className="text-destructive">*</span>
+              </Label>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setEsfera("pessoal")}
+                  className={cn(
+                    "flex flex-col items-center justify-center gap-2 rounded-xl border-2 px-4 py-4 text-sm font-medium transition-all duration-200 hover:scale-[1.02] hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                    esfera === "pessoal"
+                      ? "border-violet-500 bg-violet-50 text-violet-700 ring-2 ring-violet-300"
+                      : "border-border bg-background text-muted-foreground hover:border-violet-300 hover:bg-violet-50/50"
+                  )}
+                >
+                  <Heart
+                    className={cn(
+                      "h-6 w-6 transition-colors",
+                      esfera === "pessoal" ? "text-violet-500" : "text-muted-foreground"
+                    )}
+                  />
+                  É algo pessoal?
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEsfera("trabalho")}
+                  className={cn(
+                    "flex flex-col items-center justify-center gap-2 rounded-xl border-2 px-4 py-4 text-sm font-medium transition-all duration-200 hover:scale-[1.02] hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                    esfera === "trabalho"
+                      ? "border-amber-500 bg-amber-50 text-amber-700 ring-2 ring-amber-300"
+                      : "border-border bg-background text-muted-foreground hover:border-amber-300 hover:bg-amber-50/50"
+                  )}
+                >
+                  <Briefcase
+                    className={cn(
+                      "h-6 w-6 transition-colors",
+                      esfera === "trabalho" ? "text-amber-500" : "text-muted-foreground"
+                    )}
+                  />
+                  É algo com o trabalho/empresa?
+                </button>
+              </div>
+              {esfera === null && (
+                <p className="text-xs text-muted-foreground">
+                  Selecione uma opção para continuar.
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Comentário — sempre presente */}
           <div className="space-y-2">
             <Label htmlFor="comment">
-              Quer nos contar o motivo? <span className="text-muted-foreground">(Opcional)</span>
+              Quer nos contar o motivo?{" "}
+              <span className="text-muted-foreground">(Opcional)</span>
             </Label>
             <Textarea
               id="comment"
@@ -92,7 +156,7 @@ export function PulsoSemanaModal({
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={submitPulse.isPending}
+            disabled={!canSubmit || submitPulse.isPending}
             className="min-w-[140px]"
           >
             {submitPulse.isPending ? (

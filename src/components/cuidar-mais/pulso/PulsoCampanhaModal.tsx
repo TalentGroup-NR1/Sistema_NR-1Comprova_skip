@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   Dialog,
   DialogContent,
@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
-import { Loader2, ArrowLeft, ArrowRight, Send } from "lucide-react";
+import { Loader2, ArrowLeft, ArrowRight, Send, Heart, Briefcase } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   useSubmitCampaignResponses,
@@ -33,6 +33,7 @@ export function PulsoCampanhaModal({
   const [currentStep, setCurrentStep] = useState(0);
   const [responses, setResponses] = useState<Record<string, string>>({});
   const [comentario, setComentario] = useState("");
+  const [esfera, setEsfera] = useState<"pessoal" | "trabalho" | null>(null);
 
   const submitResponses = useSubmitCampaignResponses();
 
@@ -44,8 +45,22 @@ export function PulsoCampanhaModal({
 
   const progress = ((currentStep + 1) / totalSteps) * 100;
 
+  // Detecta resposta negativa (score <= 2) em qualquer questão escala_0_5 respondida
+  const isNegativeScore = useMemo(() => {
+    return questions.some((q) => {
+      if (q.tipo !== "escala_0_5") return false;
+      const raw = responses[q.id];
+      if (raw === undefined || raw === "") return false;
+      return Number(raw) <= 2;
+    });
+  }, [questions, responses]);
+
   const canProceed = () => {
-    if (isComentarioStep) return true;
+    if (isComentarioStep) {
+      // Se score negativo, esfera é obrigatória antes de enviar
+      if (isNegativeScore && esfera === null) return false;
+      return true;
+    }
     if (!currentQuestion) return false;
     if (!currentQuestion.obrigatoria) return true;
     return !!responses[currentQuestion.id];
@@ -73,19 +88,21 @@ export function PulsoCampanhaModal({
       campaignId: campaign.campaign_id,
       responses: formattedResponses,
       comentario: comentario.trim() || undefined,
+      esfera: isNegativeScore ? esfera : null,
     });
 
     onOpenChange(false);
     setCurrentStep(0);
     setResponses({});
     setComentario("");
+    setEsfera(null);
   };
 
   const renderQuestion = () => {
     if (!currentQuestion) return null;
 
     switch (currentQuestion.tipo) {
-      case 'escala_0_5':
+      case "escala_0_5":
         return (
           <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
             {EMOJI_SCALE.map((item) => (
@@ -112,7 +129,7 @@ export function PulsoCampanhaModal({
           </div>
         );
 
-      case 'sim_nao':
+      case "sim_nao":
         return (
           <div className="flex gap-4 justify-center">
             <Button
@@ -120,11 +137,11 @@ export function PulsoCampanhaModal({
               size="lg"
               className={cn(
                 "w-32 h-16 text-lg",
-                responses[currentQuestion.id] === 'sim' &&
+                responses[currentQuestion.id] === "sim" &&
                   "bg-green-100 border-green-500 text-green-700 ring-2 ring-green-500"
               )}
               onClick={() =>
-                setResponses({ ...responses, [currentQuestion.id]: 'sim' })
+                setResponses({ ...responses, [currentQuestion.id]: "sim" })
               }
             >
               ✓ Sim
@@ -134,11 +151,11 @@ export function PulsoCampanhaModal({
               size="lg"
               className={cn(
                 "w-32 h-16 text-lg",
-                responses[currentQuestion.id] === 'nao' &&
+                responses[currentQuestion.id] === "nao" &&
                   "bg-red-100 border-red-500 text-red-700 ring-2 ring-red-500"
               )}
               onClick={() =>
-                setResponses({ ...responses, [currentQuestion.id]: 'nao' })
+                setResponses({ ...responses, [currentQuestion.id]: "nao" })
               }
             >
               ✗ Não
@@ -146,7 +163,7 @@ export function PulsoCampanhaModal({
           </div>
         );
 
-      case 'texto_livre':
+      case "texto_livre":
         return (
           <Textarea
             placeholder="Digite sua resposta..."
@@ -171,20 +188,74 @@ export function PulsoCampanhaModal({
           <DialogTitle>{campaign.titulo}</DialogTitle>
           <DialogDescription>
             {isComentarioStep
-              ? "Comentário final (opcional)"
+              ? "Comentário final"
               : `Pergunta ${currentStep + 1} de ${questions.length}`}
           </DialogDescription>
         </DialogHeader>
 
-        {/* Progress */}
         <Progress value={progress} className="h-2" />
 
         <div className="py-6 min-h-[200px]">
           {isComentarioStep ? (
-            <div className="space-y-4">
+            <div className="space-y-5">
+              {/* Flag de esfera — exibida apenas quando score <= 2 */}
+              {isNegativeScore && (
+                <div className="space-y-3">
+                  <Label className="text-sm font-semibold">
+                    Em que esfera isso acontece?{" "}
+                    <span className="text-destructive">*</span>
+                  </Label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setEsfera("pessoal")}
+                      className={cn(
+                        "flex flex-col items-center justify-center gap-2 rounded-xl border-2 px-4 py-4 text-sm font-medium transition-all duration-200 hover:scale-[1.02] hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                        esfera === "pessoal"
+                          ? "border-violet-500 bg-violet-50 text-violet-700 ring-2 ring-violet-300"
+                          : "border-border bg-background text-muted-foreground hover:border-violet-300 hover:bg-violet-50/50"
+                      )}
+                    >
+                      <Heart
+                        className={cn(
+                          "h-6 w-6 transition-colors",
+                          esfera === "pessoal" ? "text-violet-500" : "text-muted-foreground"
+                        )}
+                      />
+                      É algo pessoal?
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEsfera("trabalho")}
+                      className={cn(
+                        "flex flex-col items-center justify-center gap-2 rounded-xl border-2 px-4 py-4 text-sm font-medium transition-all duration-200 hover:scale-[1.02] hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                        esfera === "trabalho"
+                          ? "border-amber-500 bg-amber-50 text-amber-700 ring-2 ring-amber-300"
+                          : "border-border bg-background text-muted-foreground hover:border-amber-300 hover:bg-amber-50/50"
+                      )}
+                    >
+                      <Briefcase
+                        className={cn(
+                          "h-6 w-6 transition-colors",
+                          esfera === "trabalho" ? "text-amber-500" : "text-muted-foreground"
+                        )}
+                      />
+                      É algo com o trabalho/empresa?
+                    </button>
+                  </div>
+                  {esfera === null && (
+                    <p className="text-xs text-muted-foreground">
+                      Selecione uma opção para continuar.
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Comentário — sempre presente */}
               <div className="space-y-2">
                 <Label htmlFor="comentario">
-                  Quer nos contar mais? <span className="text-muted-foreground">(Opcional)</span>
+                  Quer nos contar mais?{" "}
+                  <span className="text-muted-foreground">(Opcional)</span>
                 </Label>
                 <Textarea
                   id="comentario"
@@ -224,7 +295,10 @@ export function PulsoCampanhaModal({
           </Button>
 
           {isComentarioStep ? (
-            <Button onClick={handleSubmit} disabled={submitResponses.isPending}>
+            <Button
+              onClick={handleSubmit}
+              disabled={!canProceed() || submitResponses.isPending}
+            >
               {submitResponses.isPending ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
