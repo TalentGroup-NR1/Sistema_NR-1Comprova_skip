@@ -258,7 +258,14 @@ export function PulsoColaboradorDetail({ colaboradorId, onBack }: PulsoColaborad
                               <TableCell className="text-sm">{response.pergunta}</TableCell>
                               <TableCell className="text-center">
                                 {response.tipo === 'escala_0_5' && responseEmoji ? (
-                                  <span className="text-xl">{responseEmoji.emoji}</span>
+                                  <div className="flex items-center justify-center gap-2">
+                                    <span className="text-xl">{responseEmoji.emoji}</span>
+                                    {response.esfera && (
+                                      <Badge variant="outline" className="text-xs bg-background">
+                                        {response.esfera === 'pessoal' ? 'Pessoal' : response.esfera === 'trabalho' ? 'Trabalho' : response.esfera}
+                                      </Badge>
+                                    )}
+                                  </div>
                                 ) : response.tipo === 'sim_nao' ? (
                                   <Badge variant={response.resposta === 'sim' ? 'default' : 'destructive'}>
                                     {response.resposta === 'sim' ? 'Sim' : 'Não'}

@@ -169,6 +169,7 @@ export function PulsoResultsTable({ campaignId, filters }: PulsoResultsTableProp
             <TableRow>
               <TableHead>Colaborador</TableHead>
               <TableHead>Departamento</TableHead>
+              <TableHead>Esfera</TableHead>
               <TableHead>Respostas</TableHead>
               <TableHead>Comentário</TableHead>
               <TableHead>Data</TableHead>
@@ -179,6 +180,13 @@ export function PulsoResultsTable({ campaignId, filters }: PulsoResultsTableProp
               const hasNegative = employee.responses.some(
                 (r) => r.resposta_numerica !== null && r.resposta_numerica <= 2
               );
+              // Como a esfera é gravada por resposta mas se refere à submissão (mesmo step),
+              // pegamos a primeira esfera não nula do grupo, ou "-" se nenhuma.
+              const esferaRaw = employee.responses.find(r => r.esfera)?.esfera;
+              const esferaFormatted = esferaRaw === 'pessoal' ? 'Pessoal' 
+                                    : esferaRaw === 'trabalho' ? 'Trabalho' 
+                                    : '-';
+
               return (
                 <TableRow key={idx} className={hasNegative ? "bg-red-50 dark:bg-red-950/20" : ""}>
                   <TableCell>
@@ -191,6 +199,15 @@ export function PulsoResultsTable({ campaignId, filters }: PulsoResultsTableProp
                     </div>
                   </TableCell>
                   <TableCell>{employee.departamento || "-"}</TableCell>
+                  <TableCell>
+                    {esferaFormatted !== '-' ? (
+                      <Badge variant="outline" className="font-normal bg-background">
+                        {esferaFormatted}
+                      </Badge>
+                    ) : (
+                      "-"
+                    )}
+                  </TableCell>
                   <TableCell>
                     <div className="flex flex-wrap gap-1">
                       {employee.responses.map((r, rIdx) => (
