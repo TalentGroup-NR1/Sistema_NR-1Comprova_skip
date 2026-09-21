@@ -13,6 +13,16 @@ import { ptBR } from "date-fns/locale";
 import { usePulseColaboradoresList, EMOJI_SCALE } from "@/hooks/usePulseCampaigns";
 import { useColaboradores } from "@/hooks/useColaboradores";
 
+export function checkColaboradorPulseAlert(mediaGeral: number | null | undefined) {
+  if (mediaGeral === null || mediaGeral === undefined) {
+    return { isAlert: false, emojiData: null };
+  }
+  const roundedScore = Math.round(mediaGeral);
+  const emojiData = EMOJI_SCALE.find((e) => e.score === roundedScore) || null;
+  const isAlert = Boolean(emojiData && roundedScore <= 2);
+  return { isAlert, emojiData };
+}
+
 interface PulsoColaboradoresListProps {
   onSelectColaborador: (id: string) => void;
 }
@@ -43,6 +53,28 @@ export function PulsoColaboradoresList({ onSelectColaborador }: PulsoColaborador
     const roundedScore = Math.round(score);
     const emoji = EMOJI_SCALE.find((e) => e.score === roundedScore);
     return emoji;
+  };
+
+  const getAlertStyle = (score: number) => {
+    switch (score) {
+      case 0:
+        return {
+          row: "bg-red-50/70 hover:bg-red-100/70 dark:bg-red-950/20 dark:hover:bg-red-950/30 shadow-[inset_4px_0_0_0_#ef4444] border-b-red-200/50",
+          badge: "bg-red-100 text-red-700 border-red-300 dark:bg-red-950/50 dark:text-red-300 dark:border-red-800",
+        };
+      case 1:
+        return {
+          row: "bg-orange-50/70 hover:bg-orange-100/70 dark:bg-orange-950/20 dark:hover:bg-orange-950/30 shadow-[inset_4px_0_0_0_#f97316] border-b-orange-200/50",
+          badge: "bg-orange-100 text-orange-700 border-orange-300 dark:bg-orange-950/50 dark:text-orange-300 dark:border-orange-800",
+        };
+      case 2:
+        return {
+          row: "bg-yellow-50/70 hover:bg-yellow-100/70 dark:bg-yellow-950/20 dark:hover:bg-yellow-950/30 shadow-[inset_4px_0_0_0_#eab308] border-b-yellow-200/50",
+          badge: "bg-yellow-100 text-yellow-800 border-yellow-300 dark:bg-yellow-950/50 dark:text-yellow-300 dark:border-yellow-800",
+        };
+      default:
+        return { row: "", badge: "" };
+    }
   };
 
   if (isLoading) {
@@ -125,11 +157,17 @@ export function PulsoColaboradoresList({ onSelectColaborador }: PulsoColaborador
               <TableBody>
                 {filteredColaboradores.map((colaborador) => {
                   const emojiData = getEmojiForScore(colaborador.media_geral);
+                  const isAlert = Boolean(emojiData && colaborador.media_geral !== null && Math.round(colaborador.media_geral) <= 2);
+                  const alertStyle = isAlert && emojiData ? getAlertStyle(emojiData.score) : null;
                   
                   return (
                     <TableRow
                       key={colaborador.employee_id}
-                      className="cursor-pointer hover:bg-muted/50"
+                      className={
+                        isAlert && alertStyle
+                          ? `cursor-pointer pulse-alert-row transition-colors ${alertStyle.row}`
+                          : "cursor-pointer hover:bg-muted/50"
+                      }
                       onClick={() => onSelectColaborador(colaborador.employee_id)}
                     >
                       <TableCell>
@@ -182,11 +220,19 @@ export function PulsoColaboradoresList({ onSelectColaborador }: PulsoColaborador
                       </TableCell>
                       <TableCell className="text-center">
                         {emojiData ? (
-                          <div className="flex items-center justify-center gap-1">
+                          <div className="flex items-center justify-center gap-1.5 flex-wrap">
                             <span className="text-lg">{emojiData.emoji}</span>
                             <span className={`text-sm font-medium ${emojiData.textColor}`}>
                               {colaborador.media_geral?.toFixed(1)}
                             </span>
+                            {isAlert && alertStyle && (
+                              <Badge
+                                variant="outline"
+                                className={`text-[10px] px-1.5 py-0 h-5 font-semibold uppercase tracking-wider ${alertStyle.badge}`}
+                              >
+                                Alerta: {emojiData.label}
+                              </Badge>
+                            )}
                           </div>
                         ) : (
                           <span className="text-muted-foreground text-sm">-</span>

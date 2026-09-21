@@ -18,9 +18,11 @@
 @layer base {
   :root {
     /* Core backgrounds — Slate 50 page bg */
-    --background: 210 40% 98%; /* #F8FAFC */
+    --background: 210 40% 98%;
+    /* #F8FAFC */
     --background-alt: 210 40% 96%;
-    --foreground: 222 47% 11%; /* #0F172A Slate 900 */
+    --foreground: 222 47% 11%;
+    /* #0F172A Slate 900 */
 
     /* Surface tokens — #FFFFFF */
     --card: 0 0% 100%;
@@ -33,11 +35,15 @@
     --popover-foreground: 222 47% 11%;
 
     /* Primary / Accent — Boot Neutro (Slate) */
-    --primary: 215 16% 47%; /* Slate 500 */
+    --primary: 215 16% 47%;
+    /* Slate 500 */
     --primary-foreground: 0 0% 100%;
-    --primary-hover: 215 19% 35%; /* Slate 600 */
-    --primary-pressed: 215 25% 27%; /* Slate 700 */
-    --primary-muted: 210 40% 96%; /* Slate 100 */
+    --primary-hover: 215 19% 35%;
+    /* Slate 600 */
+    --primary-pressed: 215 25% 27%;
+    /* Slate 700 */
+    --primary-muted: 210 40% 96%;
+    /* Slate 100 */
 
     /* Secondary */
     --secondary: 214 32% 91%;
@@ -46,25 +52,31 @@
 
     /* Muted */
     --muted: 210 40% 96%;
-    --muted-foreground: 215 19% 35%; /* #475569 Slate 600 */
+    --muted-foreground: 215 19% 35%;
+    /* #475569 Slate 600 */
 
     /* Accent (same as primary brand) */
     --accent: 215 16% 47%;
     --accent-foreground: 0 0% 100%;
 
     /* States */
-    --success: 161 94% 30%; /* #059669 */
+    --success: 161 94% 30%;
+    /* #059669 */
     --success-foreground: 0 0% 100%;
-    --success-muted: 152 76% 95%; /* #ECFDF5 */
-    --warning: 32 95% 44%; /* #D97706 Amber 600 */
+    --success-muted: 152 76% 95%;
+    /* #ECFDF5 */
+    --warning: 32 95% 44%;
+    /* #D97706 Amber 600 */
     --warning-foreground: 0 0% 100%;
     --warning-muted: 38 92% 95%;
     --info: 0 72% 51%;
     --info-foreground: 0 0% 100%;
     --info-muted: 0 93% 94%;
-    --destructive: 0 72% 51%; /* #DC2626 */
+    --destructive: 0 72% 51%;
+    /* #DC2626 */
     --destructive-foreground: 0 0% 100%;
-    --destructive-muted: 0 93% 94%; /* #FEE2E2 */
+    --destructive-muted: 0 93% 94%;
+    /* #FEE2E2 */
 
     /* Borders & inputs — Slate 200 #E2E8F0 */
     --border: 214 32% 91%;
@@ -82,7 +94,8 @@
     --radius-lg: 1rem;
 
     /* Executive tokens (for reports) — preto elegante + vermelho */
-    --navy-900: 222 47% 11%; /* #0F172A */
+    --navy-900: 222 47% 11%;
+    /* #0F172A */
     --navy-700: 222 47% 20%;
     --navy-500: 222 40% 30%;
     --graphite-800: 222 20% 22%;
@@ -99,20 +112,23 @@
     --gradient-card: linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(210 40% 99%) 100%);
 
     /* Shadows */
-    --shadow-xs: 0 1px 2px 0 rgba(0,0,0,0.03);
-    --shadow-sm: 0 1px 3px 0 rgba(0,0,0,0.04), 0 1px 2px -1px rgba(0,0,0,0.03);
-    --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -2px rgba(0,0,0,0.04);
-    --shadow-lg: 0 8px 16px -4px rgba(0,0,0,0.06), 0 4px 6px -4px rgba(0,0,0,0.04);
-    --shadow-card: 0 1px 3px rgba(0,0,0,0.04);
-    --shadow-card-hover: 0 4px 12px -2px rgba(0,0,0,0.08), 0 2px 4px -2px rgba(0,0,0,0.04);
-    --shadow-executive: 0 2px 8px rgba(15,23,42,0.06);
+    --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.03);
+    --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.03);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.04);
+    --shadow-lg: 0 8px 16px -4px rgba(0, 0, 0, 0.06), 0 4px 6px -4px rgba(0, 0, 0, 0.04);
+    --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.04);
+    --shadow-card-hover: 0 4px 12px -2px rgba(0, 0, 0, 0.08), 0 2px 4px -2px rgba(0, 0, 0, 0.04);
+    --shadow-executive: 0 2px 8px rgba(15, 23, 42, 0.06);
 
     /* Sidebar — off-white quente aprovado */
-    --sidebar-background: 36 22% 96%; /* #F8F6F3 */
+    --sidebar-background: 36 22% 96%;
+    /* #F8F6F3 */
     --sidebar-foreground: 222 47% 11%;
-    --sidebar-primary: 215 16% 47%; /* Slate 500 */
+    --sidebar-primary: 215 16% 47%;
+    /* Slate 500 */
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 33 17% 92%; /* #EEECE8 hover */
+    --sidebar-accent: 33 17% 92%;
+    /* #EEECE8 hover */
     --sidebar-accent-foreground: 222 47% 11%;
     --sidebar-border: 32 19% 89%;
     --sidebar-ring: 215 16% 47%;
@@ -120,23 +136,36 @@
     --sidebar-icon: 215 20% 65%;
     --sidebar-hover: 33 17% 92%;
     --sidebar-active: 34 14% 93%;
-    --sidebar-active-text: 215 19% 35%; /* Slate 600 */
+    --sidebar-active-text: 215 19% 35%;
+    /* Slate 600 */
 
     /* ===== Identidade Talent Group — landing NR-1 Pronto ===== */
-    --brand-navy: 211 53% 11%;         /* #050e20 */
-    --brand-navy-soft: 211 53% 15%;   /* #0b1a35 */
-    --brand-blue: 211 53% 11%;        /* #1a3e75 */
-    --brand-blue-light: 215 57% 39%;  /* #2b5a9e */
-    --brand-red: 216 64% 28%;         /* #D71920 */
-    --brand-gray-dark: 200 18% 26%;    /* #231F20 */
-    --brand-offwhite: 60 20% 98%;     /* #FAFAF9 */
-    --brand-mist: 210 40% 96%;        /* #F1F5F9 */
+    --brand-navy: 211 53% 11%;
+    /* #050e20 */
+    --brand-navy-soft: 211 53% 15%;
+    /* #0b1a35 */
+    --brand-blue: 211 53% 11%;
+    /* #1a3e75 */
+    --brand-blue-light: 215 57% 39%;
+    /* #2b5a9e */
+    --brand-red: 216 64% 28%;
+    /* #D71920 */
+    --brand-gray-dark: 200 18% 26%;
+    /* #231F20 */
+    --brand-offwhite: 60 20% 98%;
+    /* #FAFAF9 */
+    --brand-mist: 210 40% 96%;
+    /* #F1F5F9 */
 
     /* Faixas de risco da matriz 5x5 */
-    --risk-low: 142 71% 45%;          /* #22C55E */
-    --risk-moderate: 45 93% 47%;      /* #EAB308 */
-    --risk-substantial: 25 95% 53%;   /* #F97316 */
-    --risk-high: 358 79% 47%;         /* #D71920 */
+    --risk-low: 142 71% 45%;
+    /* #22C55E */
+    --risk-moderate: 45 93% 47%;
+    /* #EAB308 */
+    --risk-substantial: 25 95% 53%;
+    /* #F97316 */
+    --risk-high: 358 79% 47%;
+    /* #D71920 */
 
   }
 
@@ -199,7 +228,8 @@
     @apply border-border;
   }
 
-  html, body {
+  html,
+  body {
     font-family: 'Inter', system-ui, sans-serif;
   }
 
@@ -225,7 +255,12 @@
     z-index: 1;
   }
 
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     font-family: 'Archivo', system-ui, sans-serif;
   }
 
@@ -236,6 +271,7 @@
 }
 
 @layer utilities {
+
   /* ===== Landing NR-1 Pronto ===== */
   .landing-navy {
     background:
@@ -287,6 +323,7 @@
       transform: none;
       transition: none;
     }
+
     .animate-pulse-soft,
     .animate-pulse-dot {
       animation: none !important;
@@ -297,15 +334,15 @@
   .gradient-primary {
     background: var(--gradient-primary);
   }
-  
+
   .gradient-accent {
     background: var(--gradient-accent);
   }
-  
+
   .gradient-hero {
     background: var(--gradient-hero);
   }
-  
+
   /* Sidebar now uses flat background token */
   .gradient-sidebar {
     background: hsl(var(--sidebar-background));
@@ -389,11 +426,11 @@
   .score-high {
     @apply bg-executive-success text-white;
   }
-  
+
   .score-medium {
     @apply bg-executive-warning text-white;
   }
-  
+
   .score-low {
     @apply bg-executive-danger text-white;
   }
@@ -401,15 +438,18 @@
 
 /* Print Styles for Executive Reports - A4 Optimized */
 @media print {
+
   /* Page configuration */
   @page {
     size: A4 portrait;
     margin: 15mm;
+
     @bottom-center {
       content: "TG Mais - Documento Confidencial";
       font-size: 8pt;
       color: #888;
     }
+
     @bottom-right {
       content: "Página " counter(page) " de " counter(pages);
       font-size: 8pt;
@@ -430,7 +470,7 @@
   #root,
   main,
   .print-root-container,
-  .print-root-container > *,
+  .print-root-container>*,
   [class*="min-h-screen"],
   [class*="overflow"] {
     height: auto !important;
@@ -448,7 +488,7 @@
   }
 
   /* Hide non-printable elements COMPLETELY */
-  .print-root-container > .no-print,
+  .print-root-container>.no-print,
   .no-print,
   [role="tablist"],
   [role="tab"],
@@ -475,7 +515,8 @@
   }
 
   /* Root and body setup */
-  html, body {
+  html,
+  body {
     background: white !important;
     font-size: 9pt !important;
     line-height: 1.4 !important;
@@ -539,7 +580,14 @@
   }
 
   /* Text handling - CRITICAL for preventing text cutoff */
-  p, span, li, td, th, div, section, article {
+  p,
+  span,
+  li,
+  td,
+  th,
+  div,
+  section,
+  article {
     overflow: visible !important;
     overflow-wrap: break-word !important;
     word-wrap: break-word !important;
@@ -606,7 +654,7 @@
   }
 
   /* Identity card flex container - CRITICAL for proper alignment */
-  .identity-card > .flex {
+  .identity-card>.flex {
     display: flex !important;
     flex-direction: row !important;
     align-items: flex-start !important;
@@ -708,13 +756,13 @@
   [class*="bg-emerald"] {
     background-color: hsl(160 60% 40%) !important;
   }
-  
+
   .bg-executive-warning,
   [class*="bg-amber"],
   [class*="bg-yellow"] {
     background-color: hsl(38 85% 48%) !important;
   }
-  
+
   .bg-executive-danger,
   [class*="bg-red"] {
     background-color: hsl(0 72% 48%) !important;
@@ -773,9 +821,9 @@
     page-break-inside: auto !important;
   }
 
-  .consulting-insights-section > *,
-  .print-insights-section > *,
-  .print-text-expand-container > * {
+  .consulting-insights-section>*,
+  .print-insights-section>*,
+  .print-text-expand-container>* {
     height: auto !important;
     min-height: 0 !important;
     max-height: none !important;
@@ -836,25 +884,25 @@
   .p-4 {
     padding: 0.35rem !important;
   }
-  
+
   .p-6 {
     padding: 0.5rem !important;
   }
-  
+
   .py-4 {
     padding-top: 0.35rem !important;
     padding-bottom: 0.35rem !important;
   }
 
-  .space-y-6 > * + * {
+  .space-y-6>*+* {
     margin-top: 0.5rem !important;
   }
 
-  .space-y-4 > * + * {
+  .space-y-4>*+* {
     margin-top: 0.35rem !important;
   }
 
-  .space-y-3 > * + * {
+  .space-y-3>*+* {
     margin-top: 0.25rem !important;
   }
 
@@ -884,19 +932,19 @@
   .text-2xl {
     font-size: 1.125rem !important;
   }
-  
+
   .text-lg {
     font-size: 0.9rem !important;
   }
-  
+
   .text-base {
     font-size: 0.8rem !important;
   }
-  
+
   .text-sm {
     font-size: 0.75rem !important;
   }
-  
+
   .text-xs {
     font-size: 0.65rem !important;
   }
@@ -975,7 +1023,7 @@
   }
 
   /* ===== AVALIAÇÃO REPORT PRINT STYLES - DEDICATED SECTION ===== */
-  
+
   /* Main print container - FULL WIDTH, properly isolated */
   #avaliacao-report-print,
   .avaliacao-report-print-container {
@@ -1057,8 +1105,8 @@
   }
 
   /* KPI Card styling */
-  #avaliacao-report-print .grid > .border-border,
-  .avaliacao-report-print-container .grid > .border-border {
+  #avaliacao-report-print .grid>.border-border,
+  .avaliacao-report-print-container .grid>.border-border {
     border: 1px solid hsl(210 20% 85%) !important;
     background: white !important;
     padding: 10px !important;
@@ -1205,7 +1253,7 @@
   }
 
   /* Ensure proper spacing between sections */
-  #avaliacao-report-print > .space-y-6 > * + * {
+  #avaliacao-report-print>.space-y-6>*+* {
     margin-top: 12px !important;
   }
 
@@ -1230,6 +1278,7 @@
     opacity: 0;
     transform: translateY(20px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -1240,6 +1289,7 @@
   from {
     opacity: 0;
   }
+
   to {
     opacity: 1;
   }
@@ -1250,6 +1300,7 @@
     opacity: 0;
     transform: translateX(-20px);
   }
+
   to {
     opacity: 1;
     transform: translateX(0);
@@ -1261,8 +1312,34 @@
     opacity: 0;
     transform: scale(0.95);
   }
+
   to {
     opacity: 1;
     transform: scale(1);
+  }
+}
+
+/* Animação suave de pulso para alerta semântico do Pulso (Cuidar+) */
+@keyframes pulse-subtle-alert {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.88;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .pulse-alert-row {
+    animation: pulse-subtle-alert 2s ease-in-out infinite;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pulse-alert-row {
+    animation: none !important;
   }
 }
