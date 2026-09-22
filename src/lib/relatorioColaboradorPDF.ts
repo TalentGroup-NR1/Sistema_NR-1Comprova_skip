@@ -30,7 +30,7 @@ export interface RelatorioColaboradorEmpresa {
 export interface RelatorioColaboradorEmitente {
   nome: string;
   cargo?: string | null;
-  email: string;
+  email?: string | null;
 }
 
 export interface GerarRelatorioColaboradorPDFParams {
@@ -63,6 +63,49 @@ export function sanitizePdfText(input?: string | null): string {
   // Substitui qualquer caractere fora do Latin-1 (>0xFF) por espaço
   s = s.replace(/[^\x00-\xFF]/g, " ");
   return s.replace(/[ \t]{2,}/g, " ").trim();
+}
+
+/**
+ * Sanitiza o nome do colaborador para compor nomes de arquivos seguros.
+ * Remove acentos/diacríticos preservando as letras e substitui espaços por underscores.
+ * Se o resultado for vazio ou inválido, retorna "Colaborador".
+ */
+export function sanitizeFileName(input?: string | null): string {
+  if (!input) return "Colaborador";
+  const normalized = input.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const safe = normalized
+    .replace(/[^\w\s-]/g, "")
+    .trim()
+    .replace(/\s+/g, "_")
+    .slice(0, 45);
+
+  return safe.length > 0 ? safe : "Colaborador";
+}
+
+/**
+ * Formata linha descritiva do emitente para o cabeçalho/box do dossiê.
+ * Oculta rigorosamente o e-mail (PII) conforme conformidade NR-1 e LGPD.
+ */
+export function formatEmitenteLinha(
+  emitente?: RelatorioColaboradorEmitente | null
+): string {
+  if (!emitente) {
+    return "Administrador — Recursos Humanos / SST";
+  }
+  const nome = sanitizePdfText(emitente.nome || "Administrador");
+  const cargo = emitente.cargo ? sanitizePdfText(emitente.cargo) : null;
+  return cargo ? `${nome} — ${cargo}` : nome;
+}
+
+/**
+ * Constrói o nome final seguro do arquivo PDF do dossiê probatório.
+ */
+export function buildDossieFileName(
+  colabName?: string | null,
+  date: Date = new Date()
+): string {
+  const colabNomeSafe = sanitizeFileName(colabName);
+  return `Dossie_CuidarMais_${colabNomeSafe}_${format(date, "yyyyMMdd_HHmm")}.pdf`;
 }
 
 /**
@@ -279,8 +322,7 @@ export async function gerarRelatorioColaboradorPDF(
 
   const emitente: RelatorioColaboradorEmitente = {
     nome: sanitizePdfText(params.emitente?.nome || "Administrador"),
-    cargo: sanitizePdfText(params.emitente?.cargo || "Recursos Humanos / SST"),
-    email: sanitizePdfText(params.emitente?.email || "—"),
+    cargo: params.emitente?.cargo ? sanitizePdfText(params.emitente.cargo) : (params.emitente ? null : "Recursos Humanos / SST"),
   };
 
   const doc = new jsPDF({ unit: "pt", format: "a4" });
@@ -363,7 +405,7 @@ export async function gerarRelatorioColaboradorPDF(
   const linhasDoc: Array<[string, string]> = [
     ["Identificador:", docId],
     ["Emitido em:", geradoEm],
-    ["Emitente:", `${emitente.nome} — ${emitente.cargo || "RH/SST"} (${emitente.email})`],
+    ["Emitente:", formatEmitenteLinha(emitente)],
     ["Empresa / Unidade:", `${empresa.name || "—"} (CNPJ: ${empresa.cnpj || "—"})`],
     ["Período Abrangido:", periodoTexto],
     ["Hash SHA-256 (Integridade):", `${hashCurto}… (${hashConteudo.slice(0, 32)})`],
@@ -695,12 +737,7 @@ export async function gerarRelatorioColaboradorPDF(
     drawFooter(doc, pageW, pageH, M, geradoEm, hashCurto, p, totalPages);
   }
 
-  // Nome do arquivo seguro
-  const colabNomeSafe = sanitizePdfText(colab?.full_name || "Colaborador")
-    .replace(/[^\w\s-]/g, "")
-    .replace(/\s+/g, "_")
-    .slice(0, 45);
-
-  const fileName = `Dossie_CuidarMais_${colabNomeSafe}_${format(now, "yyyyMMdd_HHmm")}.pdf`;
+  // Nome do arquivo seguro com preservação de caracteres acentuados
+  const fileName = buildDossieFileName(colab?.full_name, now);
   doc.save(fileName);
 }

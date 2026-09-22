@@ -115,12 +115,11 @@ export function RelatorioTab() {
     setGeneratingPdf(true);
     try {
       const empresaAtiva = companies.find((c) => c.id === companyId);
-      const emitente = user
+      const emitenteInfo = user
         ? await resolverEmitente(user.id, user.email || "")
         : {
             nome: "Administrador do Sistema",
             cargo: "Recursos Humanos / SST",
-            email: "rh@empresa.com",
           };
 
       await gerarRelatorioColaboradorPDF({
@@ -130,7 +129,10 @@ export function RelatorioTab() {
           cnpj: empresaAtiva?.cnpj,
           logo_url: empresaAtiva?.logo_url,
         },
-        emitente,
+        emitente: {
+          nome: emitenteInfo.nome,
+          cargo: emitenteInfo.cargo,
+        },
       });
 
       toast.success("Dossiê probatório em PDF gerado com sucesso!");

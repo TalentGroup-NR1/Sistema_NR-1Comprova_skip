@@ -1,4 +1,5 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
+import jsPDF from "jspdf";
 import {
   sanitizePdfText,
   buildPeriodoDescricao,
@@ -6,6 +7,10 @@ import {
   formatPulsoRowForPdf,
   formatAcompanhamentoRowForPdf,
   isAcompanhamentoForaDoPeriodo,
+  sanitizeFileName,
+  formatEmitenteLinha,
+  buildDossieFileName,
+  gerarRelatorioColaboradorPDF,
 } from "../relatorioColaboradorPDF";
 import { sha256Hex } from "../pdfHelpers";
 import type {
@@ -13,6 +18,24 @@ import type {
   ReportPulso,
   ReportAcompanhamento,
 } from "@/components/cuidar-mais/relatorio/types";
+
+const mockSave = vi.fn();
+
+vi.mock("jspdf", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("jspdf")>();
+  const OriginalJsPDF = actual.default;
+  class MockJsPDF extends OriginalJsPDF {
+    constructor(...args: any[]) {
+      super(...args);
+      this.save = mockSave;
+    }
+  }
+  return {
+    ...actual,
+    default: MockJsPDF,
+    jsPDF: MockJsPDF,
+  };
+});
 
 describe("relatorioColaboradorPDF - Funções Puras do Gerador de Dossiê Probatório", () => {
   const sampleData: EmployeeReportData = {
@@ -151,4 +174,81 @@ describe("relatorioColaboradorPDF - Funções Puras do Gerador de Dossiê Probat
     const rowDentro = formatAcompanhamentoRowForPdf(acomp, "2026-01-01", "2026-03-31");
     expect(rowDentro[1]).toBe("CONCLUIDO");
   });
+
+  it("9. sanitizeFileName preserva letras de nomes com acentos e diacríticos (ex.: João -> Joao)", () => {
+    expect(sanitizeFileName("João Pedro Santos")).toBe("Joao_Pedro_Santos");
+    expect(sanitizeFileName("José da Conceição")).toBe("Jose_da_Conceicao");
+  });
+
+  it("10. sanitizeFileName limpa caracteres especiais e substitui espaços por underscores", () => {
+    expect(sanitizeFileName("Ana* Beatriz# Santos")).toBe("Ana_Beatriz_Santos");
+  });
+
+  it("11. sanitizeFileName retorna 'Colaborador' para entradas vazias, nulas ou puramente inválidas", () => {
+    expect(sanitizeFileName("")).toBe("Colaborador");
+    expect(sanitizeFileName(null)).toBe("Colaborador");
+    expect(sanitizeFileName(undefined)).toBe("Colaborador");
+    expect(sanitizeFileName("   ")).toBe("Colaborador");
+    expect(sanitizeFileName("***###")).toBe("Colaborador");
+  });
+
+  it("12. formatEmitenteLinha remove PII de e-mail e garante que NÃO contém '@'", () => {
+    const emitenteCompleto = {
+      nome: "Ana Beatriz Martins",
+      cargo: "Recursos Humanos / SST",
+      email: "admin@horizontecontabil.com.br",
+    };
+    const linha = formatEmitenteLinha(emitenteCompleto);
+
+    expect(linha).toBe("Ana Beatriz Martins — Recursos Humanos / SST");
+    expect(linha).not.toContain("@");
+    expect(linha).not.toContain("admin@horizontecontabil.com.br");
+
+    // Sem cargo
+    expect(formatEmitenteLinha({ nome: "Carlos Lima", cargo: null, email: "carlos@teste.com" })).toBe("Carlos Lima");
+
+    // Fallback padrão se vazio
+    const linhaPadrao = formatEmitenteLinha(null);
+    expect(linhaPadrao).toBe("Administrador — Recursos Humanos / SST");
+    expect(linhaPadrao).not.toContain("@");
+  });
+
+  it("13. buildDossieFileName gera nome de arquivo contendo 'Joao' e data no formato esperado", () => {
+    const fixedDate = new Date(2026, 8, 22, 14, 30, 0); // 2026-09-22 14:30
+    const fileName = buildDossieFileName("João Pedro Santos", fixedDate);
+
+    expect(fileName).toBe("Dossie_CuidarMais_Joao_Pedro_Santos_20260922_1430.pdf");
+    expect(fileName).toContain("Joao");
+    expect(fileName).not.toContain("Joo");
+  });
+
+  it("14. gerarRelatorioColaboradorPDF gera o dossiê e salva arquivo com nome sanitizado 'Joao' (nunca 'Joo')", async () => {
+    mockSave.mockClear();
+
+    await gerarRelatorioColaboradorPDF({
+      data: {
+        ...sampleData,
+        colaborador: {
+          ...sampleData.colaborador!,
+          full_name: "João Pedro Santos",
+        },
+      },
+      empresa: {
+        name: "Horizonte Contábil",
+        cnpj: "12.345.678/0001-90",
+      },
+      emitente: {
+        nome: "Ana Beatriz Martins",
+        cargo: "Recursos Humanos / SST",
+      },
+    });
+
+    expect(mockSave).toHaveBeenCalledTimes(1);
+    const savedFileName = mockSave.mock.calls[0][0] as string;
+    console.log("NOME DO ARQUIVO GERADO NO FLUXO REAL:", savedFileName);
+    expect(savedFileName).toMatch(/^Dossie_CuidarMais_Joao_Pedro_Santos_\d{8}_\d{4}\.pdf$/);
+    expect(savedFileName).toContain("Joao");
+    expect(savedFileName).not.toContain("Joo");
+  });
 });
+
