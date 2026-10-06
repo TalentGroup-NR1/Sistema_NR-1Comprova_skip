@@ -44,10 +44,10 @@ export default function Auth() {
           
           <h1 className="text-xl sm:text-2xl lg:text-3xl font-extrabold tracking-tight leading-[1.3] mb-6 drop-shadow-lg max-w-xl mx-auto uppercase">
             <span className="text-gray-400">Proteção para </span>
-            <span className="text-brand-red">Pessoas.</span>
+            <span className="text-[#E30613]">Pessoas.</span>
             <br className="hidden sm:block" />
             <span className="text-gray-400"> Conformidade para </span>
-            <span className="text-brand-red">Empresas.</span>
+            <span className="text-[#E30613]">Empresas.</span>
           </h1>
           
           {/* Badges moved to directly below the title */}
