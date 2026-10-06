@@ -63,7 +63,7 @@ export function HeroSection() {
             Riscos psicossociais · NR-1
           </span>
           <h1 className="mt-6 text-4xl font-extrabold leading-[1.05] tracking-tight text-white sm:text-6xl">
-            O fim do PGR de gaveta.
+            A plataforma de gestão de pessoas que dá vida ao seu PGR.
           </h1>
           <p className="mt-6 max-w-xl text-base leading-relaxed text-white/70 sm:text-lg">
             A única plataforma que mapeia o Trabalho Real antes que a fiscalização chegue. Colete a
