@@ -42,8 +42,12 @@ export default function Auth() {
             />
           </div>
           
-          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-white tracking-tight leading-[1.3] mb-6 drop-shadow-lg max-w-xl mx-auto">
-            A plataforma de gestão de pessoas que dá vida ao seu PGR.
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-extrabold tracking-tight leading-[1.3] mb-6 drop-shadow-lg max-w-xl mx-auto uppercase">
+            <span className="text-gray-400">Proteção para </span>
+            <span className="text-brand-red">Pessoas.</span>
+            <br className="hidden sm:block" />
+            <span className="text-gray-400"> Conformidade para </span>
+            <span className="text-brand-red">Empresas.</span>
           </h1>
           
           {/* Badges moved to directly below the title */}
@@ -56,9 +60,10 @@ export default function Auth() {
             ))}
           </div>
 
-          <p className="text-base sm:text-lg font-light leading-[1.6] tracking-wide max-w-lg mx-auto" style={{ color: 'hsl(220 20% 80%)' }}>
-            Conectamos a rotina real dos colaboradores à conformidade da NR-1, transformando dados operacionais e a escuta de riscos psicossociais em uma gestão preventiva viva, inteligente e auditável.
-          </p>
+          <div className="text-base sm:text-lg font-light leading-[1.6] tracking-wide max-w-lg mx-auto" style={{ color: 'hsl(220 20% 80%)' }}>
+            <p className="font-semibold text-white mb-2">A plataforma de gestão de pessoas que dá vida ao seu PGR.</p>
+            <p>Conectamos a rotina real dos colaboradores à conformidade da NR-1, transformando dados operacionais e a escuta de riscos psicossociais em uma gestão preventiva viva, inteligente e auditável.</p>
+          </div>
         </div>
       </div>
 
