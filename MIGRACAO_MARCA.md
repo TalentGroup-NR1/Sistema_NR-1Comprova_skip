@@ -39,3 +39,6 @@ Configurações de infra que validam o domínio e enviam e-mails.
 5. **Edge Functions:** Reenviar as funções de borda atualizadas com as novas políticas de CORS e URLs (`supabase functions deploy`).
 6. **Verificação de Assets:** Confirmar se os 5 novos logos (substituídos fisicamente na Etapa 2) estão sendo entregues no CDN corretamente no novo domínio.
 7. **Verificação de CORS:** Testar login, requisições de API e emails transacionais para garantir a liberação do novo domínio.
+
+- **Banco de Dados (Produ��o)**: O coment�rio interno da migration de �ndices de performance permanecer� no banco como `PARA O NR1-PRONTO` at� que ocorra uma nova migration (a��o puramente cosm�tica, sem impacto real).
+

@@ -334,7 +334,7 @@ Deno.serve(async (req) => {
             companyId,
             idempotencyKey: `convite-admin-empresa-${companyId}`,
             templateData: {
-              siteName: "NR-1 Pronto",
+              siteName: "NR-1Comprova",
               siteUrl: Deno.env.get("APP_ORIGIN") || "https://nr1pronto.com.br",
               adminName: data.admin_nome,
               companyName: data.brand_name || data.razao_social,

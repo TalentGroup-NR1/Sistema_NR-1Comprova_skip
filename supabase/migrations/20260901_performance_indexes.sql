@@ -1,5 +1,5 @@
 -- ============================================================================
--- ÍNDICES DE ALTA PERFORMANCE PARA O NR1-PRONTO (PARTE 2 — DEMAIS TABELAS)
+-- ÍNDICES DE ALTA PERFORMANCE PARA O NR-1Comprova (PARTE 2 — DEMAIS TABELAS)
 -- Data: 01/09/2026
 -- Schema Validado: alneozvrsuwszlkisbyo
 -- NOTA: Exclui colaboradores e banco_horas_fechamentos (já criados no banco).
