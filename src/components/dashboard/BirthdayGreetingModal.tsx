@@ -41,7 +41,7 @@ export function BirthdayGreetingModal({
   eventDate,
 }: BirthdayGreetingModalProps) {
   const firstName = colaboradorName.split(" ")[0];
-  const displayCompany = "NR1-Pronto";
+  const displayCompany = "NR-1Comprova";
   const dateLabel = eventDate
     ? `Em ${String(eventDate.getDate()).padStart(2, "0")}/${String(eventDate.getMonth() + 1).padStart(2, "0")}`
     : "Hoje";

@@ -49,7 +49,7 @@ const BlogPostPage = () => {
     if (!post) return;
     const description = post.meta_description || post.excerpt;
     const url = `${SITE_URL}/blog/${post.slug}`;
-    document.title = `${post.title} | NR-1 Pronto`;
+    document.title = `${post.title} | NR-1Comprova`;
     setMeta('meta[name="description"]', "content", description);
     setMeta('link[rel="canonical"]', "href", url);
     setMeta('meta[property="og:title"]', "content", post.title);
@@ -71,8 +71,8 @@ const BlogPostPage = () => {
       description,
       datePublished: post.published_at,
       dateModified: post.updated_at,
-      author: { "@type": "Organization", name: post.author_name || "NR1-Pronto" },
-      publisher: { "@type": "Organization", name: "NR-1 Pronto" },
+      author: { "@type": "Organization", name: post.author_name || "NR-1Comprova" },
+      publisher: { "@type": "Organization", name: "NR-1Comprova" },
       mainEntityOfPage: url,
       articleSection: post.category,
     });
@@ -115,7 +115,7 @@ const BlogPostPage = () => {
               {post.title}
             </h1>
             <p className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
-              <span>{post.author_name || "NR1-Pronto"}</span>
+              <span>{post.author_name || "NR-1Comprova"}</span>
               {post.published_at && (
                 <span>
                   ·{" "}

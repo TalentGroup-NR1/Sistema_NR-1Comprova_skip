@@ -3,9 +3,9 @@ import { useCompanies } from "@/hooks/useCompanies";
 import { useEffectiveCompanyId } from "@/hooks/useEffectiveCompanyId";
 import { useAuth } from "@/hooks/useAuth";
 import { useMyColaborador } from "@/hooks/useMyFeedbackCycles";
-/** NR1-Pronto defaults — used when no company branding is available. */
+/** NR-1Comprova defaults — used when no company branding is available. */
 export const DEFAULT_BRANDING = {
-  brandName: "Gestão Ativa",
+  brandName: "NR-1Comprova",
   logoUrl: "/images/Logo_NR1_Transparente.png",
   primaryColor: "#C8102E",
   faviconUrl: "/favicon.png",
@@ -22,7 +22,7 @@ export interface Branding {
 
 /**
  * Resolves the branding (name, logo, color, favicon) of the effective company.
- * Falls back to the NR1-Pronto defaults when there is no company in context
+ * Falls back to the NR-1Comprova defaults when there is no company in context
  * (e.g. login screen) or when the company has no branding configured.
  */
 export function useBranding(): Branding {

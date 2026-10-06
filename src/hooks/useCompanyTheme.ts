@@ -76,7 +76,7 @@ export function useCompanyTheme() {
       return;
     }
 
-    // Cor primária vem do branding da empresa (banco), com fallback NR1-Pronto.
+    // Cor primária vem do branding da empresa (banco), com fallback NR-1Comprova.
     const brandHex = branding.primaryColor;
     const primaryHex = HEX_RE.test(brandHex) ? brandHex : DEFAULT_BRANDING.primaryColor;
     const secondaryHex = DEFAULT_SECONDARY;

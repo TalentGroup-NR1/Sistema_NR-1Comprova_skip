@@ -139,7 +139,7 @@
     --sidebar-active-text: 215 19% 35%;
     /* Slate 600 */
 
-    /* ===== Identidade Talent Group — landing NR-1 Pronto ===== */
+    /* ===== Identidade Talent Group — landing NR-1Comprova ===== */
     --brand-navy: 211 53% 11%;
     /* #050e20 */
     --brand-navy-soft: 211 53% 15%;
@@ -272,7 +272,7 @@
 
 @layer utilities {
 
-  /* ===== Landing NR-1 Pronto ===== */
+  /* ===== Landing NR-1Comprova ===== */
   .landing-navy {
     background:
       linear-gradient(135deg, hsl(var(--brand-navy)) 0%, hsl(var(--brand-navy-soft)) 100%);

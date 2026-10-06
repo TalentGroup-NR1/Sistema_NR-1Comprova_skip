@@ -331,7 +331,7 @@ export function ComunicadoFlyerDetail({ comunicado, isAdmin = false }: Comunicad
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
               <img
                 src={logoUrl}
-                alt="NR1-Pronto"
+                alt="NR-1Comprova"
                 style={{ height: '45px', objectFit: 'contain', filter: 'brightness(0) invert(1)' }}
               />
             </div>
@@ -447,7 +447,7 @@ export function ComunicadoFlyerDetail({ comunicado, isAdmin = false }: Comunicad
             background: '#f9fafb',
           }}>
             <span style={{ fontSize: '11px', color: '#9ca3af', fontWeight: '500' }}>
-              Gerado via NR1-Pronto
+              Gerado via NR-1Comprova
             </span>
             <span style={{ fontSize: '11px', color: '#9ca3af' }}>
               {formattedDate}

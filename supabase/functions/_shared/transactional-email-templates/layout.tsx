@@ -38,7 +38,7 @@ export const colors = {
 }
 
 export function BaseEmail({
-  brandName = 'NR-1 Pronto',
+  brandName = 'NR-1Comprova',
   logoUrl,
   primaryColor = '#C8102E',
   siteUrl = 'https://nr1pronto.com.br',

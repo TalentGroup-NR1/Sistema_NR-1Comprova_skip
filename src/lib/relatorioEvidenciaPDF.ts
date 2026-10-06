@@ -87,7 +87,7 @@ export interface GerarRelatorioParams {
   verificacaoUrlBase?: string; // ex: https://nr1pronto.com.br
 }
 
-// Paleta NR1-Pronto
+// Paleta NR-1Comprova
 const PRIMARY: [number, number, number] = [139, 0, 0]; // vermelho corporativo #8B0000
 const DARK: [number, number, number] = [31, 41, 55]; // cinza escuro #1F2937
 const ACCENT: [number, number, number] = [197, 165, 114]; // dourado #C5A572
@@ -265,7 +265,7 @@ export async function gerarRelatorioEvidenciaPDF(params: GerarRelatorioParams) {
   doc.setFillColor(...ACCENT);
   doc.rect(0, HEADER_H, pageW, 2, "F");
 
-  // Logo institucional NR1-Pronto (esquerda) — altura máx 30pt
+  // Logo institucional NR-1Comprova (esquerda) — altura máx 30pt
   if (talentLogo) {
     const { w, h } = fitImage(talentLogo, 130, 30);
     try {
@@ -901,7 +901,7 @@ function drawHeader(
   doc.setFillColor(...PRIMARY);
   doc.rect(0, 0, pageW, 3, "F");
 
-  // Logo institucional NR1-Pronto (esquerda) — altura máx 25pt
+  // Logo institucional NR-1Comprova (esquerda) — altura máx 25pt
   if (talentLogo) {
     const { w, h } = fitImage(talentLogo, 95, 25);
     try {

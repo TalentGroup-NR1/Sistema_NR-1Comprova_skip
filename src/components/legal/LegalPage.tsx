@@ -18,7 +18,7 @@ export function LegalPage({ title, version, sections }: LegalPageProps) {
       <header className="border-b bg-card">
         <div className="mx-auto flex max-w-3xl items-center justify-between px-6 py-5">
           <span className="text-sm font-semibold tracking-tight text-foreground">
-            NR1 Pronto
+            NR-1Comprova
           </span>
           <Link
             to="/auth"

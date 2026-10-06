@@ -31,7 +31,7 @@ export const template = {
       : 'Sua empresa foi cadastrada — defina sua senha',
   displayName: 'Convite Admin Empresa',
   previewData: {
-    siteName: 'NR-1 Pronto',
+    siteName: 'NR-1Comprova',
     siteUrl: 'https://nr1pronto.com.br',
     adminName: 'João Silva',
     companyName: 'Empresa XYZ',
@@ -41,7 +41,7 @@ export const template = {
 }
 
 function ConviteAdminEmpresaEmail({
-  siteName = 'NR-1 Pronto',
+  siteName = 'NR-1Comprova',
   siteUrl = 'https://nr1pronto.com.br',
   adminName = 'Administrador',
   companyName = 'sua empresa',

@@ -46,7 +46,7 @@ export function PainSection() {
             className="rounded-2xl border border-brand-blue/25 bg-brand-blue/[0.06] p-7 shadow-md lg:rounded-l-none"
           >
             <h3 className="text-sm font-bold uppercase tracking-wider text-brand-blue">
-              Como o NR-1 Pronto faz
+              Como o NR-1Comprova faz
             </h3>
             <ul className="mt-6 space-y-5">
               {nr1.map((item) => (

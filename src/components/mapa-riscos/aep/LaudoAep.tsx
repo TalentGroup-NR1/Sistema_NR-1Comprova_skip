@@ -199,7 +199,7 @@ export function LaudoAep({ aplicacaoId, onBack }: { aplicacaoId: string, onBack:
 
       {/* Rodapé */}
       <div className="mt-12 text-center text-sm text-slate-400 print:mt-16 print:border-t print:pt-4">
-        Documento gerado eletronicamente pelo Sistema NR1 Pronto em {format(new Date(), "dd/MM/yyyy 'às' HH:mm")}.
+        Documento gerado eletronicamente pelo Sistema NR-1Comprova em {format(new Date(), "dd/MM/yyyy 'às' HH:mm")}.
       </div>
     </div>
   );

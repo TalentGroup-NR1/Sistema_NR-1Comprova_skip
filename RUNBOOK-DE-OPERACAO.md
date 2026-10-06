@@ -1,6 +1,6 @@
-# NR1-Pronto — Runbook de Operação e Sustentação
+# NR-1Comprova — Runbook de Operação e Sustentação
 
-**Plataforma:** NR1-Pronto (SaaS Multi-tenant de Gestão de RH, SST e Comunicação)  
+**Plataforma:** NR-1Comprova (SaaS Multi-tenant de Gestão de RH, SST e Comunicação)  
 **Empresa Mantenedora:** Talent Group  
 **Domínio Oficial de Produção:** `https://www.nr-1pronto.com.br` (Canônico; o apex `https://nr-1pronto.com.br` responde com redirect permanente HTTP 308)  
 **Supabase Project Ref:** `alneozvrsuwszlkisbyo`
@@ -61,7 +61,7 @@ Get-ChildItem supabase\functions -Directory | Where-Object { $_.Name -ne '_share
 ```
 
 ### Deploy do Frontend (Vercel)
-O deploy é acionado automaticamente a cada `git push origin main` via integração com o GitHub (`TalentGroup-NR1/NR-1Pronto`).
+O deploy é acionado automaticamente a cada `git push origin main` via integração com o GitHub (`TalentGroup-NR1/NR-1Comprova`).
 
 ---
 
@@ -86,7 +86,7 @@ Acesse: `https://supabase.com/dashboard/project/alneozvrsuwszlkisbyo/functions` 
 ### Backup Lógico via CLI
 ```bash
 # Exportar schema e dados completos
-npx supabase db dump --project-ref alneozvrsuwszlkisbyo -f backup_nr1pronto_$(date +%Y%m%d).sql
+npx supabase db dump --project-ref alneozvrsuwszlkisbyo -f backup_NR-1Comprova_$(date +%Y%m%d).sql
 
 # Exportar apenas dados de tabelas específicas
 npx supabase db dump --project-ref alneozvrsuwszlkisbyo --data-only -f backup_data.sql

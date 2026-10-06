@@ -1,4 +1,4 @@
-# NR1-Pronto — Backend Deployment & Secrets Status
+# NR-1Comprova — Backend Deployment & Secrets Status
 
 **Data:** 01/09/2026  
 **Supabase Project Ref:** `alneozvrsuwszlkisbyo`  

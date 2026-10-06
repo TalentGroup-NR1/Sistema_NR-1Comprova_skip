@@ -105,8 +105,8 @@ export function BrandingSection({ company }: BrandingSectionProps) {
         <h3 className="text-sm font-medium flex items-center gap-2">
           Logo da Empresa
         </h3>
-        <LogoUploader 
-          companyId={company.id} 
+        <LogoUploader
+          companyId={company.id}
           currentLogoUrl={company.logo_url}
         />
       </div>
@@ -121,7 +121,7 @@ export function BrandingSection({ company }: BrandingSectionProps) {
         </h3>
         <p className="text-xs text-muted-foreground">
           Nome, logo e cor exibidos no login, na barra lateral e na aba do navegador.
-          Se ficarem em branco, o padrão NR1-Pronto é usado.
+          Se ficarem em branco, o padrão NR-1Comprova é usado.
         </p>
 
         <div className="grid gap-3">
@@ -234,10 +234,10 @@ export function BrandingSection({ company }: BrandingSectionProps) {
             </div>
             <div
               className="px-4 py-2 rounded-md text-sm font-medium border-2"
-              style={{ 
-                borderColor: primaryColor, 
+              style={{
+                borderColor: primaryColor,
                 color: primaryColor,
-                backgroundColor: accentColor 
+                backgroundColor: accentColor
               }}
             >
               Botão Secundário

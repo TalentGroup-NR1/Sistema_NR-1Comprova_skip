@@ -8,7 +8,7 @@ interface Props extends BrandProps {
 }
 
 function EmpresaReativadaEmail({
-  brandName = 'NR-1 Pronto',
+  brandName = 'NR-1Comprova',
   logoUrl,
   primaryColor,
   siteUrl = 'https://nr1pronto.com.br',
@@ -41,10 +41,10 @@ function EmpresaReativadaEmail({
 
 export const template = {
   component: EmpresaReativadaEmail,
-  subject: (data: Props) => `Acesso restabelecido — ${data.brandName ?? 'NR-1 Pronto'}`,
+  subject: (data: Props) => `Acesso restabelecido — ${data.brandName ?? 'NR-1Comprova'}`,
   displayName: 'Empresa reativada',
   previewData: {
-    brandName: 'NR-1 Pronto',
+    brandName: 'NR-1Comprova',
     companyName: 'Empresa Exemplo LTDA',
     loginUrl: 'https://nr1pronto.com.br/auth',
   },

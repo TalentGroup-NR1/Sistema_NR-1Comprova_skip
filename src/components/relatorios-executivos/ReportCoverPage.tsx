@@ -42,7 +42,7 @@ export function ReportCoverPage({ companyName, year, logoUrl }: ReportCoverPageP
       <div className="pb-8 text-center space-y-2">
         <div className="w-16 h-0.5 mx-auto" style={{ background: TALENT_GOLD }} />
         <p className="text-sm font-semibold" style={{ color: TALENT_NAVY }}>
-          NR1-Pronto — GESTÃO ATIVA
+          NR-1Comprova — GESTÃO ATIVA
         </p>
         <p className="text-xs" style={{ color: TALENT_GRAY }}>
           Consultoria em Recursos Humanos

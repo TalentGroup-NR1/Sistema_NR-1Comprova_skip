@@ -19,7 +19,7 @@ const SECTION_TITLE_HEIGHT = 8;
 const FOOTER_Y = PAGE_H - 12;
 const BODY_LIMIT = PAGE_H - 20;
 
-const RED: [number, number, number] = [200, 16, 46]; // crimson NR1-Pronto
+const RED: [number, number, number] = [200, 16, 46]; // crimson NR-1Comprova
 const NAVY: [number, number, number] = [10, 22, 40];
 const GREY: [number, number, number] = [110, 110, 110];
 const LIGHT_GREY: [number, number, number] = [150, 150, 150];

@@ -15,7 +15,7 @@ for ($x = 0; $x -lt $bmp.Width; $x++) {
     }
 }
 $img.Dispose()
-$bmp.Save("public/images/nr1-pronto-logo.png", [System.Drawing.Imaging.ImageFormat]::Png)
+$bmp.Save("public/images/NR-1Comprova-logo.png", [System.Drawing.Imaging.ImageFormat]::Png)
 $bmp.Save("public/favicon.png", [System.Drawing.Imaging.ImageFormat]::Png)
 $bmp.Save("src/assets/logo-nr1pronto.png", [System.Drawing.Imaging.ImageFormat]::Png)
 

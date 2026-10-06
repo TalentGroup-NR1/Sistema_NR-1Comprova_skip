@@ -40,7 +40,7 @@ export interface GerarRelatorioPgrParams {
   verificacaoUrlBase?: string;
 }
 
-// Paleta NR1-Pronto (copiada do outro relat.)
+// Paleta NR-1Comprova (copiada do outro relat.)
 const PRIMARY: [number, number, number] = [139, 0, 0];
 const DARK: [number, number, number] = [31, 41, 55];
 const ACCENT: [number, number, number] = [197, 165, 114];

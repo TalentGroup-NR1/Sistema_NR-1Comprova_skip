@@ -40,7 +40,7 @@ export interface GerarRelatorioColaboradorPDFParams {
   verificacaoUrlBase?: string;
 }
 
-// Paleta institucional NR1-Pronto (alinhada a relatorioEvidenciaPDF.ts)
+// Paleta institucional NR-1Comprova (alinhada a relatorioEvidenciaPDF.ts)
 export const PRIMARY: [number, number, number] = [139, 0, 0]; // vermelho corporativo #8B0000
 export const DARK: [number, number, number] = [31, 41, 55]; // cinza escuro #1F2937
 export const ACCENT: [number, number, number] = [197, 165, 114]; // dourado #C5A572
@@ -248,7 +248,7 @@ function drawHeader(
   doc.setFillColor(...PRIMARY);
   doc.rect(0, 0, pageW, 3, "F");
 
-  // Logo institucional NR1-Pronto (esquerda)
+  // Logo institucional NR-1Comprova (esquerda)
   if (talentLogo) {
     const { w, h } = fitImage(talentLogo, 95, 25);
     try {
@@ -297,7 +297,7 @@ function drawFooter(
   doc.setFontSize(7.5);
   doc.setTextColor(...MUTED);
   doc.text(
-    `Documento probatório gerado eletronicamente pela plataforma NR1-Pronto — ${geradoEm}`,
+    `Documento probatório gerado eletronicamente pela plataforma NR-1Comprova — ${geradoEm}`,
     M,
     pageH - 30
   );
@@ -722,7 +722,7 @@ export async function gerarRelatorioColaboradorPDF(
   doc.setFontSize(7);
   doc.setTextColor(...MUTED);
   doc.text(
-    "Escaneie o QR Code para auditar a autenticidade e validade deste dossiê na plataforma NR1-Pronto.",
+    "Escaneie o QR Code para auditar a autenticidade e validade deste dossiê na plataforma NR-1Comprova.",
     pageW / 2,
     qrY + qrSize + 22,
     { align: "center" }

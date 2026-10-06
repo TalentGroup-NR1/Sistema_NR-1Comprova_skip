@@ -9,7 +9,7 @@ interface Props extends BrandProps {
 }
 
 function BemVindoEmpresaEmail({
-  brandName = 'NR-1 Pronto',
+  brandName = 'NR-1Comprova',
   logoUrl,
   primaryColor,
   siteUrl = 'https://nr1pronto.com.br',
@@ -44,10 +44,10 @@ function BemVindoEmpresaEmail({
 
 export const template = {
   component: BemVindoEmpresaEmail,
-  subject: (data: Props) => `Bem-vindo ao ${data.brandName ?? 'NR-1 Pronto'}! Sua conta está ativa`,
+  subject: (data: Props) => `Bem-vindo ao ${data.brandName ?? 'NR-1Comprova'}! Sua conta está ativa`,
   displayName: 'Boas-vindas (empresa)',
   previewData: {
-    brandName: 'NR-1 Pronto',
+    brandName: 'NR-1Comprova',
     adminName: 'Josenildo Almeida',
     companyName: 'Empresa Exemplo LTDA',
     loginUrl: 'https://nr1pronto.com.br/auth',

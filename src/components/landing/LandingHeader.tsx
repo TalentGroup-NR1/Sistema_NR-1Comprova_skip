@@ -16,14 +16,14 @@ export function LandingHeader() {
         <Link to="/" className="flex items-center gap-3">
           <img
             src="/logos/Logo_NR1_Transparente.png"
-            alt="NR-1 Pronto"
+            alt="NR-1Comprova"
             className="h-8 w-8 shrink-0 object-contain md:h-10 md:w-10"
             loading="eager"
           />
           <span className="flex flex-col leading-tight">
-            <span className="text-xs font-extrabold text-brand-red sm:text-sm">NR-1 Pronto</span>
+            <span className="text-xs font-extrabold text-brand-red sm:text-sm">NR-1Comprova</span>
             <span className="text-[10px] font-normal text-white/50 sm:text-xs">
-              powered by NR1-Pronto
+              powered by NR-1Comprova
             </span>
           </span>
         </Link>

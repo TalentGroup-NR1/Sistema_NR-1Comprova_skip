@@ -8,7 +8,7 @@ import { Reveal } from "@/components/landing/Reveal";
 
 const faq = [
   {
-    q: "O que é o NR-1 Pronto?",
+    q: "O que é o NR-1Comprova?",
     a: "É uma plataforma SaaS para gestão de RH, SST e conformidade NR-1, multi-tenant e com white-label.",
   },
   {

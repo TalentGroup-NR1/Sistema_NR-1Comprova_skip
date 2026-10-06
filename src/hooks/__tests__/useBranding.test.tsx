@@ -87,7 +87,7 @@ describe('useBranding e useEffectiveCompanyId', () => {
     expect(result.current.logoUrl).toBe('https://logo.y');
   });
 
-  it('4. Cenário Sem Empresa Nenhuma: recebe o fallback NR1-Pronto', () => {
+  it('4. Cenário Sem Empresa Nenhuma: recebe o fallback NR-1Comprova', () => {
     (useCompanies as any).mockReturnValue({ data: [mockCompanyX], isLoading: false });
     // Nenhum ID efetivo encontrado
     (useAuth as any).mockReturnValue({ isAdminMaster: false, companyId: null });
@@ -156,5 +156,19 @@ describe('useBranding e useEffectiveCompanyId', () => {
     
     // O cache foi eliminado, isolando o próximo usuário
     expect(localStorage.getItem(cacheKey)).toBeNull();
+  });
+  it('8. Teste de Document Title: não duplica a marca se o fallback for NR-1Comprova', () => {
+    // Simula lógica isolada usada no BrandingDocumentEffect
+    const getDocumentTitle = (brandName: string) => {
+      return brandName === "NR-1Comprova" 
+        ? "NR-1Comprova" 
+        : `${brandName} — NR-1Comprova`;
+    };
+    
+    // Título sem empresa (fallback default)
+    expect(getDocumentTitle("NR-1Comprova")).toBe("NR-1Comprova");
+    
+    // Título com empresa
+    expect(getDocumentTitle("Empresa X")).toBe("Empresa X — NR-1Comprova");
   });
 });

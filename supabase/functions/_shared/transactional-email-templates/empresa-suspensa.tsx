@@ -9,7 +9,7 @@ interface Props extends BrandProps {
 }
 
 function EmpresaSuspensaEmail({
-  brandName = 'NR-1 Pronto',
+  brandName = 'NR-1Comprova',
   logoUrl,
   primaryColor,
   siteUrl = 'https://nr1pronto.com.br',
@@ -42,10 +42,10 @@ function EmpresaSuspensaEmail({
 
 export const template = {
   component: EmpresaSuspensaEmail,
-  subject: (data: Props) => `Acesso suspenso — ${data.brandName ?? 'NR-1 Pronto'}`,
+  subject: (data: Props) => `Acesso suspenso — ${data.brandName ?? 'NR-1Comprova'}`,
   displayName: 'Empresa suspensa',
   previewData: {
-    brandName: 'NR-1 Pronto',
+    brandName: 'NR-1Comprova',
     companyName: 'Empresa Exemplo LTDA',
     reason: 'Pendência financeira',
   },

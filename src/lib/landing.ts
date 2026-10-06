@@ -4,7 +4,7 @@ export const LANDING_SUPPORT_EMAIL = "suporte@nr1pronto.com.br";
 export const LANDING_LINKEDIN = "https://www.linkedin.com/company/talent-group";
 /** Placeholder — substituir pelo perfil oficial. */
 export const LANDING_INSTAGRAM = "https://www.instagram.com/";
-/** Placeholder — inserir CNPJ da NR1-Pronto. */
+/** Placeholder — inserir CNPJ da NR-1Comprova. */
 export const LANDING_CNPJ = "[inserir CNPJ]";
 /** Placeholder — substituir pelo PDF do relatório demonstrativo. */
 export const LANDING_DEMO_REPORT_URL = "/relatorio-demonstrativo.pdf";

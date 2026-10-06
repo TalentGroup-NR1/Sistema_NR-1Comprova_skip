@@ -1,4 +1,4 @@
-# NR1-Pronto — Arquitetura de Gateway & Proteção Cloudflare (WAF/CDN)
+# NR-1Comprova — Arquitetura de Gateway & Proteção Cloudflare (WAF/CDN)
 
 **Domínio Oficial:** `https://nr1pronto.com.br`  
 **Registrar:** Registro.br  

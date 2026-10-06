@@ -1,4 +1,4 @@
-# Landing page comercial NR1-Pronto
+# Landing page comercial NR-1Comprova
 
 ## Como a home vai funcionar
 
@@ -14,7 +14,7 @@ A rota `/` passa a ser inteligente: visitante **sem login** vê a landing page; 
 6. **Contato** — título, subtítulo e formulário (nome, empresa, e-mail, telefone, mensagem). Ao enviar, grava a solicitação e mostra "Recebemos sua solicitação! Nossa equipe entrará em contato em até 1 dia útil.", sem sair da página.
 7. **Insights (blog)** — três cards de artigo placeholder com imagem, data, categoria e título, e botão "Ver todos os artigos" para `/blog` (página pública simples com aviso de "em breve").
 
-**Rodapé**: marca Talent Group / NR1-Pronto, links para Termos de Uso e Política de Privacidade, suporte@nr1pronto.com.br, LinkedIn (`linkedin.com/company/talent-group`), Instagram como placeholder, e copyright com CNPJ marcado para preenchimento.
+**Rodapé**: marca Talent Group / NR-1Comprova, links para Termos de Uso e Política de Privacidade, suporte@nr1pronto.com.br, LinkedIn (`linkedin.com/company/talent-group`), Instagram como placeholder, e copyright com CNPJ marcado para preenchimento.
 
 Identidade visual da Talent Group (navy, vinho e dourado), sóbria e consultiva, com layout responsável em celular e desktop.
 
@@ -32,5 +32,5 @@ Cada envio do formulário vira um registro no banco com nome, empresa, e-mail, t
 - Arquivos novos: `src/pages/Landing.tsx`, `src/pages/Blog.tsx`, e componentes em `src/components/landing/` (`LandingHeader`, `HeroSection`, `FeaturesSection`, `BenefitsSection`, `TestimonialsSection`, `FaqSection` (Accordion do shadcn), `ContactSection`, `InsightsSection`, `LandingFooter`).
 - Cores/estilos via tokens semânticos existentes em `index.css`; se necessário, adiciono tokens específicos da landing (ex.: `--landing-hero`) em vez de classes hardcoded.
 - Imagem do hero: placeholder em `src/assets/hero-dashboard.png`, importado por ES6, para substituição manual depois. Sem captura automática de tela.
-- SEO: atualizo `index.html` com title/description/og/twitter — "NR1-Pronto — Gestão de RH, SST e Conformidade NR-1" — usando `https://nr1pronto.com.br` em `og:url` e canonical. Qualquer link absoluto da landing usa o domínio `nr1pronto.com.br`.
+- SEO: atualizo `index.html` com title/description/og/twitter — "NR-1Comprova — Gestão de RH, SST e Conformidade NR-1" — usando `https://nr1pronto.com.br` em `og:url` e canonical. Qualquer link absoluto da landing usa o domínio `nr1pronto.com.br`.
 - Não são alterados: login, módulos internos, Edge Functions, RLS existente e o branding dinâmico por empresa.

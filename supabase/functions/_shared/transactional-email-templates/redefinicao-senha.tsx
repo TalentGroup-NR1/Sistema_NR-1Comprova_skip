@@ -9,7 +9,7 @@ interface Props extends BrandProps {
 }
 
 function RedefinicaoSenhaEmail({
-  brandName = 'NR-1 Pronto',
+  brandName = 'NR-1Comprova',
   logoUrl,
   primaryColor,
   siteUrl = 'https://nr1pronto.com.br',
@@ -40,10 +40,10 @@ function RedefinicaoSenhaEmail({
 
 export const template = {
   component: RedefinicaoSenhaEmail,
-  subject: (data: Props) => `Redefinição de senha — ${data.brandName ?? 'NR-1 Pronto'}`,
+  subject: (data: Props) => `Redefinição de senha — ${data.brandName ?? 'NR-1Comprova'}`,
   displayName: 'Redefinição de senha',
   previewData: {
-    brandName: 'NR-1 Pronto',
+    brandName: 'NR-1Comprova',
     recipientName: 'Maria Silva',
     resetUrl: 'https://nr1pronto.com.br/atualizar-senha#token=exemplo',
     expirationHours: 1,

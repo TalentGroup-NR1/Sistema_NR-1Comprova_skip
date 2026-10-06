@@ -87,7 +87,7 @@ export default function Auth() {
 
 
           <p className="text-xs text-muted-foreground text-center mt-8">
-            © {new Date().getFullYear()} NR1-Pronto. Todos os direitos reservados.
+            © {new Date().getFullYear()} NR-1Comprova. Todos os direitos reservados.
           </p>
         </div>
       </div>

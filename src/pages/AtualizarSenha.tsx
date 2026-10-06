@@ -159,7 +159,7 @@ export default function AtualizarSenha() {
     <div className="min-h-screen bg-gradient-to-br from-background to-muted flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <h2 className="text-3xl font-bold text-primary">NR1-Pronto</h2>
+          <h2 className="text-3xl font-bold text-primary">NR-1Comprova</h2>
           <p className="text-muted-foreground">Sistema de Gestão de RH</p>
         </div>
 

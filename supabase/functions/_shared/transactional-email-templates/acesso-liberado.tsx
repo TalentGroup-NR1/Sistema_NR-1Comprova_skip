@@ -29,7 +29,7 @@ export const template = {
     data.siteName ? `Seu acesso ao ${data.siteName} foi liberado` : 'Seu acesso foi liberado',
   displayName: 'Acesso Liberado',
   previewData: {
-    siteName: 'NR-1 Pronto',
+    siteName: 'NR-1Comprova',
     siteUrl: 'https://nr1pronto.com.br',
     recipientName: 'Maria Silva',
     companyName: 'Talent Group',
@@ -39,7 +39,7 @@ export const template = {
 }
 
 function AcessoLiberadoEmail({
-  siteName = 'NR-1 Pronto',
+  siteName = 'NR-1Comprova',
   siteUrl = 'https://nr1pronto.com.br',
   recipientName = 'Colaborador',
   companyName = 'sua empresa',
