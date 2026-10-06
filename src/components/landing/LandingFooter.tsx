@@ -15,7 +15,7 @@ export function LandingFooter() {
           <div>
             <div className="flex items-center gap-3">
               <img
-                src="/logos/Logo_NR1_Transparente.png"
+                src="/logos/nr-1comprova-logo-main.png"
                 alt="NR-1Comprova"
                 className="h-[30px] w-[30px] object-contain"
                 loading="lazy"

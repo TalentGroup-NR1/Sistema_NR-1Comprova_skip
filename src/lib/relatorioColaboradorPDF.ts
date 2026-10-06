@@ -340,7 +340,7 @@ export async function gerarRelatorioColaboradorPDF(
   const hashCurto = hashConteudo.slice(0, 16).toUpperCase();
 
   // Tenta carregar logotipo institucional
-  const talentLogo = await loadImage("/images/Logo_NR1_Transparente.png");
+  const talentLogo = await loadImage("/images/nr-1comprova-logo.png");
 
   // QR Code de verificação probatória
   const baseUrl = verificacaoUrlBase || getShareBaseUrl();

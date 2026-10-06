@@ -225,7 +225,7 @@ export function WelcomeWizard() {
             onPrimaryColorChange={setPrimaryColor}
             logoFile={logoFile}
             onLogoFileChange={setLogoFile}
-            currentLogoUrl={branding.logoUrl !== '/images/Logo_NR1_Transparente.png' ? branding.logoUrl : null}
+            currentLogoUrl={branding.logoUrl !== '/images/nr-1comprova-logo.png' ? branding.logoUrl : null}
             disabled={saving}
           />
         </div>

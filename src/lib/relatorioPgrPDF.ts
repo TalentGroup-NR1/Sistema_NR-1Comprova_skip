@@ -104,7 +104,7 @@ export async function gerarRelatorioPgrPDF(params: GerarRelatorioPgrParams) {
   const verificacaoPayload = `TALENT-EVID|PGR_EXEC|${docId}|${hashCurto}|${baseUrl}/evidencias?verificar=${docId}`;
   const qrDataUrl = await generateVerificationQRCode(verificacaoPayload);
 
-  const talentLogo = await loadImage("/images/Logo_NR1_Transparente.png");
+  const talentLogo = await loadImage("/images/nr-1comprova-logo.png");
 
   const doc = new jsPDF({ unit: "pt", format: "a4" });
   const pageW = doc.internal.pageSize.getWidth();

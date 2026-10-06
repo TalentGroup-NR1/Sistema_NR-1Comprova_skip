@@ -148,7 +148,7 @@ export default function ConfiguracoesEmpresa() {
   const currentLogo =
     currentCompany?.brand_logo_url ||
     currentCompany?.logo_url ||
-    (branding.logoUrl !== '/images/Logo_NR1_Transparente.png' ? branding.logoUrl : null);
+    (branding.logoUrl !== '/images/nr-1comprova-logo.png' ? branding.logoUrl : null);
 
   return (
     <MainLayout>
