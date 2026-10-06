@@ -15,13 +15,17 @@ export function LandingHeader() {
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-3">
         <Link to="/" className="flex items-center gap-3">
           <img
-            src="/logos/nr-1comprova-logo-main.png"
+            src="/logos/nr-1comprova-logo-main.png?v=2"
             alt="NR-1Comprova"
             className="h-8 w-8 shrink-0 object-contain md:h-10 md:w-10"
             loading="eager"
           />
           <span className="flex flex-col leading-tight">
-            <span className="text-xs font-extrabold text-brand-red sm:text-sm">NR-1Comprova</span>
+            <span className="text-xs font-extrabold sm:text-sm uppercase tracking-wide">
+              <span className="text-gray-300">NR-1</span>
+              <span className="text-gray-300 underline underline-offset-2">Com</span>
+              <span className="text-[#E30613]">prova</span>
+            </span>
             <span className="text-[10px] font-normal text-white/50 sm:text-xs">
               powered by Talent Group
             </span>
