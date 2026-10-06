@@ -1343,3 +1343,12 @@
     animation: none !important;
   }
 }
+@keyframes spin-3d {
+  0% { transform: perspective(1000px) rotateY(0deg); }
+  100% { transform: perspective(1000px) rotateY(360deg); }
+}
+
+.animate-spin-3d {
+  animation: spin-3d 6s linear infinite;
+  transform-style: preserve-3d;
+}

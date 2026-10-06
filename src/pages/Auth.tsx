@@ -34,11 +34,11 @@ export default function Auth() {
         <div className="absolute bottom-[-20%] right-[-10%] w-[30rem] h-[30rem] rounded-full bg-[hsl(216_64%_48%)]/10 blur-3xl" />
 
         <div className="relative z-10 max-w-2xl px-8 xl:px-16 animate-fade-up flex flex-col items-center text-center -mt-12" style={{ animationDuration: '0.8s' }}>
-          <div className="mb-6 animate-elegant-float w-full max-w-[16rem] sm:max-w-xs mx-auto">
+          <div className="mb-6 animate-elegant-float w-full max-w-[16rem] sm:max-w-xs mx-auto" style={{ perspective: '1000px' }}>
             <img
               src={branding.logoUrl}
               alt={branding.brandName}
-              className="w-full h-auto drop-shadow-[0_10px_20px_rgba(0,0,0,0.5)] object-contain"
+              className="w-full h-auto drop-shadow-[0_10px_20px_rgba(0,0,0,0.5)] object-contain animate-spin-3d"
             />
           </div>
           
