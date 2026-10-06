@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { LayoutDashboard, Users, UserMinus, Calendar, FileText, BarChart3, Settings, Bell, ChevronLeft, ChevronRight, ChevronDown, Building2, ClipboardList, GraduationCap, Heart, Shield, ShieldAlert, MessageSquare, Briefcase, TrendingUp, Megaphone, UserSearch, Clock, Plane, ListChecks, ShieldCheck, LogOut, Palette, User, Network, Server } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -82,7 +82,20 @@ const roleLabels: Record<string, string> = {
   colaborador: "Colaborador",
 };
 
+let savedScrollPos = 0;
+
 export function Sidebar() {
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = savedScrollPos;
+    }
+  }, []);
+
+  const handleScroll = (e: React.UIEvent<HTMLElement>) => {
+    savedScrollPos = e.currentTarget.scrollTop;
+  };
   const branding = useBranding();
   const [collapsed, setCollapsed] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
@@ -276,7 +289,11 @@ export function Sidebar() {
 
 
       {/* Navigation */}
-      <nav className="flex-1 px-3 pb-3 space-y-3 overflow-y-auto">
+      <nav 
+        ref={scrollRef}
+        onScroll={handleScroll}
+        className="flex-1 px-3 pb-3 space-y-3 overflow-y-auto"
+      >
         <div className="space-y-0.5">
           <NavLinkItem item={dashboardItem} />
         </div>
