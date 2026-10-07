@@ -7,6 +7,8 @@ CREATE TABLE public.questionarios_cuidar_plus_alvos (
     UNIQUE(questionario_id, departamento_nome)
 );
 
+GRANT ALL ON TABLE public.questionarios_cuidar_plus_alvos TO anon, authenticated, service_role;
+
 -- Adiciona o tipo de audiencia no questionario principal
 ALTER TABLE public.questionarios_cuidar_plus 
   ADD COLUMN audiencia_tipo VARCHAR(50) NOT NULL DEFAULT 'todos'

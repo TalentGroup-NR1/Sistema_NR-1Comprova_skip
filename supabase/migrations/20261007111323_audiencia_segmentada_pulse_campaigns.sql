@@ -17,6 +17,8 @@ CREATE TABLE IF NOT EXISTS public.pulse_campaigns_alvos (
   UNIQUE(campaign_id, departamento_nome)
 );
 
+GRANT ALL ON TABLE public.pulse_campaigns_alvos TO anon, authenticated, service_role;
+
 -- 3. RLS for pulse_campaigns_alvos
 ALTER TABLE public.pulse_campaigns_alvos ENABLE ROW LEVEL SECURITY;
 
