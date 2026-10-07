@@ -63,6 +63,7 @@ CREATE POLICY "Colaboradores can view active campaigns"
   );
 
 -- 5. Update get_active_pulse_campaign RPC
+DROP FUNCTION IF EXISTS public.get_active_pulse_campaign(UUID);
 CREATE OR REPLACE FUNCTION public.get_active_pulse_campaign(p_company_id UUID)
 RETURNS TABLE (
   campaign_id UUID,
@@ -133,6 +134,7 @@ END;
 $$;
 
 -- 6. Update get_pulse_campaign_stats RPC
+DROP FUNCTION IF EXISTS public.get_pulse_campaign_stats(UUID);
 CREATE OR REPLACE FUNCTION public.get_pulse_campaign_stats(p_campaign_id UUID)
 RETURNS TABLE (
   total_responses BIGINT,
@@ -232,6 +234,7 @@ END;
 $$;
 
 -- 7. Update get_pulse_trend_data RPC
+DROP FUNCTION IF EXISTS public.get_pulse_trend_data(UUID, INTEGER);
 CREATE OR REPLACE FUNCTION public.get_pulse_trend_data(
   p_company_id UUID,
   p_months_back INTEGER DEFAULT 6
