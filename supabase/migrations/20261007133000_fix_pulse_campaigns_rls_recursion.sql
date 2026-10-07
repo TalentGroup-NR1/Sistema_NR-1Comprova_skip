@@ -5,7 +5,7 @@ CREATE OR REPLACE FUNCTION public.can_access_pulse_campaign_alvos(p_campaign_id 
 RETURNS BOOLEAN
 LANGUAGE sql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public, pg_temp
 AS $$
   SELECT EXISTS (
     SELECT 1 FROM public.pulse_campaigns c
@@ -13,6 +13,10 @@ AS $$
     AND c.company_id = public.get_my_company_id()
   );
 $$;
+
+-- Secure the function execution
+REVOKE ALL ON FUNCTION public.can_access_pulse_campaign_alvos(UUID) FROM public;
+GRANT EXECUTE ON FUNCTION public.can_access_pulse_campaign_alvos(UUID) TO authenticated, service_role;
 
 -- 2. Update the policy on pulse_campaigns_alvos to use the function
 DROP POLICY IF EXISTS "Colaboradores can view alvos of active campaigns" ON public.pulse_campaigns_alvos;
