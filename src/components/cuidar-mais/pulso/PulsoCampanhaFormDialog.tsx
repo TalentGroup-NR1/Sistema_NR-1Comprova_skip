@@ -29,10 +29,10 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useColaboradores } from "@/hooks/useColaboradores";
 import { format } from "date-fns";
+import { toast } from "sonner";
 import {
   useCreateCampaign,
   useUpdateCampaign,
-  useCampaignQuestions,
   useCampaignQuestions,
   useCampaignStats,
   PulseCampaign,
@@ -41,6 +41,9 @@ import { useAuth } from "@/hooks/useAuth";
 import { useEffectiveCompanyId } from "@/hooks/useEffectiveCompanyId";
 import { GlobalReplicationToggle } from "@/components/shared/GlobalReplicationToggle";
 import { useReplicatePulseCampaign } from "@/hooks/useGlobalReplication";
+import { PulsoCampaignDistributionChart } from "./PulsoCampaignDistributionChart";
+import { PulsoCampaignDepartmentBreakdown } from "./PulsoCampaignDepartmentBreakdown";
+import { PulsoResultsTable } from "./PulsoResultsTable";
 
 interface QuestionForm {
   id?: string;
@@ -244,9 +247,10 @@ export function PulsoCampanhaFormDialog({
         </DialogHeader>
 
         <Tabs defaultValue="info" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className={`grid w-full ${isEditing ? "grid-cols-3" : "grid-cols-2"}`}>
             <TabsTrigger value="info">Informações</TabsTrigger>
             <TabsTrigger value="questions">Perguntas ({questions.length})</TabsTrigger>
+            {isEditing && <TabsTrigger value="results">Resultados</TabsTrigger>}
           </TabsList>
 
           <TabsContent value="info" className="space-y-4 mt-4">
@@ -503,6 +507,55 @@ export function PulsoCampanhaFormDialog({
               Adicionar Pergunta
             </Button>
           </TabsContent>
+
+          {isEditing && (
+            <TabsContent value="results" className="space-y-4 mt-4">
+              {campaignStats ? (
+                <>
+                  <div className="grid grid-cols-3 gap-4">
+                    <Card>
+                      <CardHeader className="py-4">
+                        <CardTitle className="text-sm font-medium text-muted-foreground">Total de Respostas</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-2xl font-bold">{campaignStats.total_responses}</div>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardHeader className="py-4">
+                        <CardTitle className="text-sm font-medium text-muted-foreground">Média Geral</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-2xl font-bold">{campaignStats.avg_score !== null ? campaignStats.avg_score.toFixed(1) : '-'} / 5.0</div>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardHeader className="py-4">
+                        <CardTitle className="text-sm font-medium text-muted-foreground">Adesão (Taxa)</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-2xl font-bold">{campaignStats.participation_rate !== null ? campaignStats.participation_rate : 0}%</div>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  <PulsoCampaignDistributionChart distribution={campaignStats.score_distribution || {}} />
+                  
+                  {campaign?.audiencia_tipo === 'departamentos' && (
+                    <PulsoCampaignDepartmentBreakdown distribution={campaignStats.department_breakdown} />
+                  )}
+
+                  <div className="pt-4">
+                    <PulsoResultsTable campaignId={campaign.id} />
+                  </div>
+                </>
+              ) : (
+                <div className="text-center text-muted-foreground p-8">
+                  <p>Nenhum resultado processado ainda ou aguardando respostas.</p>
+                </div>
+              )}
+            </TabsContent>
+          )}
         </Tabs>
 
         <DialogFooter>

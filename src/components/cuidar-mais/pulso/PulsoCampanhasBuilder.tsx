@@ -23,6 +23,12 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
   Plus,
   Search,
   Settings,
@@ -50,7 +56,7 @@ export function PulsoCampanhasBuilder() {
   const [editingCampaign, setEditingCampaign] = useState<PulseCampaign | null>(null);
   const [deletingCampaign, setDeletingCampaign] = useState<PulseCampaign | null>(null);
 
-  const { data: campaigns, isLoading } = usePulseCampaigns();
+  const { data: campaigns, isLoading, isError, error } = usePulseCampaigns();
   const deleteCampaign = useDeleteCampaign();
   const toggleActive = useToggleCampaignActive();
   const gerarAno = useGerarCampanhasAno();
@@ -100,6 +106,28 @@ export function PulsoCampanhasBuilder() {
               <Skeleton key={i} className="h-16 w-full" />
             ))}
           </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (isError) {
+    return (
+      <Card className="border-red-200 bg-red-50/50">
+        <CardHeader>
+          <CardTitle className="text-red-600 flex items-center gap-2">
+            <PowerOff className="h-5 w-5" />
+            Erro ao carregar campanhas
+          </CardTitle>
+          <CardDescription className="text-red-600/80">
+            {error instanceof Error ? error.message : "Ocorreu um erro inesperado ao buscar as campanhas."}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-red-600">
+            Pode haver um problema de conexão ou atualização pendente no banco de dados. 
+            Contate o suporte técnico se o problema persistir.
+          </p>
         </CardContent>
       </Card>
     );
@@ -162,6 +190,7 @@ export function PulsoCampanhasBuilder() {
                 <TableRow>
                   <TableHead>Título</TableHead>
                   <TableHead>Período</TableHead>
+                  <TableHead>Público-alvo</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Criada em</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
@@ -179,6 +208,26 @@ export function PulsoCampanhasBuilder() {
                           {" - "}
                           {format(parseISO(campaign.data_fim), "dd/MM/yyyy", { locale: ptBR })}
                         </span>
+                      </TableCell>
+                      <TableCell>
+                        {campaign.audiencia_tipo === 'todos' ? (
+                          <Badge variant="secondary" className="font-normal text-slate-500">Toda a empresa</Badge>
+                        ) : (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger>
+                                <Badge variant="outline" className="font-normal bg-slate-50">
+                                  {campaign.alvos?.length || 0} depart.
+                                </Badge>
+                              </TooltipTrigger>
+                              <TooltipContent className="max-w-[300px] flex flex-wrap gap-1 p-2">
+                                {campaign.alvos?.map((a: string) => (
+                                  <Badge key={a} variant="secondary" className="text-[10px] font-normal">{a}</Badge>
+                                ))}
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        )}
                       </TableCell>
                       <TableCell>
                         <Badge variant={status.variant}>{status.label}</Badge>
