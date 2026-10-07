@@ -27,7 +27,8 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { 
   useEnviosCuidarPlus, 
-  useBulkCreateEnviosCuidarPlus 
+  useBulkCreateEnviosCuidarPlus,
+  useQuestionarioCuidarPlus
 } from "@/hooks/useCuidarMaisQuestionarios";
 import { useColaboradores } from "@/hooks/useColaboradores";
 import { getShareBaseUrl } from '@/lib/appUrl';
@@ -42,6 +43,7 @@ export function EnviosTab({ questionarioId }: EnviosTabProps) {
 
   const { data: envios = [], isLoading: loadingEnvios } = useEnviosCuidarPlus(questionarioId);
   const { data: colaboradores = [], isLoading: loadingColaboradores } = useColaboradores();
+  const { data: questionario } = useQuestionarioCuidarPlus(questionarioId);
   const bulkCreate = useBulkCreateEnviosCuidarPlus();
 
   // Stats
@@ -52,7 +54,32 @@ export function EnviosTab({ questionarioId }: EnviosTabProps) {
 
   // Colaboradores que ainda não receberam o questionário
   const enviados = new Set(envios.map(e => e.colaborador_id));
-  const colaboradoresDisponiveis = colaboradores.filter(c => !enviados.has(c.id) && c.status === 'ativo');
+  
+  const colaboradoresDisponiveis = colaboradores.filter(c => {
+    if (c.status !== 'ativo') return false;
+    if (enviados.has(c.id)) return false;
+    
+    // Filtro de audiência
+    if (questionario?.audiencia_tipo === 'departamentos') {
+      if (!c.department) return false;
+      const deptNormalized = c.department.trim().toLowerCase();
+      const isAlvo = questionario.alvos?.some(a => a.trim().toLowerCase() === deptNormalized);
+      return isAlvo;
+    }
+    
+    return true;
+  });
+
+  // Contador total do público (incluindo os que já receberam)
+  const totalPublicoAlvo = colaboradores.filter(c => {
+    if (c.status !== 'ativo') return false;
+    if (questionario?.audiencia_tipo === 'departamentos') {
+      if (!c.department) return false;
+      const deptNormalized = c.department.trim().toLowerCase();
+      return questionario.alvos?.some(a => a.trim().toLowerCase() === deptNormalized);
+    }
+    return true;
+  }).length;
 
   const handleCopyLink = (token: string) => {
     const baseUrl = getShareBaseUrl();
@@ -121,6 +148,27 @@ export function EnviosTab({ questionarioId }: EnviosTabProps) {
                 <CardDescription className="mt-1">
                   Gere links únicos e acompanhe as respostas dos colaboradores.
                 </CardDescription>
+                
+                {/* Indicador Visual de Audiência */}
+                <div className="mt-3 flex items-center gap-2 flex-wrap">
+                  {questionario?.audiencia_tipo === 'departamentos' ? (
+                    <>
+                      <Badge variant="outline" className="bg-blue-50/50 text-blue-700 border-blue-200">
+                        Público: {questionario.alvos?.join(', ') || 'Nenhum alvo definido'}
+                      </Badge>
+                      {questionario.alvos && questionario.alvos.length === 0 && (
+                        <Badge variant="destructive">Público vazio: Adicione alvos na edição.</Badge>
+                      )}
+                    </>
+                  ) : (
+                    <Badge variant="outline" className="bg-slate-50 text-slate-700">
+                      Público: Toda a empresa
+                    </Badge>
+                  )}
+                  <span className="text-xs text-muted-foreground font-medium">
+                    {totalPublicoAlvo} {totalPublicoAlvo === 1 ? 'colaborador' : 'colaboradores'} no público desta campanha
+                  </span>
+                </div>
               </div>
               <Button onClick={() => setShowEnviarDialog(true)}>
                 <Send className="h-4 w-4 mr-2" />

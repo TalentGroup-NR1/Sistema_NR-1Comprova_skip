@@ -508,7 +508,59 @@ export const useBulkCreateEnviosCuidarPlus = () => {
 
   return useMutation({
     mutationFn: async (data: { questionario_id: string; colaborador_ids: string[] }) => {
-      const envios = data.colaborador_ids.map(colaborador_id => ({
+      // 1. Validar audiência em profundidade
+      const { data: quest, error: questError } = await supabase
+        .from('questionarios_cuidar_plus')
+        .select(`
+          audiencia_tipo,
+          questionarios_cuidar_plus_alvos (
+            departamento_nome
+          )
+        `)
+        .eq('id', data.questionario_id)
+        .single();
+
+      if (questError) throw questError;
+
+      let validColaboradores = data.colaborador_ids;
+
+      if (quest?.audiencia_tipo === 'departamentos') {
+        const alvos = (quest.questionarios_cuidar_plus_alvos || []).map(
+          (a: any) => a.departamento_nome.trim().toLowerCase()
+        );
+
+        if (alvos.length === 0) {
+          throw new Error("Nenhum colaborador do público-alvo disponível para envio");
+        }
+
+        // Buscar departamentos atuais dos colaboradores na base
+        const { data: colabs, error: colabsError } = await supabase
+          .from('colaboradores')
+          .select('id, department')
+          .in('id', data.colaborador_ids);
+
+        if (colabsError) throw colabsError;
+
+        validColaboradores = validColaboradores.filter(cid => {
+          const c = colabs?.find(col => col.id === cid);
+          if (!c?.department) {
+            console.warn(`[Cuidar+] Descartando ${cid}: sem departamento.`);
+            return false;
+          }
+          const isAlvo = alvos.includes(c.department.trim().toLowerCase());
+          if (!isAlvo) {
+            console.warn(`[Cuidar+] Descartando ${cid}: departamento '${c.department}' fora do público-alvo.`);
+          }
+          return isAlvo;
+        });
+
+        if (validColaboradores.length === 0) {
+          throw new Error("Nenhum colaborador do público-alvo disponível para envio");
+        }
+      }
+
+      // 2. Realizar upsert apenas dos válidos
+      const envios = validColaboradores.map(colaborador_id => ({
         questionario_id: data.questionario_id,
         colaborador_id,
       }));
