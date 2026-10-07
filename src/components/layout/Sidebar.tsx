@@ -27,6 +27,7 @@ import { useDenunciasMonitor } from "@/hooks/useDenuncias";
 import { useToast } from "@/hooks/use-toast";
 import { useMyPulseStatus } from "@/hooks/usePulseSurvey";
 import { useBranding } from "@/hooks/useBranding";
+import { useVisibleModules } from "@/hooks/useVisibleModules";
 
 
 interface NavItem {
@@ -121,6 +122,7 @@ export function Sidebar() {
   const selectedCompany = companies?.find(c => c.id === selectedCompanyId);
   const isFriday = new Date().getDay() === 5;
   const { data: pulseStatus } = useMyPulseStatus();
+  const { data: visibleModules } = useVisibleModules();
 
   const handleSignOut = async () => {
     const { error } = await signOut();
@@ -133,8 +135,25 @@ export function Sidebar() {
 
   const filterByRole = (items: NavItem[]) => {
     if (!isAuthenticated) return [];
-    if (role === null) return items.filter(item => !item.roles);
-    return items.filter(item => !item.roles || item.roles.includes(role));
+    
+    // First, filter by role (existing logic)
+    let roleFiltered = items;
+    if (role !== null) {
+      roleFiltered = items.filter(item => !item.roles || item.roles.includes(role));
+    } else {
+      roleFiltered = items.filter(item => !item.roles);
+    }
+    
+    // Second, filter by dynamic visibility (RBAC Frontend Phase A)
+    if (visibleModules && visibleModules.length > 0) {
+      return roleFiltered.filter(item => {
+        const config = visibleModules.find(v => v.module_key === item.href);
+        if (config && config.visible === false) return false;
+        return true;
+      });
+    }
+    
+    return roleFiltered;
   };
 
 

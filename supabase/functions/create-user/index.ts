@@ -182,24 +182,34 @@ serve(async (req) => {
     // Update profile with company_id and full_name
     const { error: profileError } = await supabaseAdmin
       .from('profiles')
-      .update({
+      .upsert({
+        user_id: newUser.user!.id,
         company_id: targetCompanyId,
         full_name,
-      })
-      .eq('user_id', newUser.user!.id);
+      }, { onConflict: 'user_id' });
 
     if (profileError) {
       console.error('Error updating profile:', profileError);
+      return new Response(JSON.stringify({ error: 'Failed to save user profile' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
-    // Update role (the trigger sets it to colaborador by default)
+    // Update role
     const { error: roleError } = await supabaseAdmin
       .from('user_roles')
-      .update({ role })
-      .eq('user_id', newUser.user!.id);
+      .upsert({
+        user_id: newUser.user!.id,
+        role,
+      }, { onConflict: 'user_id, role' });
 
     if (roleError) {
       console.error('Error updating role:', roleError);
+      return new Response(JSON.stringify({ error: 'Failed to assign user role' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     return new Response(JSON.stringify({ 

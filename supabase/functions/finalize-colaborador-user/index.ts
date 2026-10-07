@@ -241,24 +241,34 @@ serve(async (req) => {
     // Update profile with company_id and full_name
     const { error: profileError } = await supabaseAdmin
       .from('profiles')
-      .update({
+      .upsert({
+        user_id: userId,
         company_id: colaborador.company_id,
         full_name: colaborador.full_name,
-      })
-      .eq('user_id', userId);
+      }, { onConflict: 'user_id' });
 
     if (profileError) {
       console.error('Error updating profile:', profileError);
+      return new Response(JSON.stringify({ error: 'Failed to save user profile' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     // Set role to 'colaborador' by default
     const { error: roleError } = await supabaseAdmin
       .from('user_roles')
-      .update({ role: 'colaborador' })
-      .eq('user_id', userId);
+      .upsert({
+        user_id: userId,
+        role: 'colaborador',
+      }, { onConflict: 'user_id, role' });
 
     if (roleError) {
       console.error('Error updating role:', roleError);
+      return new Response(JSON.stringify({ error: 'Failed to assign user role' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     // Link the colaborador to the user (and guarantee contract_type is defined)
