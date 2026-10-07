@@ -3,6 +3,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useEffectiveCompanyId } from "./useEffectiveCompanyId";
 import { toast } from "sonner";
 
+export const MINIMO_RESPONDENTES_ANONIMATO = 5;
+
 // Types
 export interface PulseCampaign {
   id: string;
@@ -12,6 +14,8 @@ export interface PulseCampaign {
   ativo: boolean;
   data_inicio: string;
   data_fim: string;
+  audiencia_tipo: 'todos' | 'departamentos';
+  alvos?: string[]; // departamentos alvos populados via join
   created_at: string;
   updated_at: string;
 }
