@@ -31,7 +31,8 @@ export function useMyPendingAvaliacoes() {
   const query = useQuery({
     queryKey: ['my-pending-avaliacoes', colaborador?.id],
     queryFn: async (): Promise<PendingAvaliacao[]> => {
-      console.log('[useMyPendingAvaliacoes] Colaborador recebido:', colaborador);
+      // PII omitido nos logs para segurança
+      // console.log('[useMyPendingAvaliacoes] Colaborador recebido:', { id: colaborador.id });
       
       if (!colaborador?.id) {
         console.log('[useMyPendingAvaliacoes] Nenhum colaborador vinculado ao usuário');
@@ -67,7 +68,7 @@ export function useMyPendingAvaliacoes() {
         throw error;
       }
 
-      console.log('[useMyPendingAvaliacoes] Resultados encontrados:', data?.length || 0, data);
+      console.log('[useMyPendingAvaliacoes] Resultados encontrados:', data?.length || 0);
 
       const today = new Date();
       today.setHours(0, 0, 0, 0);

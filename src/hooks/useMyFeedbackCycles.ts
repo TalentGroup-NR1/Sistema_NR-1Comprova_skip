@@ -40,7 +40,8 @@ export function useMyColaborador() {
         throw error;
       }
 
-      console.log('[useMyColaborador] Colaborador encontrado:', colaborador);
+      // PII omitido nos logs
+      // console.log('[useMyColaborador] Colaborador encontrado:', { id: colaborador?.id });
       return colaborador;
     },
     enabled: !!user?.id,
