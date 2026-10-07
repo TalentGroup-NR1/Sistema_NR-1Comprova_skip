@@ -15,7 +15,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Loader2, KeyRound, Mail, User, Building2, Briefcase } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Loader2, KeyRound, Mail, User, Building2, Briefcase, AlertTriangle } from 'lucide-react';
 import { useFinalizeColaborador, type ColaboradorPendente } from '@/hooks/useColaboradoresPendentes';
 import { contractTypeOptions } from '@/lib/validators/colaborador';
 import { DevInviteDialog } from './DevInviteDialog';
@@ -30,6 +31,8 @@ export function FinalizeColaboradorDialog({ colaborador, open, onClose }: Finali
   const finalizeColaborador = useFinalizeColaborador();
   const [devInviteUrl, setDevInviteUrl] = useState<string | null>(null);
   const [contractType, setContractType] = useState<string>('CLT');
+  const [role, setRole] = useState<string>('colaborador');
+  const [confirmText, setConfirmText] = useState('');
 
   useEffect(() => {
     setContractType(colaborador?.contract_type || 'CLT');
@@ -37,12 +40,14 @@ export function FinalizeColaboradorDialog({ colaborador, open, onClose }: Finali
 
   const onConfirm = async () => {
     if (!colaborador) return;
+    if (role === 'admin_empresa' && confirmText !== 'CONFIRMAR') return;
 
     try {
       const response = await finalizeColaborador.mutateAsync({
         colaborador_id: colaborador.id,
         contract_type: contractType || 'CLT',
-      });
+        role,
+      } as any);
 
       // Em ambiente dev (sem RESEND_API_KEY ou APP_ENV=dev), exibe o aviso com o link de convite gerado
       if (response?.invite_url) {
@@ -58,6 +63,8 @@ export function FinalizeColaboradorDialog({ colaborador, open, onClose }: Finali
 
   const handleClose = () => {
     setDevInviteUrl(null);
+    setRole('colaborador');
+    setConfirmText('');
     onClose();
   };
 
@@ -133,6 +140,47 @@ export function FinalizeColaboradorDialog({ colaborador, open, onClose }: Finali
                   </Select>
                 </div>
               </div>
+
+              <div className="flex items-start gap-3 pt-1 border-t border-border/40">
+                <KeyRound className="h-4 w-4 text-muted-foreground mt-2" />
+                <div className="flex-1 space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">
+                    Nível de Acesso <span className="text-destructive">*</span>
+                  </label>
+                  <Select value={role} onValueChange={setRole}>
+                    <SelectTrigger className="h-8 text-xs bg-background">
+                      <SelectValue placeholder="Selecione o nível de acesso" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="colaborador" className="text-xs">Colaborador</SelectItem>
+                      <SelectItem value="gestor_departamento" className="text-xs">Gestor de Departamento</SelectItem>
+                      <SelectItem value="analista_rh" className="text-xs">Analista de RH</SelectItem>
+                      <SelectItem value="admin_empresa" className="text-xs font-medium text-destructive">Administrador da Empresa</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {role === 'admin_empresa' && (
+                <div className="rounded-md bg-destructive/10 p-3 border border-destructive/20 mt-3">
+                  <div className="flex gap-2">
+                    <AlertTriangle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
+                    <div className="space-y-2">
+                      <p className="text-xs text-destructive font-medium">Atenção: Acesso Total</p>
+                      <p className="text-xs text-muted-foreground">
+                        Este nível dá acesso a <strong>todos</strong> os dados da empresa.
+                        Digite <strong>CONFIRMAR</strong> abaixo para prosseguir.
+                      </p>
+                      <Input 
+                        value={confirmText} 
+                        onChange={(e) => setConfirmText(e.target.value)} 
+                        placeholder="Digite CONFIRMAR"
+                        className="h-8 text-xs uppercase"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="text-sm text-muted-foreground">
@@ -146,7 +194,7 @@ export function FinalizeColaboradorDialog({ colaborador, open, onClose }: Finali
               <Button
                 type="button"
                 onClick={onConfirm}
-                disabled={finalizeColaborador.isPending}
+                disabled={finalizeColaborador.isPending || (role === 'admin_empresa' && confirmText !== 'CONFIRMAR')}
                 className="gradient-primary"
               >
                 {finalizeColaborador.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

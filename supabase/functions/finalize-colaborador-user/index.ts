@@ -95,16 +95,17 @@ serve(async (req) => {
     const callerRole = callerRoleData?.role;
     console.log('Caller role:', callerRole);
 
-    if (callerRole !== 'admin_master' && callerRole !== 'admin_empresa') {
+    const allowedCallers = ['admin_master', 'admin_empresa', 'analista_rh', 'gestor_departamento'];
+    if (!allowedCallers.includes(callerRole)) {
       return new Response(JSON.stringify({ error: 'Insufficient permissions' }), {
         status: 403,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    // Get caller's company_id if admin_empresa
+    // Get caller's company_id if not admin_master
     let callerCompanyId: string | null = null;
-    if (callerRole === 'admin_empresa') {
+    if (callerRole !== 'admin_master') {
       const { data: profileData } = await supabaseAdmin
         .from('profiles')
         .select('company_id')
@@ -114,14 +115,33 @@ serve(async (req) => {
     }
 
     // Parse request body
-    const { colaborador_id, contract_type } = await req.json();
+    const { colaborador_id, contract_type, role } = await req.json();
 
-    console.log('Finalizing colaborador:', colaborador_id, 'with contract_type:', contract_type);
+    console.log('Finalizing colaborador:', colaborador_id, 'with contract_type:', contract_type, 'and role:', role);
 
     // Validate required fields
     if (!colaborador_id) {
       return new Response(JSON.stringify({ error: 'Missing required field: colaborador_id' }), {
         status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Role Validation
+    const requestedRole = role || 'colaborador';
+    const allowedRoles = ['colaborador', 'gestor_departamento', 'analista_rh', 'admin_empresa'];
+    
+    if (!allowedRoles.includes(requestedRole)) {
+      return new Response(JSON.stringify({ error: 'Role inválida ou não permitida' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Elevation Check: only admin_empresa or admin_master can assign admin_empresa
+    if (requestedRole === 'admin_empresa' && callerRole !== 'admin_empresa' && callerRole !== 'admin_master') {
+      return new Response(JSON.stringify({ error: 'Permissão insuficiente para atribuir perfil de administrador' }), {
+        status: 403,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
@@ -255,12 +275,13 @@ serve(async (req) => {
       });
     }
 
-    // Set role to 'colaborador' by default
+    // Set role to the validated requestedRole
+    const assignedRole = requestedRole;
     const { error: roleError } = await supabaseAdmin
       .from('user_roles')
       .upsert({
         user_id: userId,
-        role: 'colaborador',
+        role: assignedRole,
       }, { onConflict: 'user_id, role' });
 
     if (roleError) {

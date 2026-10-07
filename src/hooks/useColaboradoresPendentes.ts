@@ -62,6 +62,7 @@ export function useColaboradoresPendentes() {
 interface FinalizeColaboradorData {
   colaborador_id: string;
   contract_type?: string;
+  role?: string;
 }
 
 export function useFinalizeColaborador() {
