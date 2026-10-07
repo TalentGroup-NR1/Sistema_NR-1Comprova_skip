@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Layers, Settings } from "lucide-react";
+import { Layers, Settings, Users, InfoIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -24,7 +24,14 @@ import {
   QuestionarioCuidarPlus,
   useCreateQuestionarioCuidarPlus,
   useUpdateQuestionarioCuidarPlus,
+  useEnviosCuidarPlus,
 } from "@/hooks/useCuidarMaisQuestionarios";
+import { useColaboradores } from "@/hooks/useColaboradores";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
 import { useEffectiveCompanyId } from "@/hooks/useEffectiveCompanyId";
 import { GlobalReplicationToggle } from "@/components/shared/GlobalReplicationToggle";
@@ -53,6 +60,9 @@ export function QuestionarioFormDialog({
   const [isSaving, setIsSaving] = useState(false);
   const [replicateGlobally, setReplicateGlobally] = useState(false);
 
+  const [audienciaTipo, setAudienciaTipo] = useState<'todos' | 'departamentos'>('todos');
+  const [alvos, setAlvos] = useState<string[]>([]);
+  
   const { isAdminMaster } = useAuth();
   const effectiveCompanyId = useEffectiveCompanyId();
   const createQuestionario = useCreateQuestionarioCuidarPlus();
@@ -61,17 +71,32 @@ export function QuestionarioFormDialog({
 
   const isEditing = !!questionario;
 
+  const { data: colaboradores = [] } = useColaboradores();
+  const { data: envios = [] } = useEnviosCuidarPlus(questionario?.id || null);
+
+  const isAtivo = isEditing && questionario?.is_active;
+  const temEnvios = isEditing && envios.length > 0;
+  const isLocked = isAtivo || temEnvios;
+
+  const departamentosUnicos = Array.from(new Set(
+    colaboradores.map(c => c.department).filter(Boolean) as string[]
+  )).sort();
+
   useEffect(() => {
     if (open) {
       if (questionario) {
         setTitulo(questionario.titulo);
         setDescricao(questionario.descricao || "");
         setModeloAnalise(questionario.modelo_analise || 'PADRAO');
+        setAudienciaTipo(questionario.audiencia_tipo || 'todos');
+        setAlvos(questionario.alvos || []);
         setReplicateGlobally(false);
       } else {
         setTitulo("");
         setDescricao("");
         setModeloAnalise('PADRAO');
+        setAudienciaTipo('todos');
+        setAlvos([]);
         setReplicateGlobally(false);
       }
     }
@@ -83,15 +108,27 @@ export function QuestionarioFormDialog({
       return;
     }
 
+    if (audienciaTipo === 'departamentos' && alvos.length === 0 && !isLocked) {
+      toast.error("Selecione pelo menos um departamento para a audiência");
+      return;
+    }
+
     setIsSaving(true);
 
     try {
       if (isEditing) {
-        await updateQuestionario.mutateAsync({
+        const updatePayload: any = {
           id: questionario.id,
           titulo,
           descricao,
-        });
+        };
+        
+        if (!isLocked) {
+          updatePayload.audiencia_tipo = audienciaTipo;
+          updatePayload.alvos = audienciaTipo === 'departamentos' ? alvos : [];
+        }
+
+        await updateQuestionario.mutateAsync(updatePayload);
         toast.success("Questionário atualizado");
         onSaved?.();
       } else {
@@ -99,6 +136,8 @@ export function QuestionarioFormDialog({
           titulo,
           descricao,
           modelo_analise: modeloAnalise,
+          audiencia_tipo: audienciaTipo,
+          alvos: audienciaTipo === 'departamentos' ? alvos : undefined,
         });
         
         // Type assertion since we know result has id
@@ -173,6 +212,95 @@ export function QuestionarioFormDialog({
               placeholder="Descrição opcional do questionário..."
               rows={3}
             />
+          </div>
+
+          <div className="space-y-3 pt-2 pb-2">
+            <div className="flex items-center gap-2">
+              <Users className="h-4 w-4 text-muted-foreground" />
+              <Label className="text-base font-semibold">Público-alvo</Label>
+            </div>
+            
+            {isLocked ? (
+              <div className="rounded-md bg-muted p-4 space-y-3">
+                <div className="flex items-start gap-2 text-sm text-muted-foreground">
+                  <InfoIcon className="h-4 w-4 mt-0.5 shrink-0" />
+                  <p>
+                    A audiência não pode ser alterada em campanhas ativas ou que já tiveram envios, 
+                    para preservar a consistência estatística.
+                  </p>
+                </div>
+                <div>
+                  <span className="text-sm font-medium">Alvo Atual: </span>
+                  {audienciaTipo === 'todos' ? (
+                    <Badge variant="secondary">Toda a empresa</Badge>
+                  ) : (
+                    <div className="flex flex-wrap gap-1 mt-2">
+                      {alvos.map(a => (
+                        <Badge key={a} variant="outline">{a}</Badge>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <RadioGroup 
+                value={audienciaTipo} 
+                onValueChange={(val: 'todos' | 'departamentos') => setAudienciaTipo(val)}
+                className="space-y-2"
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="todos" id="r-todos" />
+                  <Label htmlFor="r-todos" className="cursor-pointer font-normal">Toda a empresa (Padrão)</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="departamentos" id="r-dept" disabled={departamentosUnicos.length === 0} />
+                  <Label htmlFor="r-dept" className="cursor-pointer font-normal">Departamentos específicos</Label>
+                  
+                  {departamentosUnicos.length === 0 && (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <InfoIcon className="h-4 w-4 text-muted-foreground ml-1 cursor-help" />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p className="w-[200px] text-xs">
+                            É preciso cadastrar colaboradores vinculados a departamentos na Estrutura Organizacional para usar esta opção.
+                          </p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  )}
+                </div>
+              </RadioGroup>
+            )}
+
+            {!isLocked && audienciaTipo === 'departamentos' && departamentosUnicos.length > 0 && (
+              <ScrollArea className="h-[120px] w-full rounded-md border p-4 mt-2 bg-slate-50/50">
+                <div className="space-y-3">
+                  {departamentosUnicos.map((dept) => (
+                    <div key={dept} className="flex items-center space-x-2">
+                      <Checkbox 
+                        id={`dept-${dept}`} 
+                        checked={alvos.includes(dept)}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setAlvos([...alvos, dept]);
+                          } else {
+                            setAlvos(alvos.filter(a => a !== dept));
+                          }
+                        }}
+                      />
+                      <label 
+                        htmlFor={`dept-${dept}`}
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                      >
+                        {dept}
+                      </label>
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+            )}
           </div>
 
           {!isEditing && (
