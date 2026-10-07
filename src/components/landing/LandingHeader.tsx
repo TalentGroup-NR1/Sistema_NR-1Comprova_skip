@@ -1,27 +1,46 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { scrollToContact } from "@/lib/landing";
 
 const navLinks = [
+  { href: "#ecossistema", label: "Plataforma" },
+  { href: "#pgr-inteligente", label: "PGR Inteligente" },
   { href: "#diagnostico", label: "Diagnóstico" },
-  { href: "#metodologias", label: "Metodologias" },
-  { href: "#como-funciona", label: "Como funciona" },
   { href: "#insights", label: "Insights" },
 ];
 
 export function LandingHeader() {
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 12);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
   return (
-    <header className="sticky top-0 z-40 border-b border-brand-blue/40 bg-brand-navy/95 font-brand backdrop-blur">
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-3">
-        <Link to="/" className="flex items-center gap-3">
+    <header
+      className={cn(
+        "sticky top-0 z-50 font-brand transition-all duration-500",
+        scrolled
+          ? "border-b border-white/10 bg-[#0B132B]/80 shadow-[0_10px_40px_-20px_rgba(0,0,0,0.8)] backdrop-blur-xl"
+          : "border-b border-transparent bg-[#0B132B]"
+      )}
+    >
+      <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-5 py-3">
+        <Link to="/" className="group flex items-center gap-3">
           <img
             src="/logos/nr-1comprova-logo-main.png?v=2"
             alt="NR-1Comprova"
-            className="h-8 w-8 shrink-0 object-contain md:h-10 md:w-10"
+            className="h-8 w-8 shrink-0 object-contain transition-transform duration-500 group-hover:rotate-[8deg] group-hover:scale-110 md:h-10 md:w-10"
             loading="eager"
           />
           <span className="flex flex-col leading-tight">
-            <span className="text-xs font-extrabold sm:text-sm uppercase tracking-wide">
+            <span className="text-xs font-extrabold uppercase tracking-wide sm:text-sm">
               <span className="text-gray-300">NR-1</span>
               <span className="text-gray-300 underline underline-offset-2">Com</span>
               <span className="text-[#E30613]">prova</span>
@@ -32,13 +51,12 @@ export function LandingHeader() {
           </span>
         </Link>
 
-
-        <nav className="hidden items-center gap-7 lg:flex">
+        <nav className="hidden items-center gap-1 rounded-full border border-white/10 bg-white/[0.03] p-1 lg:flex">
           {navLinks.map((link) => (
             <a
               key={link.href}
               href={link.href}
-              className="text-sm font-medium text-white/70 transition-colors hover:text-white"
+              className="rounded-full px-4 py-1.5 text-[13px] font-medium text-white/65 transition-all hover:bg-white/10 hover:text-white"
             >
               {link.label}
             </a>
@@ -47,19 +65,21 @@ export function LandingHeader() {
 
         <div className="flex items-center gap-2">
           <Button
-            variant="outline"
+            variant="ghost"
             size="sm"
             asChild
-            className="hidden border-white/40 bg-transparent text-white hover:bg-white/10 hover:text-white sm:inline-flex"
+            className="hidden text-white/80 hover:bg-white/10 hover:text-white sm:inline-flex"
           >
             <Link to="/auth">Entrar</Link>
           </Button>
           <Button
+            id="header-cta-demo"
             size="sm"
             onClick={scrollToContact}
-            className="bg-brand-red text-white shadow-md transition-transform hover:-translate-y-0.5 hover:bg-brand-red/90"
+            className="lp-btn-glow group rounded-full border-0 px-4 font-bold hover:opacity-100"
           >
             Solicitar Demonstração
+            <ArrowRight className="ml-1 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
           </Button>
         </div>
       </div>

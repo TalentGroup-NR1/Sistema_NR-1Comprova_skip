@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Linkedin, Instagram } from "lucide-react";
+import { Linkedin, Instagram, ShieldCheck, Activity, Lock } from "lucide-react";
 import {
   LANDING_CNPJ,
   LANDING_INSTAGRAM,
@@ -7,27 +7,55 @@ import {
   LANDING_SUPPORT_EMAIL,
 } from "@/lib/landing";
 
+const SEALS = [
+  { icon: ShieldCheck, title: "Conforme NR-01", sub: "MTE" },
+  { icon: Activity, title: "Adequado à NR-17", sub: "Ergonomia" },
+  { icon: Lock, title: "Proteção de Dados", sub: "LGPD" },
+];
+
 export function LandingFooter() {
   return (
-    <footer className="landing-navy font-brand">
-      <div className="mx-auto max-w-6xl px-5 py-14">
+    <footer className="lp-dark relative border-t border-white/10 font-brand">
+      <div className="mx-auto max-w-7xl px-5 py-14">
+        <div className="mb-12 grid gap-3 sm:grid-cols-3">
+          {SEALS.map((s) => (
+            <div
+              key={s.title}
+              className="lp-glass flex items-center gap-4 rounded-2xl px-5 py-4 transition-colors hover:border-[#00E676]/30"
+            >
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-[#00E676]/20 to-[#00E5FF]/20 text-[#00E676] ring-1 ring-[#00E676]/30">
+                <s.icon className="h-5 w-5" />
+              </span>
+              <span className="leading-tight">
+                <span className="block text-sm font-bold text-white">{s.title}</span>
+                <span className="block text-xs text-white/50">{s.sub}</span>
+              </span>
+            </div>
+          ))}
+        </div>
+
         <div className="flex flex-col gap-10 md:flex-row md:items-start md:justify-between">
           <div>
             <div className="flex items-center gap-3">
               <img
-                src="/logos/nr-1comprova-logo-main.png"
+                src="/logos/nr-1comprova-logo-main.png?v=2"
                 alt="NR-1Comprova"
                 className="h-[30px] w-[30px] object-contain"
                 loading="lazy"
               />
               <span className="flex flex-col leading-tight">
-                <span className="text-sm font-extrabold text-brand-red">NR-1Comprova</span>
-                <span className="text-xs text-white/50">powered by NR-1Comprova</span>
+                <span className="text-sm font-extrabold uppercase tracking-wide">
+                  <span className="text-gray-300">NR-1</span>
+                  <span className="text-gray-300 underline underline-offset-2">Com</span>
+                  <span className="text-[#E30613]">prova</span>
+                </span>
+                <span className="text-xs text-white/50">powered by Talent Group</span>
               </span>
             </div>
 
             <p className="mt-3 max-w-xs text-sm text-white/60">
-              Gestão de RH, SST e conformidade NR-1 com riscos psicossociais mapeados.
+              Ecossistema unificado de gestão de pessoas, clima, treinamento e conformidade
+              ocupacional.
             </p>
           </div>
 

@@ -1,30 +1,31 @@
 import { LandingHeader } from "@/components/landing/LandingHeader";
 import { HeroSection } from "@/components/landing/HeroSection";
-import { PainSection } from "@/components/landing/PainSection";
+import { MetricsSection } from "@/components/landing/MetricsSection";
+import { PgrKanbanSection } from "@/components/landing/PgrKanbanSection";
+import { EcosystemSection } from "@/components/landing/EcosystemSection";
 import { RiskMatrixSection } from "@/components/landing/RiskMatrixSection";
-import { FeaturesSection } from "@/components/landing/FeaturesSection";
-import { MethodologiesSection } from "@/components/landing/MethodologiesSection";
-import { StepsSection } from "@/components/landing/StepsSection";
-import { TestimonialsSection } from "@/components/landing/TestimonialsSection";
-import { FaqSection } from "@/components/landing/FaqSection";
-import { ContactSection } from "@/components/landing/ContactSection";
 import { InsightsSection } from "@/components/landing/InsightsSection";
+import { ContactSection } from "@/components/landing/ContactSection";
 import { LandingFooter } from "@/components/landing/LandingFooter";
 
 const Landing = () => (
-  <div className="min-h-screen bg-background font-brand">
+  <div className="min-h-screen bg-[#0B132B] font-brand">
     <LandingHeader />
     <main>
+      {/* 1. Hero enterprise */}
       <HeroSection />
-      <PainSection />
+      {/* 2. Prova social & métricas */}
+      <MetricsSection />
+      {/* 3. Módulo estrela: Upload Inteligente do PGR + Kanban */}
+      <PgrKanbanSection />
+      {/* 5. Pilares do ecossistema (Bento Grid) */}
+      <EcosystemSection />
+      {/* 6. Simulador de risco — preservado */}
       <RiskMatrixSection />
-      <FeaturesSection />
-      <MethodologiesSection />
-      <StepsSection />
-      <TestimonialsSection />
-      <FaqSection />
-      <ContactSection />
+      {/* 7. Insights — preservado */}
       <InsightsSection />
+      {/* 8. CTA final */}
+      <ContactSection />
     </main>
     <LandingFooter />
   </div>

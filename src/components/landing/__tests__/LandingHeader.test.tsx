@@ -12,7 +12,7 @@ describe("LandingHeader", () => {
     );
 
     expect(screen.getByText(/powered by Talent Group/i)).toBeInTheDocument();
-    
+
     const textContent = container.textContent || "";
     expect(textContent).not.toContain("powered by NR-1Comprova");
   });

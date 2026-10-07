@@ -45,7 +45,7 @@ const departamentoPessoalItems: NavItem[] = [
   { icon: Plane, label: "Minhas Férias", href: "/minhas-ferias", roles: ['colaborador'] },
   { icon: UserMinus, label: "Demissões", href: "/demissoes", roles: ['admin_master', 'admin_empresa', 'analista_rh'] },
   { icon: Briefcase, label: "Benefícios", href: "/beneficios" },
-  { icon: Clock, label: "Ponto Eletrônico", href: "/ponto-eletronico" },
+  // { icon: Clock, label: "Ponto Eletrônico", href: "/ponto-eletronico" },
   { icon: ListChecks, label: "Minhas Tarefas", href: "/minhas-tarefas" },
   // [HIDDEN-FOR-PRESENTATION] Revert: remove comment from the line below to restore
   // { icon: ClipboardList, label: "Minhas Atividades", href: "/minhas-atividades" },

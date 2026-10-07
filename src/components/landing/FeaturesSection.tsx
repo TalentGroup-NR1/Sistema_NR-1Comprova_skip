@@ -41,11 +41,7 @@ const modules = [
     title: "Treinamentos",
     desc: "Trilhas em vídeo, certificados automáticos e controle de conclusão por colaborador.",
   },
-  {
-    icon: Clock,
-    title: "Ponto Eletrônico",
-    desc: "Banco de horas por ciclo, abonos por dia ou hora e fechamento com assinatura digital.",
-  },
+
   {
     icon: BarChart3,
     title: "Relatórios Executivos",

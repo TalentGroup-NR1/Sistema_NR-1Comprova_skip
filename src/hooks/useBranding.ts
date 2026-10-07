@@ -6,7 +6,7 @@ import { useMyColaborador } from "@/hooks/useMyFeedbackCycles";
 /** NR-1Comprova defaults — used when no company branding is available. */
 export const DEFAULT_BRANDING = {
   brandName: "NR-1Comprova",
-  logoUrl: "/images/nr-1comprova-logo.png",
+  logoUrl: "/images/nr-1comprova-logo.png?v=2",
   primaryColor: "#C8102E",
   faviconUrl: "/favicon.png",
 };

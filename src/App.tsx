@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { CompanyProvider } from "@/contexts/CompanyContext";
 import { AuthProvider } from "@/hooks/useAuth";
@@ -189,11 +189,7 @@ const App = () => (
                   <AnalisePerfil />
                 </ProtectedRoute>
               } />
-              <Route path="/ponto-eletronico" element={
-                <ProtectedRoute>
-                  <PontoEletronico />
-                </ProtectedRoute>
-              } />
+              <Route path="/ponto-eletronico" element={<Navigate to="/" replace />} />
               <Route path="/denuncias" element={
                 <ProtectedRoute allowedRoles={['admin_master', 'admin_empresa', 'analista_rh']}>
                   <Denuncias />
