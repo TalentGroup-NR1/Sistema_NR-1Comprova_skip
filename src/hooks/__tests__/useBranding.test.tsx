@@ -171,4 +171,19 @@ describe('useBranding e useEffectiveCompanyId', () => {
     // Título com empresa
     expect(getDocumentTitle("Empresa X")).toBe("Empresa X — NR-1Comprova");
   });
+
+  it('9. Cenário isLoading=true: retorna valores vazios e transparente', () => {
+    (useCompanies as any).mockReturnValue({ data: undefined, isLoading: true });
+    (useAuth as any).mockReturnValue({ loading: true, isAdminMaster: false, companyId: null });
+    (useMyColaborador as any).mockReturnValue({ data: null, isLoading: true });
+    (useCompanyContext as any).mockReturnValue({ selectedCompanyId: null });
+
+    const { result } = renderHook(() => useBranding());
+    
+    expect(result.current.isLoading).toBe(true);
+    expect(result.current.brandName).toBe("");
+    expect(result.current.logoUrl).toBe("");
+    expect(result.current.faviconUrl).toBe("");
+    expect(result.current.primaryColor).toBe("transparent");
+  });
 });

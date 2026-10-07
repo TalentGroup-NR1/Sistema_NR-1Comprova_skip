@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { AuthForm } from '@/components/auth/AuthForm';
 import { useBranding } from '@/hooks/useBranding';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function Auth() {
   const { isAuthenticated, loading } = useAuth();
@@ -35,11 +36,15 @@ export default function Auth() {
 
         <div className="relative z-10 max-w-2xl px-8 xl:px-16 animate-fade-up flex flex-col items-center text-center -mt-12" style={{ animationDuration: '0.8s' }}>
           <div className="mb-6 animate-elegant-float w-full max-w-[16rem] sm:max-w-xs mx-auto" style={{ perspective: '1000px' }}>
-            <img
-              src={branding.logoUrl}
-              alt={branding.brandName}
-              className="w-full h-auto drop-shadow-[0_10px_20px_rgba(0,0,0,0.5)] object-contain animate-spin-3d"
-            />
+            {branding.isLoading ? (
+              <Skeleton className="w-full h-32 rounded-lg bg-white/20" />
+            ) : (
+              <img
+                src={branding.logoUrl}
+                alt={branding.brandName}
+                className="w-full h-auto drop-shadow-[0_10px_20px_rgba(0,0,0,0.5)] object-contain animate-spin-3d"
+              />
+            )}
           </div>
           
           <h1 className="text-xl sm:text-2xl lg:text-3xl font-extrabold tracking-tight leading-[1.3] mb-6 drop-shadow-lg max-w-xl mx-auto uppercase">
@@ -72,12 +77,18 @@ export default function Auth() {
         <div className="w-full max-w-md bg-white rounded-[24px] shadow-[0_8px_30px_rgb(0,0,0,0.06)] p-8 sm:p-14 relative overflow-hidden border border-slate-100">
           {/* Mobile logo */}
           <div className="lg:hidden text-center mb-10">
-            <img
-              src={branding.logoUrl}
-              alt={branding.brandName}
-              className="h-16 mx-auto mb-4"
-            />
-            <h2 className="text-2xl font-bold text-foreground">{branding.brandName}</h2>
+            {branding.isLoading ? (
+               <Skeleton className="h-16 w-16 mx-auto mb-4 rounded-full bg-slate-200" />
+            ) : (
+              <img
+                src={branding.logoUrl}
+                alt={branding.brandName}
+                className="h-16 mx-auto mb-4"
+              />
+            )}
+            <h2 className="text-2xl font-bold text-foreground">
+              {branding.isLoading ? <Skeleton className="h-8 w-32 mx-auto bg-slate-200" /> : branding.brandName}
+            </h2>
           </div>
 
           {/* Welcome text */}

@@ -34,6 +34,10 @@ vi.mock('@/hooks/useCompanies', () => ({
   useCompanies: vi.fn(() => ({ data: [mockCompany], isLoading: false })),
 }));
 
+vi.mock('@/hooks/useMyFeedbackCycles', () => ({
+  useMyColaborador: vi.fn(() => ({ data: null, isLoading: false })),
+}));
+
 vi.mock('@/integrations/supabase/client', () => ({
   supabase: {
     rpc: vi.fn(),

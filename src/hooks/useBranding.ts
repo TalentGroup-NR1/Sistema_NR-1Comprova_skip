@@ -42,6 +42,17 @@ export function useBranding(): Branding {
   // os profiles (auth), o vínculo (colaborador) OU os temas (companies) estiverem rodando
   const isLoading = isAuthLoading || isColaboradorLoading || isCompaniesLoading;
 
+  if (isLoading) {
+    return {
+      brandName: "",
+      logoUrl: "",
+      primaryColor: "transparent",
+      faviconUrl: "",
+      isInternal: false,
+      isLoading,
+    };
+  }
+
   return {
     brandName: company?.brand_name || DEFAULT_BRANDING.brandName,
     logoUrl:
