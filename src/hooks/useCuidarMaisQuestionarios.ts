@@ -44,6 +44,8 @@ export interface QuestionarioCuidarPlus {
   data_ativacao: string | null;
   data_desativacao: string | null;
   created_by_user_id: string | null;
+  audiencia_tipo: 'todos' | 'departamentos';
+  alvos?: string[];
   created_at: string;
   updated_at: string;
 }
@@ -97,6 +99,7 @@ export const useQuestionariosCuidarPlus = () => {
         data_ativacao: item.data_ativacao,
         data_desativacao: item.data_desativacao,
         created_by_user_id: item.created_by_user_id,
+        audiencia_tipo: (item as any).audiencia_tipo || 'todos',
         created_at: item.created_at,
         updated_at: item.updated_at,
       }));
@@ -116,7 +119,8 @@ export const useQuestionarioCuidarPlus = (id: string | null) => {
         .from('questionarios_cuidar_plus')
         .select(`
           *,
-          perguntas_cuidar_plus (*)
+          perguntas_cuidar_plus (*),
+          questionarios_cuidar_plus_alvos (departamento_nome)
         `)
         .eq('id', id)
         .maybeSingle();
@@ -165,6 +169,8 @@ export const useQuestionarioCuidarPlus = (id: string | null) => {
         data_ativacao: data.data_ativacao,
         data_desativacao: data.data_desativacao,
         created_by_user_id: data.created_by_user_id,
+        audiencia_tipo: (data as any).audiencia_tipo || 'todos',
+        alvos: data.questionarios_cuidar_plus_alvos ? data.questionarios_cuidar_plus_alvos.map((a: any) => a.departamento_nome) : [],
         created_at: data.created_at,
         updated_at: data.updated_at,
         perguntas_cuidar_plus: perguntas,
@@ -186,6 +192,8 @@ export const useCreateQuestionarioCuidarPlus = () => {
       modelo_analise?: 'PADRAO' | 'MATRIZ_RISCOS';
       escala_config?: EscalaConfigItem[];
       config_calculo?: ConfigCalculo;
+      audiencia_tipo?: 'todos' | 'departamentos';
+      alvos?: string[];
     }) => {
       if (!companyId) throw new Error('Empresa não selecionada');
 
@@ -196,6 +204,7 @@ export const useCreateQuestionarioCuidarPlus = () => {
         modelo_analise: data.modelo_analise || 'PADRAO',
         escala_config: data.escala_config || null,
         config_calculo: data.config_calculo || null,
+        audiencia_tipo: data.audiencia_tipo || 'todos',
       };
 
       const { data: result, error } = await supabase
@@ -205,6 +214,19 @@ export const useCreateQuestionarioCuidarPlus = () => {
         .single();
 
       if (error) throw error;
+      
+      // Inserir os alvos, se houver
+      if (data.audiencia_tipo === 'departamentos' && data.alvos && data.alvos.length > 0) {
+        const alvosInsert = data.alvos.map(dep => ({
+          questionario_id: result.id,
+          departamento_nome: dep
+        }));
+        const { error: alvosError } = await supabase
+          .from('questionarios_cuidar_plus_alvos')
+          .insert(alvosInsert);
+        if (alvosError) throw alvosError;
+      }
+      
       return result;
     },
     onSuccess: () => {
@@ -230,6 +252,8 @@ export const useUpdateQuestionarioCuidarPlus = () => {
       modelo_analise?: 'PADRAO' | 'MATRIZ_RISCOS';
       escala_config?: EscalaConfigItem[];
       config_calculo?: ConfigCalculo;
+      audiencia_tipo?: 'todos' | 'departamentos';
+      alvos?: string[];
     }) => {
       const updateData: Record<string, unknown> = {};
       if (data.titulo !== undefined) updateData.titulo = data.titulo;
@@ -237,6 +261,7 @@ export const useUpdateQuestionarioCuidarPlus = () => {
       if (data.modelo_analise !== undefined) updateData.modelo_analise = data.modelo_analise;
       if (data.escala_config !== undefined) updateData.escala_config = data.escala_config;
       if (data.config_calculo !== undefined) updateData.config_calculo = data.config_calculo;
+      if (data.audiencia_tipo !== undefined) updateData.audiencia_tipo = data.audiencia_tipo;
       if (data.is_active !== undefined) {
         updateData.is_active = data.is_active;
         updateData.data_ativacao = data.is_active ? new Date().toISOString() : null;
@@ -251,6 +276,34 @@ export const useUpdateQuestionarioCuidarPlus = () => {
         .single();
 
       if (error) throw error;
+
+      // Se a atualização enviar novos alvos ou mudar o tipo de audiência, refazer a lista de alvos
+      if (data.audiencia_tipo === 'departamentos' && data.alvos !== undefined) {
+        // Apaga existentes
+        await supabase
+          .from('questionarios_cuidar_plus_alvos')
+          .delete()
+          .eq('questionario_id', data.id);
+        
+        // Reinsere novos
+        if (data.alvos.length > 0) {
+          const alvosInsert = data.alvos.map(dep => ({
+            questionario_id: data.id,
+            departamento_nome: dep
+          }));
+          const { error: alvosError } = await supabase
+            .from('questionarios_cuidar_plus_alvos')
+            .insert(alvosInsert);
+          if (alvosError) throw alvosError;
+        }
+      } else if (data.audiencia_tipo === 'todos') {
+        // Se mudou para "todos", limpar os alvos (caso existam)
+        await supabase
+          .from('questionarios_cuidar_plus_alvos')
+          .delete()
+          .eq('questionario_id', data.id);
+      }
+
       return result;
     },
     onSuccess: () => {

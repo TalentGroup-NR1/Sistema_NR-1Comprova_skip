@@ -6737,6 +6737,7 @@ export type Database = {
       }
       questionarios_cuidar_plus: {
         Row: {
+          audiencia_tipo: string
           company_id: string
           config_calculo: Json | null
           created_at: string
@@ -6752,6 +6753,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          audiencia_tipo?: string
           company_id: string
           config_calculo?: Json | null
           created_at?: string
@@ -6767,6 +6769,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          audiencia_tipo?: string
           company_id?: string
           config_calculo?: Json | null
           created_at?: string
@@ -6789,6 +6792,35 @@ export type Database = {
             referencedRelation: "companies"
             referencedColumns: ["id"]
           },
+        ]
+      }
+      questionarios_cuidar_plus_alvos: {
+        Row: {
+          id: string
+          questionario_id: string
+          departamento_nome: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          questionario_id: string
+          departamento_nome: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          questionario_id?: string
+          departamento_nome?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "questionarios_cuidar_plus_alvos_questionario_id_fkey"
+            columns: ["questionario_id"]
+            isOneToOne: false
+            referencedRelation: "questionarios_cuidar_plus"
+            referencedColumns: ["id"]
+          }
         ]
       }
       questionnaire_templates: {
@@ -9429,20 +9461,20 @@ export type Database = {
         | "concluido"
       contract_type:
         | "CLT"
-        | "Est+ígio"
+        | "Est+Ã­gio"
         | "Aprendiz"
         | "PJ"
-        | "Tempor+írio"
-        | "Volunt+írio"
+        | "Tempor+Ã­rio"
+        | "Volunt+Ã­rio"
         | "Outros"
       education_level:
         | "Fundamental Incompleto"
         | "Fundamental Completo"
-        | "M+®dio Incompleto"
-        | "M+®dio Completo"
+        | "M+Â®dio Incompleto"
+        | "M+Â®dio Completo"
         | "Superior Incompleto"
         | "Superior Completo"
-        | "P+¦s-gradua+º+úo"
+        | "P+Â¦s-gradua+Âº+Ãºo"
         | "Mestrado"
         | "Doutorado"
       ethnicity_type:
@@ -9450,8 +9482,8 @@ export type Database = {
         | "Preta"
         | "Parda"
         | "Amarela"
-        | "Ind+¡gena"
-        | "N+úo informar"
+        | "Ind+Â¡gena"
+        | "N+Ãºo informar"
       feedback_cycle_status:
         | "NAO_INICIADO"
         | "LINKS_GERADOS"
@@ -9461,19 +9493,19 @@ export type Database = {
         | "ATRASADO"
       ferias_gozo_status: "planejado" | "aprovado" | "gozado" | "cancelado"
       job_level:
-        | "J+¦nior I"
-        | "J+¦nior II"
-        | "J+¦nior III"
+        | "J+Â¦nior I"
+        | "J+Â¦nior II"
+        | "J+Â¦nior III"
         | "Pleno I"
         | "Pleno II"
         | "Pleno III"
-        | "S+¬nior I"
-        | "S+¬nior II"
-        | "S+¬nior III"
+        | "S+Â¬nior I"
+        | "S+Â¬nior II"
+        | "S+Â¬nior III"
         | "Especialista"
-        | "J+¦nior"
+        | "J+Â¦nior"
         | "Pleno"
-        | "S+¬nior"
+        | "S+Â¬nior"
         | "Especialista I"
         | "Especialista II"
         | "Especialista III"
@@ -9482,8 +9514,8 @@ export type Database = {
         | "Casado(a)"
         | "Separado(a)"
         | "Divorciado(a)"
-        | "Vi+¦vo(a)"
-        | "Uni+úo Est+ível"
+        | "Vi+Â¦vo(a)"
+        | "Uni+Ãºo Est+Ã­vel"
       milestone_type: "30_DIAS" | "80_DIAS" | "120_DIAS" | "GERAL"
       payment_method: "Mensalista" | "Horista" | "Comissionista"
       pdi_item_responsavel: "colaborador" | "gestor" | "rh"
@@ -9520,10 +9552,10 @@ export type Database = {
       pulse_question_type: "escala_0_5" | "sim_nao" | "texto_livre"
       question_type: "ESCALA_NUMERICA" | "TEXTO_LIVRE" | "SIM_NAO"
       questionario_atribuicao_status: "pendente" | "em_andamento" | "preenchido"
-      relationship_type: "Filho(a)" | "C+¦njuge" | "Pai/M+úe" | "Outro"
+      relationship_type: "Filho(a)" | "C+Â¦njuge" | "Pai/M+Ãºe" | "Outro"
       respondent_type: "COLABORADOR" | "GESTOR" | "AMBOS"
       respondente_avaliacao_tipo: "colaborador" | "gestor"
-      sex_type: "Feminino" | "Masculino" | "Outro" | "N+úo informar"
+      sex_type: "Feminino" | "Masculino" | "Outro" | "N+Ãºo informar"
       target_audience_type:
         | "COLABORADOR"
         | "GESTOR"
@@ -9539,8 +9571,8 @@ export type Database = {
         | "Integral"
         | "Parcial"
         | "Aprendiz"
-        | "Estagi+írio"
-        | "Flex+¡vel"
+        | "Estagi+Ã­rio"
+        | "Flex+Â¡vel"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -9695,21 +9727,21 @@ export const Constants = {
       ],
       contract_type: [
         "CLT",
-        "Est+ígio",
+        "Est+Ã­gio",
         "Aprendiz",
         "PJ",
-        "Tempor+írio",
-        "Volunt+írio",
+        "Tempor+Ã­rio",
+        "Volunt+Ã­rio",
         "Outros",
       ],
       education_level: [
         "Fundamental Incompleto",
         "Fundamental Completo",
-        "M+®dio Incompleto",
-        "M+®dio Completo",
+        "M+Â®dio Incompleto",
+        "M+Â®dio Completo",
         "Superior Incompleto",
         "Superior Completo",
-        "P+¦s-gradua+º+úo",
+        "P+Â¦s-gradua+Âº+Ãºo",
         "Mestrado",
         "Doutorado",
       ],
@@ -9718,8 +9750,8 @@ export const Constants = {
         "Preta",
         "Parda",
         "Amarela",
-        "Ind+¡gena",
-        "N+úo informar",
+        "Ind+Â¡gena",
+        "N+Ãºo informar",
       ],
       feedback_cycle_status: [
         "NAO_INICIADO",
@@ -9731,19 +9763,19 @@ export const Constants = {
       ],
       ferias_gozo_status: ["planejado", "aprovado", "gozado", "cancelado"],
       job_level: [
-        "J+¦nior I",
-        "J+¦nior II",
-        "J+¦nior III",
+        "J+Â¦nior I",
+        "J+Â¦nior II",
+        "J+Â¦nior III",
         "Pleno I",
         "Pleno II",
         "Pleno III",
-        "S+¬nior I",
-        "S+¬nior II",
-        "S+¬nior III",
+        "S+Â¬nior I",
+        "S+Â¬nior II",
+        "S+Â¬nior III",
         "Especialista",
-        "J+¦nior",
+        "J+Â¦nior",
         "Pleno",
-        "S+¬nior",
+        "S+Â¬nior",
         "Especialista I",
         "Especialista II",
         "Especialista III",
@@ -9753,8 +9785,8 @@ export const Constants = {
         "Casado(a)",
         "Separado(a)",
         "Divorciado(a)",
-        "Vi+¦vo(a)",
-        "Uni+úo Est+ível",
+        "Vi+Â¦vo(a)",
+        "Uni+Ãºo Est+Ã­vel",
       ],
       milestone_type: ["30_DIAS", "80_DIAS", "120_DIAS", "GERAL"],
       payment_method: ["Mensalista", "Horista", "Comissionista"],
@@ -9800,10 +9832,10 @@ export const Constants = {
         "em_andamento",
         "preenchido",
       ],
-      relationship_type: ["Filho(a)", "C+¦njuge", "Pai/M+úe", "Outro"],
+      relationship_type: ["Filho(a)", "C+Â¦njuge", "Pai/M+Ãºe", "Outro"],
       respondent_type: ["COLABORADOR", "GESTOR", "AMBOS"],
       respondente_avaliacao_tipo: ["colaborador", "gestor"],
-      sex_type: ["Feminino", "Masculino", "Outro", "N+úo informar"],
+      sex_type: ["Feminino", "Masculino", "Outro", "N+Ãºo informar"],
       target_audience_type: [
         "COLABORADOR",
         "GESTOR",
@@ -9820,8 +9852,8 @@ export const Constants = {
         "Integral",
         "Parcial",
         "Aprendiz",
-        "Estagi+írio",
-        "Flex+¡vel",
+        "Estagi+Ã­rio",
+        "Flex+Â¡vel",
       ],
     },
   },
