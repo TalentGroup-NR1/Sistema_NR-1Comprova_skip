@@ -101,6 +101,9 @@ export function useCreateAnalise() {
           .replace(/[^a-zA-Z0-9._-]/g, "_");
 
       const uploadFile = async (file: File, docType: string) => {
+        if (file.size > 5 * 1024 * 1024) {
+          throw new Error(`Arquivo ${docType} deve ter no máximo 5MB.`);
+        }
         const path = `${selectedCompanyId}/${timestamp}_${docType}_${sanitize(file.name)}`;
         const { error } = await supabase.storage
           .from("documentos_analise")

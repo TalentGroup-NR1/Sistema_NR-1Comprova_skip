@@ -134,6 +134,9 @@ export function useAbonos() {
       let anexo_url: string | null = null;
       let anexo_nome: string | null = null;
       if (input.anexo_file) {
+        if (input.anexo_file.size > 5 * 1024 * 1024) {
+          throw new Error("Arquivo deve ter no máximo 5MB.");
+        }
         const safe = sanitize(input.anexo_file.name);
         const path = `${input.colaborador_id}/${Date.now()}_${safe}`;
         const { error: upErr } = await supabase.storage
@@ -199,6 +202,9 @@ export function useAbonos() {
       let anexo_url: string | null = null;
       let anexo_nome: string | null = null;
       if (input.anexo_file) {
+        if (input.anexo_file.size > 5 * 1024 * 1024) {
+          throw new Error("Arquivo deve ter no máximo 5MB.");
+        }
         const safe = sanitize(input.anexo_file.name);
         const path = `_lote/${Date.now()}_${safe}`;
         const { error: upErr } = await supabase.storage

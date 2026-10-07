@@ -185,6 +185,10 @@ export function useSaveCertificatePDF() {
 
   return useMutation({
     mutationFn: async ({ certificateId, pdfBlob }: { certificateId: string; pdfBlob: Blob }) => {
+      if (pdfBlob.size > 5 * 1024 * 1024) {
+        throw new Error("Arquivo deve ter no máximo 5MB.");
+      }
+
       const fileName = `${certificateId}.pdf`;
       const filePath = `certificates/${fileName}`;
 
