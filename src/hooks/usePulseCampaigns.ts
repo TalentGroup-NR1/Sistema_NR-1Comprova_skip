@@ -130,12 +130,15 @@ export function usePulseCampaigns() {
 
       const { data, error } = await supabase
         .from("pulse_campaigns")
-        .select("*")
+        .select("*, pulse_campaigns_alvos(departamento_nome)")
         .eq("company_id", effectiveCompanyId)
         .order("data_inicio", { ascending: true });
 
       if (error) throw error;
-      return data as PulseCampaign[];
+      return data.map((item: any) => ({
+        ...item,
+        alvos: item.pulse_campaigns_alvos?.map((a: any) => a.departamento_nome) || [],
+      })) as PulseCampaign[];
     },
     enabled: !!effectiveCompanyId,
   });
@@ -335,6 +338,8 @@ export function useCreateCampaign() {
       data_inicio: string;
       data_fim: string;
       ativo?: boolean;
+      audiencia_tipo: 'todos' | 'departamentos';
+      alvos?: string[];
       questions: Array<{
         pergunta: string;
         tipo: 'escala_0_5' | 'sim_nao' | 'texto_livre';
@@ -354,6 +359,7 @@ export function useCreateCampaign() {
           data_inicio: campaignData.data_inicio,
           data_fim: campaignData.data_fim,
           ativo: campaignData.ativo ?? true,
+          audiencia_tipo: campaignData.audiencia_tipo,
         })
         .select()
         .single();
@@ -377,6 +383,20 @@ export function useCreateCampaign() {
         if (questionsError) throw questionsError;
       }
 
+      // Inserir alvos se for departamental
+      if (campaignData.audiencia_tipo === 'departamentos' && campaignData.alvos && campaignData.alvos.length > 0) {
+        const alvosToInsert = campaignData.alvos.map(dep => ({
+          campaign_id: campaign.id,
+          departamento_nome: dep
+        }));
+        
+        const { error: alvosError } = await supabase
+          .from("pulse_campaigns_alvos")
+          .insert(alvosToInsert);
+          
+        if (alvosError) throw alvosError;
+      }
+
       return campaign;
     },
     onSuccess: () => {
@@ -397,8 +417,8 @@ export function useUpdateCampaign() {
     mutationFn: async ({
       id,
       ...updates
-    }: Partial<PulseCampaign> & { id: string; questions?: PulseQuestion[] }) => {
-      const { questions, ...campaignUpdates } = updates;
+    }: Partial<PulseCampaign> & { id: string; questions?: PulseQuestion[]; alvos?: string[] }) => {
+      const { questions, alvos, ...campaignUpdates } = updates;
 
       // Atualizar campanha
       const { error: campaignError } = await supabase
@@ -429,6 +449,23 @@ export function useUpdateCampaign() {
 
           if (questionsError) throw questionsError;
         }
+      }
+
+      // Atualizar alvos
+      if (campaignUpdates.audiencia_tipo === 'departamentos' && alvos) {
+        await supabase.from("pulse_campaigns_alvos").delete().eq("campaign_id", id);
+        if (alvos.length > 0) {
+          const alvosToInsert = alvos.map(dep => ({
+            campaign_id: id,
+            departamento_nome: dep
+          }));
+          const { error: alvosError } = await supabase
+            .from("pulse_campaigns_alvos")
+            .insert(alvosToInsert);
+          if (alvosError) throw alvosError;
+        }
+      } else if (campaignUpdates.audiencia_tipo === 'todos') {
+        await supabase.from("pulse_campaigns_alvos").delete().eq("campaign_id", id);
       }
 
       return { id };

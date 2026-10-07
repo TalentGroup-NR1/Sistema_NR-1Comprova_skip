@@ -22,12 +22,19 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, Trash2, GripVertical, Loader2, Sparkles } from "lucide-react";
+import { Plus, Trash2, GripVertical, Loader2, Sparkles, InfoIcon, Users } from "lucide-react";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { useColaboradores } from "@/hooks/useColaboradores";
 import { format } from "date-fns";
 import {
   useCreateCampaign,
   useUpdateCampaign,
   useCampaignQuestions,
+  useCampaignQuestions,
+  useCampaignStats,
   PulseCampaign,
 } from "@/hooks/usePulseCampaigns";
 import { useAuth } from "@/hooks/useAuth";
@@ -81,14 +88,26 @@ export function PulsoCampanhaFormDialog({
   const [dataInicio, setDataInicio] = useState("");
   const [dataFim, setDataFim] = useState("");
   const [ativo, setAtivo] = useState(true);
+  const [audienciaTipo, setAudienciaTipo] = useState<'todos' | 'departamentos'>('todos');
+  const [alvos, setAlvos] = useState<string[]>([]);
   const [questions, setQuestions] = useState<QuestionForm[]>([]);
   const [replicateGlobally, setReplicateGlobally] = useState(false);
 
   // Queries & mutations
+  const { data: colaboradores = [] } = useColaboradores();
+  const { data: campaignStats } = useCampaignStats(campaign?.id);
   const { data: existingQuestions } = useCampaignQuestions(campaign?.id);
   const createCampaign = useCreateCampaign();
   const updateCampaign = useUpdateCampaign();
   const replicateCampaign = useReplicatePulseCampaign();
+
+  const isAtivo = isEditing && campaign?.ativo;
+  const temEnvios = isEditing && campaignStats && campaignStats.total_responses > 0;
+  const isLocked = isAtivo || temEnvios;
+
+  const departamentosUnicos = Array.from(new Set(
+    colaboradores.map(c => c.department).filter(Boolean) as string[]
+  )).sort();
 
   // Initialize form when editing
   useEffect(() => {
@@ -98,6 +117,8 @@ export function PulsoCampanhaFormDialog({
       setDataInicio(campaign.data_inicio);
       setDataFim(campaign.data_fim);
       setAtivo(campaign.ativo);
+      setAudienciaTipo(campaign.audiencia_tipo || 'todos');
+      setAlvos(campaign.alvos || []);
       setReplicateGlobally(false);
     } else {
       // Reset for new campaign
@@ -106,6 +127,8 @@ export function PulsoCampanhaFormDialog({
       setDataInicio(format(new Date(), "yyyy-MM-dd"));
       setDataFim("");
       setAtivo(true);
+      setAudienciaTipo('todos');
+      setAlvos([]);
       setReplicateGlobally(false);
       setQuestions([{ pergunta: "", tipo: "escala_0_5", obrigatoria: true }]);
     }
@@ -146,11 +169,19 @@ export function PulsoCampanhaFormDialog({
   const handleSubmit = async () => {
     if (!titulo.trim() || !dataInicio || !dataFim) return;
 
+    if (audienciaTipo === 'departamentos' && alvos.length === 0 && !isLocked) {
+      toast.error("Selecione pelo menos um departamento para a audiência");
+      return;
+    }
+
     const validQuestions = questions.filter((q) => q.pergunta.trim());
-    if (validQuestions.length === 0) return;
+    if (validQuestions.length === 0) {
+      toast.error("Adicione pelo menos uma pergunta");
+      return;
+    }
 
     if (isEditing) {
-      await updateCampaign.mutateAsync({
+      const payload: any = {
         id: campaign.id,
         titulo,
         descricao: descricao || null,
@@ -162,8 +193,15 @@ export function PulsoCampanhaFormDialog({
           campaign_id: campaign.id,
           ordem: i,
           created_at: new Date().toISOString(),
-        })) as any,
-      });
+        })),
+      };
+
+      if (!isLocked) {
+        payload.audiencia_tipo = audienciaTipo;
+        payload.alvos = audienciaTipo === 'departamentos' ? alvos : [];
+      }
+
+      await updateCampaign.mutateAsync(payload);
     } else {
       const result = await createCampaign.mutateAsync({
         titulo,
@@ -171,6 +209,8 @@ export function PulsoCampanhaFormDialog({
         data_inicio: dataInicio,
         data_fim: dataFim,
         ativo,
+        audiencia_tipo: audienciaTipo,
+        alvos: audienciaTipo === 'departamentos' ? alvos : undefined,
         questions: validQuestions.map((q, i) => ({
           ...q,
           ordem: i,
@@ -253,7 +293,7 @@ export function PulsoCampanhaFormDialog({
               </div>
             </div>
 
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between pb-2">
               <div className="space-y-0.5">
                 <Label>Campanha Ativa</Label>
                 <p className="text-sm text-muted-foreground">
@@ -261,6 +301,95 @@ export function PulsoCampanhaFormDialog({
                 </p>
               </div>
               <Switch checked={ativo} onCheckedChange={setAtivo} />
+            </div>
+
+            <div className="space-y-3 pt-2 pb-2 border-t">
+              <div className="flex items-center gap-2">
+                <Users className="h-4 w-4 text-muted-foreground" />
+                <Label className="text-base font-semibold">Público-alvo</Label>
+              </div>
+              
+              {isLocked ? (
+                <div className="rounded-md bg-muted p-4 space-y-3">
+                  <div className="flex items-start gap-2 text-sm text-muted-foreground">
+                    <InfoIcon className="h-4 w-4 mt-0.5 shrink-0" />
+                    <p>
+                      A audiência não pode ser alterada em campanhas ativas ou que já tiveram respostas, 
+                      para preservar a consistência estatística.
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-sm font-medium">Alvo Atual: </span>
+                    {audienciaTipo === 'todos' ? (
+                      <Badge variant="secondary">Toda a empresa</Badge>
+                    ) : (
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {alvos.map(a => (
+                          <Badge key={a} variant="outline">{a}</Badge>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <RadioGroup 
+                  value={audienciaTipo} 
+                  onValueChange={(val: 'todos' | 'departamentos') => setAudienciaTipo(val)}
+                  className="space-y-2"
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="todos" id="r-todos" />
+                    <Label htmlFor="r-todos" className="cursor-pointer font-normal">Toda a empresa (Padrão)</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="departamentos" id="r-dept" disabled={departamentosUnicos.length === 0} />
+                    <Label htmlFor="r-dept" className="cursor-pointer font-normal">Departamentos específicos</Label>
+                    
+                    {departamentosUnicos.length === 0 && (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <InfoIcon className="h-4 w-4 text-muted-foreground ml-1 cursor-help" />
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p className="w-[200px] text-xs">
+                              É preciso cadastrar colaboradores vinculados a departamentos na Estrutura Organizacional para usar esta opção.
+                            </p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    )}
+                  </div>
+                </RadioGroup>
+              )}
+
+              {!isLocked && audienciaTipo === 'departamentos' && departamentosUnicos.length > 0 && (
+                <ScrollArea className="h-[120px] w-full rounded-md border p-4 mt-2 bg-slate-50/50">
+                  <div className="space-y-3">
+                    {departamentosUnicos.map((dept) => (
+                      <div key={dept} className="flex items-center space-x-2">
+                        <Checkbox 
+                          id={`dept-${dept}`} 
+                          checked={alvos.includes(dept)}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              setAlvos([...alvos, dept]);
+                            } else {
+                              setAlvos(alvos.filter(a => a !== dept));
+                            }
+                          }}
+                        />
+                        <label 
+                          htmlFor={`dept-${dept}`}
+                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                        >
+                          {dept}
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
+              )}
             </div>
 
             {/* Global Replication Toggle - only for new campaigns */}
