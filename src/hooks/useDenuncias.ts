@@ -40,7 +40,12 @@ export function useCriarDenuncia() {
         p_categoria: input.categoria ?? null,
         p_origem: input.origem ?? null,
       } as any);
-      if (error) throw error;
+      if (error) {
+        if (error.message?.includes("rate_limit_exceeded")) {
+          throw new Error("Muitos envios em pouco tempo. Tente novamente mais tarde.");
+        }
+        throw error;
+      }
       return data as string;
     },
     onSuccess: () => {
