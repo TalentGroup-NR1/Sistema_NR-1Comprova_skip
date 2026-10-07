@@ -54,9 +54,9 @@ CREATE POLICY "Colaboradores can view active campaigns"
       audiencia_tipo = 'todos'
       OR EXISTS (
         SELECT 1 FROM public.colaboradores c
-        JOIN public.pulse_campaigns_alvos pca ON pca.campaign_id = id
+        JOIN public.pulse_campaigns_alvos pca ON pca.campaign_id = pulse_campaigns.id
         WHERE c.user_id = auth.uid() 
-          AND c.company_id = company_id
+          AND c.company_id = pulse_campaigns.company_id
           AND LOWER(TRIM(c.department)) = LOWER(TRIM(pca.departamento_nome))
       )
     )
