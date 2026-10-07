@@ -1,5 +1,8 @@
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { AlertCircle, RefreshCw } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -28,7 +31,33 @@ export function ResultadosAgregadosTab() {
   const dimensao: DimensaoAgrupamento = "departamento";
   const months = PERIODOS[periodoIdx].months;
 
-  const { data, isLoading } = useCuidarResultadosAgregados(dimensao, months);
+  const { data, isLoading, isError, refetch } = useCuidarResultadosAgregados(dimensao, months);
+
+  const isEmpty = !isLoading && !isError && data?.heatmap.length === 0 && data?.timeline.length === 0;
+
+  const renderError = () => (
+    <Alert variant="destructive">
+      <AlertCircle className="h-4 w-4" />
+      <AlertTitle>Erro ao carregar resultados</AlertTitle>
+      <AlertDescription className="flex flex-col items-start gap-4 mt-2">
+        <p>Não foi possível carregar os resultados agregados no momento. Por favor, tente novamente.</p>
+        <Button variant="outline" size="sm" onClick={() => refetch()}>
+          <RefreshCw className="mr-2 h-4 w-4" />
+          Tentar novamente
+        </Button>
+      </AlertDescription>
+    </Alert>
+  );
+
+  const renderEmpty = () => (
+    <Alert className="bg-muted/50 border-muted">
+      <AlertCircle className="h-4 w-4" />
+      <AlertTitle>Sem dados para exibição</AlertTitle>
+      <AlertDescription>
+        Nenhuma resposta de pulso no período selecionado. Lance um pulso e aguarde as respostas dos colaboradores.
+      </AlertDescription>
+    </Alert>
+  );
 
   return (
     <div className="space-y-6">
@@ -70,7 +99,11 @@ export function ResultadosAgregadosTab() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {isLoading ? (
+          {isError ? (
+            renderError()
+          ) : isEmpty ? (
+            renderEmpty()
+          ) : isLoading ? (
             <div className="space-y-2">
               {[1, 2, 3, 4].map((i) => (
                 <Skeleton key={i} className="h-14 w-full" />
@@ -92,7 +125,11 @@ export function ResultadosAgregadosTab() {
           <CardDescription>Média semanal por grupo (top 8 + Outros).</CardDescription>
         </CardHeader>
         <CardContent>
-          {isLoading ? (
+          {isError ? (
+            renderError()
+          ) : isEmpty ? (
+            renderEmpty()
+          ) : isLoading ? (
             <Skeleton className="h-[320px] w-full" />
           ) : (
             <TimelineAgregados data={data?.timeline ?? []} />
