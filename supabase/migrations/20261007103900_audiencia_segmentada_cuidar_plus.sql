@@ -23,6 +23,6 @@ ON public.questionarios_cuidar_plus_alvos FOR ALL USING (
   EXISTS (
     SELECT 1 FROM public.questionarios_cuidar_plus q
     WHERE q.id = questionarios_cuidar_plus_alvos.questionario_id
-    AND q.company_id = get_user_company_id()
+    AND q.company_id = public.get_my_company_id()
   )
 );
