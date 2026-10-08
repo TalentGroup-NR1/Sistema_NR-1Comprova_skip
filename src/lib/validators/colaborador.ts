@@ -251,22 +251,6 @@ export const formacaoAcademicaSchema = z.object({
   cursos_realizados: z.string().max(2000).optional(),
 });
 
-// Tab: Alinhamento
-export const alinhamentoSchema = z.object({
-  alinhamento_notas: z.string().max(5000).optional(),
-});
-
-// Tab: Currículo
-export const curriculoSchema = z.object({
-  curriculo_path: z.string().optional(),
-});
-
-// Tab: HumanGuide
-export const humanguideSchema = z.object({
-  humanguide_notas: z.string().max(5000).optional(),
-  humanguide_path: z.string().optional(),
-});
-
 // Tab 4: Contato e Endereço
 export const contatoEnderecoSchema = z.object({
   email_pessoal: z.string()
@@ -295,9 +279,6 @@ export const colaboradorSchema = z.object({
   ...contratoSchema.shape,
   ...contatoEnderecoSchema.shape,
   ...formacaoAcademicaSchema.shape,
-  ...alinhamentoSchema.shape,
-  ...curriculoSchema.shape,
-  ...humanguideSchema.shape,
   status: z.enum(colaboradorStatusOptions).default('ATIVO'),
 }).superRefine((data, ctx) => {
   const ini = data.ultima_ferias_inicio ? parseDateBR(data.ultima_ferias_inicio) : null;
@@ -317,6 +298,3 @@ export type DocumentacaoFormData = z.infer<typeof documentacaoSchema>;
 export type ContratoFormData = z.infer<typeof contratoSchema>;
 export type ContatoEnderecoFormData = z.infer<typeof contatoEnderecoSchema>;
 export type FormacaoAcademicaFormData = z.infer<typeof formacaoAcademicaSchema>;
-export type AlinhamentoFormData = z.infer<typeof alinhamentoSchema>;
-export type CurriculoFormData = z.infer<typeof curriculoSchema>;
-export type HumanGuideFormData = z.infer<typeof humanguideSchema>;

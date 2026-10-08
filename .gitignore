@@ -36,3 +36,4 @@ dist-ssr
 
 # Scratch e testes locais
 scratch/
+supabase/.temp/

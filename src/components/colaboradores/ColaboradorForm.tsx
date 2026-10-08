@@ -27,9 +27,6 @@ import { DocumentacaoTab } from './tabs/DocumentacaoTab';
 import { ContratoTab } from './tabs/ContratoTab';
 import { ContatoEnderecoTab } from './tabs/ContatoEnderecoTab';
 import { FormacaoAcademicaTab } from './tabs/FormacaoAcademicaTab';
-import { AlinhamentoTab } from './tabs/AlinhamentoTab';
-import { CurriculoTab } from './tabs/CurriculoTab';
-import { HumanGuideTab } from './tabs/HumanGuideTab';
 import { TransferenciasTab } from './tabs/TransferenciasTab';
 import { LgpdSection } from './LgpdSection';
 import { useAuth } from '@/hooks/useAuth';
@@ -42,9 +39,6 @@ import {
   contratoSchema,
   contatoEnderecoSchema,
   formacaoAcademicaSchema,
-  alinhamentoSchema,
-  curriculoSchema,
-  humanguideSchema,
 } from '@/lib/validators/colaborador';
 import type { ColaboradorFormData } from '@/lib/validators/colaborador';
 import { type Colaborador } from '@/hooks/useColaboradores';
@@ -63,9 +57,6 @@ const tabs = [
   { id: 'contrato', label: 'Contrato', schema: contratoSchema },
   { id: 'contato', label: 'Contato e Endereço', schema: contatoEnderecoSchema },
   { id: 'formacao', label: 'Formação Acadêmica', schema: formacaoAcademicaSchema },
-  { id: 'alinhamento', label: 'Alinhamento', schema: alinhamentoSchema },
-  { id: 'curriculo', label: 'Currículo', schema: curriculoSchema },
-  { id: 'humanguide', label: 'HumanGuide', schema: humanguideSchema },
   { id: 'promocoes', label: 'Promoções', schema: null },
   { id: 'transferencias', label: 'Transferências', schema: null },
   { id: 'lgpd', label: 'LGPD', schema: null },
@@ -149,10 +140,6 @@ export function ColaboradorForm({
     address_neighborhood: '',
     status: 'ATIVO',
     cursos_realizados: '',
-    alinhamento_notas: '',
-    curriculo_path: '',
-    humanguide_notas: '',
-    humanguide_path: '',
   };
 
   const form = useForm<ColaboradorFormData>({
@@ -221,10 +208,6 @@ export function ColaboradorForm({
         address_neighborhood: colaborador.address_neighborhood || '',
         status: colaborador.status as any,
         cursos_realizados: (colaborador as any).cursos_realizados || '',
-        alinhamento_notas: (colaborador as any).alinhamento_notas || '',
-        curriculo_path: (colaborador as any).curriculo_path || '',
-        humanguide_notas: (colaborador as any).humanguide_notas || '',
-        humanguide_path: (colaborador as any).humanguide_path || '',
       });
     } else {
       form.reset(emptyDefaults);
@@ -331,18 +314,6 @@ export function ColaboradorForm({
 
                   <TabsContent value="formacao" className="mt-0">
                     <FormacaoAcademicaTab form={form} />
-                  </TabsContent>
-
-                  <TabsContent value="alinhamento" className="mt-0">
-                    <AlinhamentoTab form={form} />
-                  </TabsContent>
-
-                  <TabsContent value="curriculo" className="mt-0">
-                    <CurriculoTab form={form} colaboradorId={colaborador?.id} />
-                  </TabsContent>
-
-                  <TabsContent value="humanguide" className="mt-0">
-                    <HumanGuideTab form={form} colaboradorId={colaborador?.id} />
                   </TabsContent>
 
                   {isEditing && colaborador && (
