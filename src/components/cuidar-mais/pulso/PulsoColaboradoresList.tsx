@@ -31,10 +31,14 @@ export function PulsoColaboradoresList({ onSelectColaborador }: PulsoColaborador
   const [searchTerm, setSearchTerm] = useState("");
   const [departmentFilter, setDepartmentFilter] = useState<string>("all");
   
-  const { data: colaboradores, isLoading } = usePulseColaboradoresList(
+  const { data: colaboradores, isLoading, isError, error } = usePulseColaboradoresList(
     departmentFilter !== "all" ? departmentFilter : undefined
   );
   const { data: allColaboradores } = useColaboradores();
+
+  if (isError) {
+    console.error("Erro na lista de colaboradores do Pulso:", error);
+  }
 
   // Extrair departamentos únicos da lista de colaboradores
   const departments = Array.from(
@@ -88,6 +92,29 @@ export function PulsoColaboradoresList({ onSelectColaborador }: PulsoColaborador
             {[1, 2, 3, 4, 5].map((i) => (
               <Skeleton key={i} className="h-16 w-full" />
             ))}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (isError) {
+    return (
+      <Card className="border-red-200">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2 text-red-600">
+                <Users className="h-5 w-5" />
+                Erro ao carregar colaboradores
+              </CardTitle>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-12 text-red-600">
+            <p>Ocorreu um erro ao buscar a lista de colaboradores.</p>
+            <p className="font-medium text-sm mt-2">{error instanceof Error ? error.message : "Erro desconhecido"}</p>
           </div>
         </CardContent>
       </Card>
