@@ -21,7 +21,7 @@ interface PulsoColaboradorDetailProps {
 }
 
 export function PulsoColaboradorDetail({ colaboradorId, onBack }: PulsoColaboradorDetailProps) {
-  const { data: history, isLoading: loadingHistory } = useEmployeePulseHistory(colaboradorId);
+  const { data: history, isLoading: loadingHistory, isError: errorHistory, error: historyError } = useEmployeePulseHistory(colaboradorId);
   const { data: colaborador, isLoading: loadingColaborador } = useColaborador(colaboradorId);
 
   // Agrupar por campanha
@@ -197,9 +197,9 @@ export function PulsoColaboradorDetail({ colaboradorId, onBack }: PulsoColaborad
       )}
 
       {/* Histórico de Respostas */}
-      <Card>
+      <Card className={cn(errorHistory && "border-red-200")}>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle className={cn("flex items-center gap-2", errorHistory && "text-red-600")}>
             <MessageCircle className="h-5 w-5" />
             Histórico de Respostas
           </CardTitle>
@@ -208,7 +208,14 @@ export function PulsoColaboradorDetail({ colaboradorId, onBack }: PulsoColaborad
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {groupedByCampaign.length > 0 ? (
+          {errorHistory ? (
+            <div className="text-center py-12 text-red-600">
+              <p className="font-semibold">Erro ao carregar histórico de respostas.</p>
+              <p className="font-medium text-sm mt-2">
+                {historyError instanceof Error ? historyError.message : "Erro desconhecido"}
+              </p>
+            </div>
+          ) : groupedByCampaign.length > 0 ? (
             <div className="space-y-4">
               {groupedByCampaign.map((campaign: any) => {
                 const campaignEmoji = getEmojiForScore(campaign.avg_score);

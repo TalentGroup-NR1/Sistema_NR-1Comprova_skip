@@ -22,6 +22,7 @@ export default function CuidarMais() {
   const isAdmin = role === 'admin_master' || role === 'admin_empresa' || role === 'analista_rh';
   const isGestor = role === 'gestor_departamento';
   const canViewResultados = isAdmin || isGestor;
+  const canViewAcompanhamentos = isAdmin || isGestor;
   const isColaborador = role === 'colaborador' || role === 'gestor_departamento';
 
   // `pulso` é o primeiro item da TabsList do admin e a única aba do colaborador,
@@ -55,7 +56,7 @@ export default function CuidarMais() {
                 </TabsTrigger>
               )}
               
-              {(isAdmin || isGestor) && (
+              {canViewAcompanhamentos && (
                 <TabsTrigger value="acompanhamentos" className="flex items-center gap-2">
                   <ClipboardList className="h-4 w-4" />
                   <span className="hidden sm:inline">Acompanhamentos</span>
@@ -110,7 +111,7 @@ export default function CuidarMais() {
             </TabsContent>
           )}
 
-          {(isAdmin || isGestor) && (
+          {canViewAcompanhamentos && (
             <TabsContent value="acompanhamentos">
               <AcompanhamentosList />
             </TabsContent>

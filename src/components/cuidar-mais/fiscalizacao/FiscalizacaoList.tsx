@@ -6,6 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
+import { ShieldAlert } from "lucide-react";
+
 interface FiscalizacaoResult {
   gestor_id: string;
   gestor_nome: string;
@@ -18,7 +20,7 @@ interface FiscalizacaoResult {
 export function FiscalizacaoList() {
   const companyId = useEffectiveCompanyId();
 
-  const { data: gestores, isLoading } = useQuery({
+  const { data: gestores, isLoading, isError, error } = useQuery({
     queryKey: ["pulse-fiscalizacao", companyId],
     queryFn: async () => {
       if (!companyId) return [];
@@ -33,6 +35,29 @@ export function FiscalizacaoList() {
 
   if (isLoading) {
     return <div className="p-4 text-center text-muted-foreground">Carregando painel de fiscalização...</div>;
+  }
+
+  if (isError) {
+    return (
+      <Card className="border-red-200">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2 text-red-600">
+                <ShieldAlert className="h-5 w-5" />
+                Erro ao carregar fiscalização
+              </CardTitle>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-12 text-red-600">
+            <p>Ocorreu um erro ao buscar os dados do painel de fiscalização.</p>
+            <p className="font-medium text-sm mt-2">{error instanceof Error ? error.message : "Erro desconhecido"}</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
   }
 
   if (!gestores || gestores.length === 0) {

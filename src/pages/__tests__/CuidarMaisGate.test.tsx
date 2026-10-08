@@ -54,9 +54,27 @@ const renderComponent = () => {
 };
 
 describe("CuidarMais - Fiscalização Gate", () => {
-  it("deve renderizar aba de Fiscalização APENAS para Admin Empresa", async () => {
+  it("deve renderizar aba de Fiscalização para Admin Empresa", async () => {
     const { useAuth } = await import("@/hooks/useAuth");
     vi.mocked(useAuth).mockReturnValue({ role: "admin_empresa" } as any);
+    
+    renderComponent();
+    
+    expect(screen.queryByText("Fiscalização")).toBeInTheDocument();
+  });
+
+  it("deve renderizar aba de Fiscalização para Admin Master", async () => {
+    const { useAuth } = await import("@/hooks/useAuth");
+    vi.mocked(useAuth).mockReturnValue({ role: "admin_master" } as any);
+    
+    renderComponent();
+    
+    expect(screen.queryByText("Fiscalização")).toBeInTheDocument();
+  });
+
+  it("deve renderizar aba de Fiscalização para Analista RH", async () => {
+    const { useAuth } = await import("@/hooks/useAuth");
+    vi.mocked(useAuth).mockReturnValue({ role: "analista_rh" } as any);
     
     renderComponent();
     
@@ -82,5 +100,23 @@ describe("CuidarMais - Fiscalização Gate", () => {
     
     expect(screen.queryByText("Fiscalização")).not.toBeInTheDocument();
     expect(screen.queryByText("Acompanhamentos")).not.toBeInTheDocument();
+  });
+
+  it("deve renderizar Acompanhamentos para Gestor de Departamento (canViewAcompanhamentos)", async () => {
+    const { useAuth } = await import("@/hooks/useAuth");
+    vi.mocked(useAuth).mockReturnValue({ role: "gestor_departamento" } as any);
+
+    renderComponent();
+
+    expect(screen.getByText("Acompanhamentos")).toBeInTheDocument();
+  });
+
+  it("deve renderizar Acompanhamentos para Admin Master e Analista RH", async () => {
+    const { useAuth } = await import("@/hooks/useAuth");
+    vi.mocked(useAuth).mockReturnValue({ role: "analista_rh" } as any);
+
+    renderComponent();
+
+    expect(screen.getByText("Acompanhamentos")).toBeInTheDocument();
   });
 });
