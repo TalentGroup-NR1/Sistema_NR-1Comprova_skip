@@ -54,12 +54,15 @@ export default function CuidarMais() {
                 </TabsTrigger>
               )}
               
+              {(isAdmin || isGestor) && (
+                <TabsTrigger value="acompanhamentos" className="flex items-center gap-2">
+                  <ClipboardList className="h-4 w-4" />
+                  <span className="hidden sm:inline">Acompanhamentos</span>
+                </TabsTrigger>
+              )}
+              
               {isAdmin && (
                 <>
-                  <TabsTrigger value="acompanhamentos" className="flex items-center gap-2">
-                    <ClipboardList className="h-4 w-4" />
-                    <span className="hidden sm:inline">Acompanhamentos</span>
-                  </TabsTrigger>
                   <TabsTrigger value="relatorio" className="flex items-center gap-2">
                     <FileText className="h-4 w-4" />
                     <span className="hidden sm:inline">Relatório</span>
@@ -102,7 +105,7 @@ export default function CuidarMais() {
             </TabsContent>
           )}
 
-          {isAdmin && (
+          {(isAdmin || isGestor) && (
             <TabsContent value="acompanhamentos">
               <AcompanhamentosList />
             </TabsContent>
