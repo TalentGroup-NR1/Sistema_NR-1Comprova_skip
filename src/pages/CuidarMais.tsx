@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Smile, Calendar, Users, BookOpen, BarChart3, ClipboardList, FileText } from "lucide-react";
+import { Smile, Calendar, Users, BookOpen, BarChart3, ClipboardList, FileText, ShieldAlert } from "lucide-react";
 import { 
   PulsoCampanhasBuilder, 
   ColaboradorPulsoViewV2,
@@ -11,6 +11,7 @@ import {
 import { MateriaisApoioAdmin } from "@/components/cuidar-mais/biblioteca/MateriaisApoioAdmin";
 import { ResultadosAgregadosTab } from "@/components/cuidar-mais/agregados/ResultadosAgregadosTab";
 import { AcompanhamentosList } from "@/components/cuidar-mais/acompanhamentos/AcompanhamentosList";
+import { FiscalizacaoList } from "@/components/cuidar-mais/fiscalizacao/FiscalizacaoList";
 import { RelatorioTab } from "@/components/cuidar-mais/relatorio";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -34,7 +35,7 @@ export default function CuidarMais() {
       <div className="space-y-6">
         <Tabs defaultValue={defaultTab} className="space-y-6">
           {(isAdmin || isGestor) && (
-            <TabsList className="grid w-full max-w-5xl grid-cols-7">
+            <TabsList className="grid w-full max-w-5xl grid-cols-4 sm:grid-cols-8 gap-2 h-auto p-1">
               <TabsTrigger value="pulso" className="flex items-center gap-2">
                 <Smile className="h-4 w-4" />
                 <span className="hidden sm:inline">Pulso</span>
@@ -63,6 +64,10 @@ export default function CuidarMais() {
               
               {isAdmin && (
                 <>
+                  <TabsTrigger value="fiscalizacao" className="flex items-center gap-2">
+                    <ShieldAlert className="h-4 w-4" />
+                    <span className="hidden sm:inline">Fiscalização</span>
+                  </TabsTrigger>
                   <TabsTrigger value="relatorio" className="flex items-center gap-2">
                     <FileText className="h-4 w-4" />
                     <span className="hidden sm:inline">Relatório</span>
@@ -108,6 +113,12 @@ export default function CuidarMais() {
           {(isAdmin || isGestor) && (
             <TabsContent value="acompanhamentos">
               <AcompanhamentosList />
+            </TabsContent>
+          )}
+
+          {isAdmin && (
+            <TabsContent value="fiscalizacao">
+              <FiscalizacaoList />
             </TabsContent>
           )}
 
