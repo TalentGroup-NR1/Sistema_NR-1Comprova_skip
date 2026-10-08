@@ -19,6 +19,8 @@ export default function CuidarMais() {
   const [selectedColaboradorId, setSelectedColaboradorId] = useState<string | null>(null);
 
   const isAdmin = role === 'admin_master' || role === 'admin_empresa' || role === 'analista_rh';
+  const isGestor = role === 'gestor_departamento';
+  const canViewResultados = isAdmin || isGestor;
   const isColaborador = role === 'colaborador' || role === 'gestor_departamento';
 
   // `pulso` é o primeiro item da TabsList do admin e a única aba do colaborador,
@@ -31,36 +33,47 @@ export default function CuidarMais() {
     <MainLayout>
       <div className="space-y-6">
         <Tabs defaultValue={defaultTab} className="space-y-6">
-          {isAdmin && (
+          {(isAdmin || isGestor) && (
             <TabsList className="grid w-full max-w-5xl grid-cols-7">
               <TabsTrigger value="pulso" className="flex items-center gap-2">
                 <Smile className="h-4 w-4" />
                 <span className="hidden sm:inline">Pulso</span>
               </TabsTrigger>
-              <TabsTrigger value="campanhas" className="flex items-center gap-2">
-                <Calendar className="h-4 w-4" />
-                <span className="hidden sm:inline">Campanhas</span>
-              </TabsTrigger>
-              <TabsTrigger value="resultados" className="flex items-center gap-2">
-                <Users className="h-4 w-4" />
-                <span className="hidden sm:inline">Resultados</span>
-              </TabsTrigger>
-              <TabsTrigger value="acompanhamentos" className="flex items-center gap-2">
-                <ClipboardList className="h-4 w-4" />
-                <span className="hidden sm:inline">Acompanhamentos</span>
-              </TabsTrigger>
-              <TabsTrigger value="relatorio" className="flex items-center gap-2">
-                <FileText className="h-4 w-4" />
-                <span className="hidden sm:inline">Relatório</span>
-              </TabsTrigger>
-              <TabsTrigger value="agregados" className="flex items-center gap-2">
-                <BarChart3 className="h-4 w-4" />
-                <span className="hidden sm:inline">Agregados</span>
-              </TabsTrigger>
-              <TabsTrigger value="materiais" className="flex items-center gap-2">
-                <BookOpen className="h-4 w-4" />
-                <span className="hidden sm:inline">Materiais</span>
-              </TabsTrigger>
+              
+              {isAdmin && (
+                <TabsTrigger value="campanhas" className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4" />
+                  <span className="hidden sm:inline">Campanhas</span>
+                </TabsTrigger>
+              )}
+              
+              {canViewResultados && (
+                <TabsTrigger value="resultados" className="flex items-center gap-2">
+                  <Users className="h-4 w-4" />
+                  <span className="hidden sm:inline">Resultados</span>
+                </TabsTrigger>
+              )}
+              
+              {isAdmin && (
+                <>
+                  <TabsTrigger value="acompanhamentos" className="flex items-center gap-2">
+                    <ClipboardList className="h-4 w-4" />
+                    <span className="hidden sm:inline">Acompanhamentos</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="relatorio" className="flex items-center gap-2">
+                    <FileText className="h-4 w-4" />
+                    <span className="hidden sm:inline">Relatório</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="agregados" className="flex items-center gap-2">
+                    <BarChart3 className="h-4 w-4" />
+                    <span className="hidden sm:inline">Agregados</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="materiais" className="flex items-center gap-2">
+                    <BookOpen className="h-4 w-4" />
+                    <span className="hidden sm:inline">Materiais</span>
+                  </TabsTrigger>
+                </>
+              )}
             </TabsList>
           )}
 
@@ -74,7 +87,7 @@ export default function CuidarMais() {
             </TabsContent>
           )}
 
-          {isAdmin && (
+          {canViewResultados && (
             <TabsContent value="resultados">
               {selectedColaboradorId ? (
                 <PulsoColaboradorDetail
