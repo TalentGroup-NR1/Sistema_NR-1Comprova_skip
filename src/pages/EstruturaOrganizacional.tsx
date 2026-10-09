@@ -8,11 +8,8 @@ import { useEffectiveCompanyId } from '@/hooks/useEffectiveCompanyId';
 import { ConfiguracaoTab } from '@/components/estrutura-organizacional/ConfiguracaoTab';
 import { DescricoesCargoTab } from '@/components/estrutura-organizacional/DescricoesCargoTab';
 import { ModelosDescricaoTab } from '@/components/estrutura-organizacional/ModelosDescricaoTab';
-
-import { ImportarCboDialog } from '@/components/estrutura-organizacional/ImportarCboDialog';
 import { QuestionariosTab } from '@/components/estrutura-organizacional/QuestionariosTab';
 import { MinhasAtividadesAdminTab } from '@/components/estrutura-organizacional/MinhasAtividadesAdminTab';
-
 
 export default function EstruturaOrganizacional() {
   const { role } = useAuth();
@@ -35,7 +32,6 @@ export default function EstruturaOrganizacional() {
               Departamentos, cargos, grupos (GHE) e descrições de cargo da empresa
             </p>
           </div>
-          {podeEditar && <ImportarCboDialog />}
         </div>
 
         {!companyId ? (

@@ -137,25 +137,3 @@ export function useCboSearch(termo: string) {
     },
   });
 }
-
-export function useImportarCbo() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (linhas: { codigo: string; titulo: string; descricao?: string | null }[]) => {
-      const chunk = 500;
-      for (let i = 0; i < linhas.length; i += chunk) {
-        const { error } = await supabase
-          .from('cbo_ocupacoes')
-          .upsert(linhas.slice(i, i + chunk), { onConflict: 'codigo' });
-        if (error) throw error;
-      }
-      return linhas.length;
-    },
-    onSuccess: (n) => {
-      qc.invalidateQueries({ queryKey: ['cbo-search'] });
-      toast({ title: `${n} ocupações importadas` });
-    },
-    onError: (e: Error) =>
-      toast({ title: 'Erro na importação', description: e.message, variant: 'destructive' }),
-  });
-}
