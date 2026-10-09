@@ -102,7 +102,7 @@ export function PromocoesRecentesCard({ delay = 0 }: PromocoesRecentesCardProps)
               );
             })}
             <Button variant="ghost" size="sm" className="w-full mt-2" asChild>
-              <Link to="/relatorios?tab=promocoes">
+              <Link to="/relatorios-executivos">
                 Ver todas <ArrowRight className="ml-2 h-4 w-4" />
               </Link>
             </Button>

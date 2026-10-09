@@ -64,7 +64,7 @@ export function FiscalizacaoList() {
     return (
       <Card>
         <CardContent className="p-8 text-center text-muted-foreground">
-          Nenhum acompanhamento pendente no momento para fiscalizar.
+          Nenhum acompanhamento pendente no momento para acompanhamento de gestores.
         </CardContent>
       </Card>
     );
@@ -72,7 +72,7 @@ export function FiscalizacaoList() {
 
   return (
     <div className="space-y-4">
-      <h2 className="text-xl font-bold tracking-tight">Painel de Fiscalização de Acompanhamentos</h2>
+      <h2 className="text-xl font-bold tracking-tight">Painel de Acompanhamento de Gestores</h2>
       <p className="text-muted-foreground">
         Acompanhe quais gestores estão agindo diante das respostas críticas da equipe.
       </p>

@@ -15,7 +15,15 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
-import { Lock, Loader2, Eye, EyeOff } from 'lucide-react';
+import { Lock, Loader2, Eye, EyeOff, Mail, RefreshCw } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 const schema = z.object({
   password: z.string().min(6, 'Senha deve ter pelo menos 6 caracteres').max(100),
@@ -34,6 +42,9 @@ export default function AtualizarSenha() {
   const [isReady, setIsReady] = useState(false);
   const [hasSession, setHasSession] = useState(false);
   const [linkError, setLinkError] = useState<string | null>(null);
+  const [requestDialogOpen, setRequestDialogOpen] = useState(false);
+  const [resendEmail, setResendEmail] = useState('');
+  const [isRequestingNewLink, setIsRequestingNewLink] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -155,6 +166,48 @@ export default function AtualizarSenha() {
     }
   };
 
+  const handleRequestNewLink = async () => {
+    if (!resendEmail.trim()) {
+      toast({
+        variant: 'destructive',
+        title: 'E-mail obrigatório',
+        description: 'Digite seu e-mail cadastrado.',
+      });
+      return;
+    }
+
+    setIsRequestingNewLink(true);
+    try {
+      // Dispara o fluxo seguro de recuperação de senha do Supabase para o e-mail informado
+      const { error } = await supabase.auth.resetPasswordForEmail(resendEmail.trim(), {
+        redirectTo: `${window.location.origin}/atualizar-senha`,
+      });
+
+      if (error) {
+        toast({
+          variant: 'destructive',
+          title: 'Não foi possível solicitar o link',
+          description: error.message,
+        });
+      } else {
+        toast({
+          title: 'Link de acesso enviado',
+          description: 'Se o e-mail estiver cadastrado, você receberá um novo link de definição de senha.',
+        });
+        setRequestDialogOpen(false);
+        setResendEmail('');
+      }
+    } catch {
+      toast({
+        variant: 'destructive',
+        title: 'Erro inesperado',
+        description: 'Tente novamente ou solicite o reenvio ao administrador.',
+      });
+    } finally {
+      setIsRequestingNewLink(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted flex items-center justify-center p-4">
       <div className="w-full max-w-md">
@@ -174,9 +227,19 @@ export default function AtualizarSenha() {
           {linkError ? (
             <div className="space-y-4 text-center">
               <p className="text-sm text-destructive">{linkError}</p>
-              <Button variant="outline" className="w-full" onClick={() => navigate('/auth')}>
-                Ir para o login
-              </Button>
+              <div className="flex flex-col gap-2">
+                <Button
+                  variant="default"
+                  className="w-full gap-2"
+                  onClick={() => setRequestDialogOpen(true)}
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  Solicitar novo link
+                </Button>
+                <Button variant="outline" className="w-full" onClick={() => navigate('/auth')}>
+                  Ir para o login
+                </Button>
+              </div>
             </div>
           ) : !isReady ? (
             <div className="flex justify-center py-6">
@@ -254,6 +317,54 @@ export default function AtualizarSenha() {
           </Form>
           )}
         </div>
+
+        <Dialog open={requestDialogOpen} onOpenChange={setRequestDialogOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Mail className="h-5 w-5 text-primary" />
+                Solicitar novo link de acesso
+              </DialogTitle>
+              <DialogDescription>
+                Informe seu e-mail para receber um novo link de definição de senha.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="py-2 space-y-3">
+              <Input
+                type="email"
+                placeholder="seu.email@exemplo.com"
+                value={resendEmail}
+                onChange={(e) => setResendEmail(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleRequestNewLink();
+                  }
+                }}
+              />
+            </div>
+
+            <DialogFooter className="flex gap-2 sm:justify-end">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setRequestDialogOpen(false);
+                  setResendEmail('');
+                }}
+              >
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleRequestNewLink}
+                disabled={isRequestingNewLink}
+              >
+                {isRequestingNewLink && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Enviar novo link
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
       </div>
     </div>

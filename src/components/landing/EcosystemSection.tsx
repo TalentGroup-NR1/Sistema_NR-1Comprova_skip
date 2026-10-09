@@ -11,7 +11,6 @@ import {
   Megaphone,
   MessageSquareHeart,
   Microscope,
-  Network,
   PlayCircle,
   ShieldAlert,
   FileBarChart2,
@@ -19,6 +18,11 @@ import {
   Shield,
   Lightbulb,
   HelpCircle,
+  Star,
+  UserCheck,
+  Sparkles,
+  Clock,
+  Play,
 } from "lucide-react";
 import { Reveal } from "@/components/landing/Reveal";
 import { Eyebrow, SpotlightCard } from "@/components/landing/premium";
@@ -181,105 +185,330 @@ function CuidarVisual() {
 }
 
 function TreinamentoVisual() {
-  const pct = 86;
-  const r = 34;
-  const c = 2 * Math.PI * r;
+  const [activeCourse, setActiveCourse] = useState(0);
+
+  const COURSES = [
+    {
+      id: 0,
+      title: "Comunicação Não Violenta (CNV)",
+      category: "Saúde e Bem-estar",
+      duration: "12:00 min",
+      tag: "Obrigatório",
+      tagColor: "bg-orange-500/10 text-orange-600 border-orange-500/20",
+      status: "Em andamento",
+      progress: "85%",
+      gradient: "from-amber-400/20 via-orange-400/20 to-rose-400/20",
+      accent: "#FF9100",
+    },
+    {
+      id: 1,
+      title: "Associando Alto Desempenho e Bem-Estar",
+      category: "Saúde e Bem-estar",
+      duration: "36:00 min",
+      tag: "Recomendado",
+      tagColor: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20",
+      status: "Concluído",
+      progress: "100%",
+      gradient: "from-emerald-400/20 via-teal-400/20 to-blue-400/20",
+      accent: "#00E676",
+    },
+    {
+      id: 2,
+      title: "Gestão de Emoções e Estresse Ocupacional",
+      category: "Saúde e Bem-estar",
+      duration: "48:00 min",
+      tag: "NR-01 Psico",
+      tagColor: "bg-blue-500/10 text-blue-600 border-blue-500/20",
+      status: "Disponível",
+      progress: "0%",
+      gradient: "from-blue-500/20 via-indigo-500/20 to-purple-500/20",
+      accent: "#2979FF",
+    },
+  ];
+
+  // Alterna o curso com simulação de foco/cursor do colaborador
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setActiveCourse((prev) => (prev + 1) % COURSES.length);
+    }, 3500);
+    return () => clearInterval(timer);
+  }, [COURSES.length]);
+
+  const selected = COURSES[activeCourse];
+
   return (
-    <div className="flex items-center gap-5">
-      <div className="relative h-24 w-24 shrink-0">
-        <svg viewBox="0 0 80 80" className="h-full w-full -rotate-90" aria-hidden="true">
-          <circle cx="40" cy="40" r={r} fill="none" stroke="#2979FF1A" strokeWidth="8" />
-          <circle
-            cx="40"
-            cy="40"
-            r={r}
-            fill="none"
-            stroke="url(#trainGrad)"
-            strokeWidth="8"
-            strokeLinecap="round"
-            strokeDasharray={c}
-            strokeDashoffset={c * (1 - pct / 100)}
-          />
-          <defs>
-            <linearGradient id="trainGrad" x1="0" x2="1">
-              <stop offset="0%" stopColor="#2979FF" />
-              <stop offset="100%" stopColor="#00E5FF" />
-            </linearGradient>
-          </defs>
-        </svg>
-        <span className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-xl font-extrabold text-[#0B132B]">{pct}%</span>
-          <span className="text-[9px] font-semibold uppercase text-[#0B132B]/45">concluído</span>
-        </span>
+    <div className="relative mt-2 flex flex-col gap-3 w-full">
+      {/* Banner Principal em Destaque (Inspirado no Card de CNV da tela real) */}
+      <div className="relative overflow-hidden rounded-2xl border border-[#0B132B]/[0.08] bg-gradient-to-br from-amber-50/80 via-white to-orange-50/50 p-4 shadow-sm transition-all duration-500">
+        <div className="flex items-start justify-between gap-2">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center gap-1 rounded-md bg-[#2979FF]/10 px-2 py-0.5 text-[9px] font-bold text-[#1E4FB8]">
+                <Sparkles className="h-2.5 w-2.5" /> Em Destaque
+              </span>
+              <span className={`inline-flex items-center rounded-md border px-1.5 py-0.5 text-[9px] font-bold ${selected.tagColor}`}>
+                {selected.tag}
+              </span>
+            </div>
+            <h5 className="text-xs sm:text-sm font-extrabold text-[#0B132B] line-clamp-1">
+              {selected.title}
+            </h5>
+            <p className="text-[10px] text-[#0B132B]/55 flex items-center gap-2 font-medium">
+              <span>{selected.category}</span>
+              <span>•</span>
+              <span className="flex items-center gap-1"><Clock className="h-2.5 w-2.5" /> {selected.duration}</span>
+            </p>
+          </div>
+
+          <div className="flex shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#2979FF] to-[#00E5FF] p-2 text-white shadow-md shadow-[#2979FF]/20">
+            <Play className="h-4 w-4 fill-white" />
+          </div>
+        </div>
+
+        {/* Barra de Progresso com Percentual */}
+        <div className="mt-3">
+          <div className="flex justify-between text-[9px] font-semibold text-[#0B132B]/60 mb-1">
+            <span>Progresso da Trilha</span>
+            <span className="font-bold text-[#1E4FB8]">{selected.progress}</span>
+          </div>
+          <div className="h-1.5 w-full rounded-full bg-[#0B132B]/[0.06] overflow-hidden">
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-[#2979FF] to-[#00E5FF] transition-all duration-700 ease-out"
+              style={{ width: selected.progress }}
+            />
+          </div>
+        </div>
       </div>
-      <div className="space-y-2 text-xs">
-        <div className="flex items-center gap-2 rounded-lg bg-[#2979FF]/[0.07] px-2.5 py-1.5 font-semibold text-[#1E4FB8]">
-          <PlayCircle className="h-3.5 w-3.5" /> Liderança Segura · vídeo 4/6
-        </div>
-        <div className="flex items-center gap-2 rounded-lg bg-amber-100 px-2.5 py-1.5 font-semibold text-amber-800">
-          <Award className="h-3.5 w-3.5" /> Certificado emitido
-        </div>
+
+      {/* Mini-Carrossel de Miniaturas de Cursos (Simula o colaborador navegando pelo catálogo) */}
+      <div className="grid grid-cols-3 gap-2">
+        {COURSES.map((c, idx) => {
+          const isCurrent = activeCourse === idx;
+          return (
+            <button
+              key={c.id}
+              type="button"
+              onClick={() => setActiveCourse(idx)}
+              className={`group relative flex flex-col justify-between overflow-hidden rounded-xl border p-2 text-left transition-all duration-300 ${
+                isCurrent
+                  ? "border-[#2979FF] bg-white shadow-md shadow-[#2979FF]/10 ring-1 ring-[#2979FF] scale-[1.03]"
+                  : "border-[#0B132B]/[0.08] bg-[#F8FAFC] opacity-75 hover:opacity-100 hover:bg-white"
+              }`}
+            >
+              {/* Mini Capa Gradiente */}
+              <div className={`h-10 w-full rounded-lg bg-gradient-to-br ${c.gradient} flex items-center justify-center relative mb-2`}>
+                <div className={`flex h-6 w-6 items-center justify-center rounded-full bg-white/90 shadow-sm transition-transform duration-300 ${isCurrent ? "scale-110" : ""}`}>
+                  <PlayCircle className="h-3.5 w-3.5 text-[#2979FF]" />
+                </div>
+                {isCurrent && (
+                  <span className="absolute bottom-1 right-1 flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                  </span>
+                )}
+              </div>
+
+              <div>
+                <p className="line-clamp-1 text-[10px] font-bold text-[#0B132B] leading-tight">
+                  {c.title}
+                </p>
+                <p className="mt-0.5 text-[8px] font-medium text-[#0B132B]/50 flex items-center justify-between">
+                  <span>{c.duration}</span>
+                  <span className="font-semibold text-emerald-600">{c.status}</span>
+                </p>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Simulação do Ponteiro/Cursor do Colaborador escolhendo cursos */}
+      <div
+        className="pointer-events-none absolute h-5 w-5 transition-all duration-700 ease-out z-10"
+        style={{
+          left: `${activeCourse === 0 ? "18%" : activeCourse === 1 ? "52%" : "84%"}`,
+          bottom: "35px",
+        }}
+      >
+        <svg viewBox="0 0 24 24" fill="none" className="h-full w-full drop-shadow-md" xmlns="http://www.w3.org/2000/svg">
+          <path d="M5.5 3.21V20.8c0 .45.54.67.85.35l4.86-4.86a.5.5 0 01.35-.15h6.44c.45 0 .67-.54.35-.85L6.35 2.86a.5.5 0 00-.85.35z" fill="white" stroke="#0B132B" strokeWidth="1.5" strokeLinejoin="round"/>
+        </svg>
       </div>
     </div>
   );
 }
 
 function DiarioVisual() {
-  const marcos = [
-    { d: "30", label: "Integração", done: true },
-    { d: "80", label: "Autonomia", done: true },
-    { d: "120", label: "Alinhamento", done: false },
-  ];
-  return (
-    <div className="relative mt-2">
-      <div className="absolute left-0 right-0 top-5 h-1 rounded-full bg-amber-100" />
-      <div className="absolute left-0 top-5 h-1 w-2/3 rounded-full bg-gradient-to-r from-amber-400 to-orange-500" />
-      <div className="relative flex justify-between">
-        {marcos.map((m) => (
-          <div key={m.d} className="flex flex-col items-center">
-            <span
-              className={
-                m.done
-                  ? "flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-orange-500 text-sm font-extrabold text-white shadow-lg ring-4 ring-white"
-                  : "flex h-11 w-11 items-center justify-center rounded-full border-2 border-dashed border-amber-300 bg-white text-sm font-extrabold text-amber-500 ring-4 ring-white"
-              }
-            >
-              {m.d}
-            </span>
-            <span className="mt-2 text-[11px] font-semibold text-[#0B132B]/60">{m.label}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
+  const [activeMarco, setActiveMarco] = useState(0);
 
-function EstruturaVisual() {
+  const MARCOS = [
+    {
+      d: "30d",
+      label: "Integração",
+      nome: "Laíse Sapienza",
+      cargo: "Analista de Soluções",
+      statusBadge: "Profissional em Ascensão",
+      badgeColor: "bg-emerald-500/10 text-emerald-700 border-emerald-500/20",
+      mediaColaborador: "9.8",
+      mediaGestor: "9.3",
+      alinhamento: "95%",
+      scoreGeral: "9.5",
+      perguntaColab: "Clareza e Alinhamento das Atividades",
+      notaColab: "9/10",
+      perguntaGestor: "Engajamento e Progresso Técnico",
+      notaGestor: "9/10",
+      gap: "0.0",
+      gapLabel: "Alto Alinhamento",
+    },
+    {
+      d: "80d",
+      label: "Autonomia",
+      nome: "Rafael Rodrigues",
+      cargo: "Analista Tech III",
+      statusBadge: "Integração Consolidada",
+      badgeColor: "bg-blue-500/10 text-blue-700 border-blue-500/20",
+      mediaColaborador: "9.4",
+      mediaGestor: "9.1",
+      alinhamento: "97%",
+      scoreGeral: "9.3",
+      perguntaColab: "Autonomia e Tomada de Decisão",
+      notaColab: "9/10",
+      perguntaGestor: "Qualidade das Entregas e Prazos",
+      notaGestor: "9/10",
+      gap: "0.3",
+      gapLabel: "Alto Alinhamento",
+    },
+    {
+      d: "120d",
+      label: "Alinhamento",
+      nome: "Bruno Silva Pinto",
+      cargo: "Auditor Interno",
+      statusBadge: "Retenção Confirmada",
+      badgeColor: "bg-amber-500/10 text-amber-700 border-amber-500/20",
+      mediaColaborador: "9.6",
+      mediaGestor: "9.5",
+      alinhamento: "99%",
+      scoreGeral: "9.6",
+      perguntaColab: "Fit Cultural e Pertencimento",
+      notaColab: "10/10",
+      perguntaGestor: "Visão Sistêmica e Proatividade",
+      notaGestor: "9/10",
+      gap: "0.1",
+      gapLabel: "Alto Alinhamento",
+    },
+  ];
+
+  // Alternância automática a cada 4 segundos
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setActiveMarco((prev) => (prev + 1) % MARCOS.length);
+    }, 4000);
+    return () => clearInterval(timer);
+  }, [MARCOS.length]);
+
+  const curr = MARCOS[activeMarco];
+
   return (
-    <div className="grid gap-3 sm:grid-cols-2">
-      <div className="rounded-2xl border border-[#0B132B]/[0.07] bg-[#F3F6FB] p-4">
-        <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#0B132B]/45">Trabalho prescrito</p>
-        <ul className="mt-3 space-y-2 text-xs text-[#0B132B]/60">
-          <li className="rounded-lg bg-white px-3 py-2">Conferir notas fiscais</li>
-          <li className="rounded-lg bg-white px-3 py-2">Lançar no ERP</li>
-          <li className="rounded-lg bg-white px-3 py-2">Arquivar documentos</li>
-        </ul>
+    <div className="relative flex flex-col gap-3.5 w-full">
+      {/* Timeline de Seleção dos Marcos */}
+      <div className="relative flex items-center justify-between rounded-xl border border-amber-500/15 bg-gradient-to-r from-amber-500/[0.05] to-orange-500/[0.03] p-1.5">
+        {MARCOS.map((m, idx) => {
+          const isActive = activeMarco === idx;
+          return (
+            <button
+              key={m.d}
+              type="button"
+              onClick={() => setActiveMarco(idx)}
+              className={`group relative flex flex-1 items-center justify-center gap-2 rounded-lg py-2 px-3 text-xs font-bold transition-all duration-300 ${
+                isActive
+                  ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md shadow-amber-500/20 scale-[1.02]"
+                  : "text-[#0B132B]/60 hover:text-[#0B132B] hover:bg-white/70"
+              }`}
+            >
+              <span
+                className={`flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-extrabold ${
+                  isActive ? "bg-white/25 text-white" : "bg-amber-100 text-amber-800"
+                }`}
+              >
+                {idx + 1}
+              </span>
+              <span>{m.d}</span>
+              <span className={`text-[11px] font-medium ${isActive ? "text-white/90" : "text-[#0B132B]/50"}`}>
+                ({m.label})
+              </span>
+            </button>
+          );
+        })}
       </div>
-      <div className="rounded-2xl border border-[#00C853]/20 bg-gradient-to-b from-[#00C853]/[0.07] to-transparent p-4">
-        <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#00873A]">Trabalho real</p>
-        <ul className="mt-3 space-y-2 text-xs text-[#0B132B]/75">
-          <li className="flex items-center justify-between rounded-lg bg-white px-3 py-2">
-            Conferir notas fiscais <span className="text-[10px] font-bold text-[#00873A]">ok</span>
-          </li>
-          <li className="flex items-center justify-between rounded-lg bg-white px-3 py-2">
-            Retrabalho por sistema lento
-            <span className="rounded-full bg-[#FF5252]/10 px-2 py-0.5 text-[10px] font-bold text-[#E53935]">atrito</span>
-          </li>
-          <li className="flex items-center justify-between rounded-lg bg-white px-3 py-2">
-            Atender fornecedores por telefone
-            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-700">oculto</span>
-          </li>
-        </ul>
+
+      {/* Mini-Card Simulação do Dashboard do Colaborador */}
+      <div className="overflow-hidden rounded-2xl border border-[#0B132B]/[0.08] bg-white p-4 shadow-sm transition-all duration-500">
+        {/* Topo: Nome, Cargo e Badge de Ascensão */}
+        <div className="flex items-center justify-between border-b border-[#0B132B]/[0.06] pb-3">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-orange-500 text-xs font-extrabold text-white shadow-sm">
+              {curr.nome.split(" ").map((n) => n[0]).slice(0, 2).join("")}
+            </div>
+            <div>
+              <p className="text-sm font-bold text-[#0B132B] leading-tight">{curr.nome}</p>
+              <p className="text-[11px] text-[#0B132B]/50 font-medium">{curr.cargo} · Marco {curr.d}</p>
+            </div>
+          </div>
+          <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-bold ${curr.badgeColor}`}>
+            <Sparkles className="h-3 w-3" />
+            {curr.statusBadge}
+          </span>
+        </div>
+
+        {/* 4 Indicadores Chave Lado a Lado (Conforme Tela Real) */}
+        <div className="mt-3 grid grid-cols-4 gap-2 text-center">
+          <div className="rounded-xl bg-amber-50/70 border border-amber-200/50 p-2">
+            <p className="text-[9px] font-bold uppercase tracking-wider text-[#0B132B]/45">Colab</p>
+            <p className="text-sm font-extrabold text-amber-600 sm:text-base">{curr.mediaColaborador}</p>
+          </div>
+          <div className="rounded-xl bg-orange-50/70 border border-orange-200/50 p-2">
+            <p className="text-[9px] font-bold uppercase tracking-wider text-[#0B132B]/45">Gestor</p>
+            <p className="text-sm font-extrabold text-orange-600 sm:text-base">{curr.mediaGestor}</p>
+          </div>
+          <div className="rounded-xl bg-emerald-50/70 border border-emerald-200/50 p-2">
+            <p className="text-[9px] font-bold uppercase tracking-wider text-emerald-700/60">Alinhamento</p>
+            <p className="text-sm font-extrabold text-emerald-600 sm:text-base">{curr.alinhamento}</p>
+          </div>
+          <div className="rounded-xl bg-slate-50 border border-slate-200/60 p-2">
+            <p className="text-[9px] font-bold uppercase tracking-wider text-[#0B132B]/45">Score</p>
+            <p className="text-sm font-extrabold text-[#0B132B] sm:text-base">{curr.scoreGeral}</p>
+          </div>
+        </div>
+
+        {/* Comparação Lado a Lado (Colaborador x Alinhamento x Gestor) */}
+        <div className="mt-3 rounded-xl border border-[#0B132B]/[0.05] bg-[#F8FAFC] p-2.5">
+          <div className="flex items-center justify-between text-[10px] font-bold uppercase text-[#0B132B]/50 px-1 mb-2">
+            <span className="flex items-center gap-1.5 text-amber-700">
+              <UserCheck className="h-3.5 w-3.5" /> Colaborador
+            </span>
+            <span className="inline-flex items-center gap-1 text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full font-extrabold text-[9px]">
+              <Star className="h-3 w-3 fill-amber-500 text-amber-500" /> Δ {curr.gap} ({curr.gapLabel})
+            </span>
+            <span className="flex items-center gap-1.5 text-orange-700">
+              Gestão Técnica <UserCheck className="h-3.5 w-3.5" />
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 text-xs">
+            <div className="flex items-center justify-between rounded-lg bg-white p-2 border border-[#0B132B]/[0.05]">
+              <span className="truncate pr-1.5 text-[#0B132B]/75 font-medium">{curr.perguntaColab}</span>
+              <span className="shrink-0 rounded bg-emerald-100 px-2 py-0.5 font-bold text-emerald-800 text-[10px]">
+                {curr.notaColab}
+              </span>
+            </div>
+            <div className="flex items-center justify-between rounded-lg bg-white p-2 border border-[#0B132B]/[0.05]">
+              <span className="truncate pr-1.5 text-[#0B132B]/75 font-medium">{curr.perguntaGestor}</span>
+              <span className="shrink-0 rounded bg-emerald-100 px-2 py-0.5 font-bold text-emerald-800 text-[10px]">
+                {curr.notaGestor}
+              </span>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -438,13 +667,12 @@ export function EcosystemSection() {
                     icon={HeartPulse}
                     tag="Pilar 1"
                     title="Cuidar+"
-                    concept="O termômetro em tempo real do bem-estar e da cultura."
+                    concept="O termômetro em tempo real do bem-estar da sua equipe."
                     gradient="from-[#7C4DFF] to-[#B388FF]"
                     tagTone="bg-[#7C4DFF]/10 text-[#5E35B1]"
                   />
                   <p className="mt-4 text-[15px] leading-relaxed text-[#0B132B]/65">
-                    Pulsos semanais rápidos e anônimos acompanham exaustão, clareza de papéis e
-                    suporte — e validam se as ações do Kanban surtiram efeito prático no setor.
+                    Pulsos semanais rápidos que criam um canal de escuta ativa: o profissional compartilha como foi sua semana e a gestão assume a responsabilidade de acompanhar, agir e registrar cada evidência de melhoria.
                   </p>
                 </div>
                 <CuidarVisual />
@@ -473,46 +701,25 @@ export function EcosystemSection() {
             </SpotlightCard>
           </Reveal>
 
-          {/* Diário de Bordo */}
-          <Reveal className="lg:col-span-2">
+          {/* Diário de Bordo (Destaque total com 6 colunas, layout horizontal amplo) */}
+          <Reveal className="lg:col-span-6">
             <SpotlightCard spot="rgba(255,171,0,0.12)" className={CARD}>
-              <PillarHeader
-                icon={CalendarCheck2}
-                tag="Pilar 3"
-                title="Diário de Bordo"
-                concept="Onboarding e retenção nos marcos de 30, 80 e 120 dias."
-                gradient="from-amber-400 to-orange-500"
-                tagTone="bg-amber-100 text-amber-800"
-              />
-              <p className="mt-4 text-sm leading-relaxed text-[#0B132B]/65">
-                Check-ins estruturados entre colaborador e gestor medem integração, volume de
-                trabalho, autonomia e expectativas.
-              </p>
-              <div className="mt-7">
-                <DiarioVisual />
-              </div>
-            </SpotlightCard>
-          </Reveal>
-
-          {/* Estrutura Organizacional */}
-          <Reveal delay={100} className="lg:col-span-4">
-            <SpotlightCard spot="rgba(0,200,83,0.10)" className={CARD}>
-              <div className="grid gap-8 md:grid-cols-[0.9fr_1.1fr] md:items-center">
+              <div className="grid gap-8 md:grid-cols-[0.85fr_1.15fr] md:items-center">
                 <div>
                   <PillarHeader
-                    icon={Network}
-                    tag="Pilar 4"
-                    title="Estrutura Organizacional & Trabalho Real"
-                    concept="Job Redesign: o prescrito reconciliado com o real."
-                    gradient="from-[#00C853] to-[#00E5FF]"
-                    tagTone="bg-[#00C853]/10 text-[#00873A]"
+                    icon={CalendarCheck2}
+                    tag="Pilar 3"
+                    title="Diário de Bordo"
+                    concept="Onboarding e retenção nos marcos de 30, 80 e 120 dias."
+                    gradient="from-amber-400 to-orange-500"
+                    tagTone="bg-amber-100 text-amber-800"
                   />
                   <p className="mt-4 text-[15px] leading-relaxed text-[#0B132B]/65">
-                    Aba dedicada no cadastro de cargos para mapear atritos diários, criar matrizes
-                    de autonomia e registrar o redesenho participativo dos fluxos de trabalho.
+                    Check-ins estruturados entre colaborador e gestor medem integração, volume de
+                    trabalho, autonomia e expectativas.
                   </p>
                 </div>
-                <EstruturaVisual />
+                <DiarioVisual />
               </div>
             </SpotlightCard>
           </Reveal>
@@ -525,7 +732,7 @@ export function EcosystemSection() {
                 <div>
                   <PillarHeader
                     icon={ShieldAlert}
-                    tag="Pilar 5"
+                    tag="Pilar 4"
                     title="Canal de Escuta (Fale Conosco)"
                     concept="Módulo estratégico para proteção e acolhimento."
                     gradient="from-rose-500 to-pink-500"

@@ -101,12 +101,14 @@ export default function MinhasTarefas() {
         </header>
 
         <Tabs value={tab} onValueChange={(v) => setTab(v as TabKey)}>
-          <TabsList>
-            <TabsTrigger value="hoje">Hoje</TabsTrigger>
-            <TabsTrigger value="semana">Semana</TabsTrigger>
-            <TabsTrigger value="todas">Todas</TabsTrigger>
-            <TabsTrigger value="concluidas">Concluídas</TabsTrigger>
-          </TabsList>
+          <div className="w-full overflow-x-auto pb-1">
+            <TabsList className="w-auto min-w-full sm:min-w-0">
+              <TabsTrigger value="hoje">Hoje</TabsTrigger>
+              <TabsTrigger value="semana">Semana</TabsTrigger>
+              <TabsTrigger value="todas">Todas</TabsTrigger>
+              <TabsTrigger value="concluidas">Concluídas</TabsTrigger>
+            </TabsList>
+          </div>
 
           <TabsContent value={tab} className="mt-4">
             {isLoading ? (

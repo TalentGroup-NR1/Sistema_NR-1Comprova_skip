@@ -50,14 +50,16 @@ export default function EstruturaOrganizacional() {
           </Card>
         ) : (
           <Tabs value={tab} onValueChange={setTab} className="space-y-6">
-            <TabsList>
-              <TabsTrigger value="configuracao">Configuração</TabsTrigger>
-              <TabsTrigger value="descricoes">Descrições de Cargo</TabsTrigger>
-              <TabsTrigger value="modelos">Modelos de Descrição</TabsTrigger>
+            <div className="w-full overflow-x-auto pb-1">
+              <TabsList className="w-auto min-w-full sm:min-w-0">
+                <TabsTrigger value="configuracao">Configuração</TabsTrigger>
+                <TabsTrigger value="descricoes">Descrições de Cargo</TabsTrigger>
+                <TabsTrigger value="modelos">Modelos de Descrição</TabsTrigger>
 
-              <TabsTrigger value="questionarios">Questionários</TabsTrigger>
-              <TabsTrigger value="atividades">Minhas Atividades</TabsTrigger>
-            </TabsList>
+                <TabsTrigger value="questionarios">Questionários</TabsTrigger>
+                <TabsTrigger value="atividades">Minhas Atividades</TabsTrigger>
+              </TabsList>
+            </div>
 
             <TabsContent value="configuracao" className="animate-fade-in">
               <ConfiguracaoTab

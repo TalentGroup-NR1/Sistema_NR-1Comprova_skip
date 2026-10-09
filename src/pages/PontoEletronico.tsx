@@ -125,19 +125,21 @@ export default function PontoEletronico() {
 
           {isAdmin ? (
             <Tabs value={adminTab} onValueChange={setAdminTab} className="w-full">
-              <TabsList>
-                <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
-                <TabsTrigger value="espelho">Espelho de Ponto</TabsTrigger>
-                <TabsTrigger value="aprovacoes">Aprovações</TabsTrigger>
-                <TabsTrigger value="ranking">Ranking Banco</TabsTrigger>
-                <TabsTrigger value="fechamento">Fechamento Banco</TabsTrigger>
-                <TabsTrigger value="espelho-mensal">Espelho Mensal</TabsTrigger>
-                <TabsTrigger value="relatorios">Relatórios</TabsTrigger>
-                <TabsTrigger value="configuracao">Configurações</TabsTrigger>
-                <TabsTrigger value="meu-ponto">Meu Ponto</TabsTrigger>
-                <TabsTrigger value="meu-banco">{meuBancoLabel}</TabsTrigger>
-                <TabsTrigger value="minha-assinatura">Minha Assinatura</TabsTrigger>
-              </TabsList>
+              <div className="w-full overflow-x-auto pb-1">
+                <TabsList className="w-auto min-w-full sm:min-w-0">
+                  <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+                  <TabsTrigger value="espelho">Espelho de Ponto</TabsTrigger>
+                  <TabsTrigger value="aprovacoes">Aprovações</TabsTrigger>
+                  <TabsTrigger value="ranking">Ranking Banco</TabsTrigger>
+                  <TabsTrigger value="fechamento">Fechamento Banco</TabsTrigger>
+                  <TabsTrigger value="espelho-mensal">Espelho Mensal</TabsTrigger>
+                  <TabsTrigger value="relatorios">Relatórios</TabsTrigger>
+                  <TabsTrigger value="configuracao">Configurações</TabsTrigger>
+                  <TabsTrigger value="meu-ponto">Meu Ponto</TabsTrigger>
+                  <TabsTrigger value="meu-banco">{meuBancoLabel}</TabsTrigger>
+                  <TabsTrigger value="minha-assinatura">Minha Assinatura</TabsTrigger>
+                </TabsList>
+              </div>
               <TabsContent value="dashboard"><PontoDashboard /></TabsContent>
               <TabsContent value="espelho"><EspelhoPonto /></TabsContent>
               <TabsContent value="aprovacoes"><PontoAprovacoes /></TabsContent>
@@ -157,12 +159,14 @@ export default function PontoEletronico() {
             </Tabs>
           ) : (
             <Tabs value={colabTab} onValueChange={setColabTab} className="w-full">
-              <TabsList>
-                <TabsTrigger value="registro">Registrar Ponto</TabsTrigger>
-                <TabsTrigger value="historico">Histórico</TabsTrigger>
-                <TabsTrigger value="meu-banco">{meuBancoLabel}</TabsTrigger>
-                <TabsTrigger value="minha-assinatura">Minha Assinatura</TabsTrigger>
-              </TabsList>
+              <div className="w-full overflow-x-auto pb-1">
+                <TabsList className="w-auto min-w-full sm:min-w-0">
+                  <TabsTrigger value="registro">Registrar Ponto</TabsTrigger>
+                  <TabsTrigger value="historico">Histórico</TabsTrigger>
+                  <TabsTrigger value="meu-banco">{meuBancoLabel}</TabsTrigger>
+                  <TabsTrigger value="minha-assinatura">Minha Assinatura</TabsTrigger>
+                </TabsList>
+              </div>
               <TabsContent value="registro"><RegistroPonto /></TabsContent>
               <TabsContent value="historico"><HistoricoPonto /></TabsContent>
               <TabsContent value="meu-banco"><MeuBancoComponent /></TabsContent>

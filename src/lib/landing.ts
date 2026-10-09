@@ -1,6 +1,6 @@
 /** Domínio comercial público da landing page. */
 export const LANDING_DOMAIN = "https://nr1pronto.com.br";
-export const LANDING_SUPPORT_EMAIL = "suporte@nr1pronto.com.br";
+export const LANDING_SUPPORT_EMAIL = "suporte@nr-1comprova.com.br";
 export const LANDING_LINKEDIN = "https://www.linkedin.com/company/talent-group";
 /** Placeholder — substituir pelo perfil oficial. */
 export const LANDING_INSTAGRAM = "https://www.instagram.com/";

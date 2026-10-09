@@ -140,25 +140,27 @@ export default function GerenciamentoAcessos() {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-3 lg:w-auto lg:inline-grid">
-            <TabsTrigger value="usuarios" className="flex items-center gap-2">
-              <Users className="h-4 w-4" />
-              <span>Usuários</span>
-            </TabsTrigger>
-            <TabsTrigger value="pendentes" className="flex items-center gap-2">
-              <Clock className="h-4 w-4" />
-              <span>Pendentes</span>
-              {pendingCount > 0 && (
-                <Badge variant="warning" className="ml-1 h-5 min-w-[20px] px-1.5">
-                  {pendingCount}
-                </Badge>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="perfis" className="flex items-center gap-2">
-              <Shield className="h-4 w-4" />
-              <span>Perfis e Visibilidade</span>
-            </TabsTrigger>
-          </TabsList>
+          <div className="w-full overflow-x-auto pb-1">
+            <TabsList className="w-auto min-w-full sm:min-w-0">
+              <TabsTrigger value="usuarios" className="flex items-center gap-2">
+                <Users className="h-4 w-4" />
+                <span>Usuários</span>
+              </TabsTrigger>
+              <TabsTrigger value="pendentes" className="flex items-center gap-2">
+                <Clock className="h-4 w-4" />
+                <span>Pendentes</span>
+                {pendingCount > 0 && (
+                  <Badge variant="warning" className="ml-1 h-5 min-w-[20px] px-1.5">
+                    {pendingCount}
+                  </Badge>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="perfis" className="flex items-center gap-2">
+                <Shield className="h-4 w-4" />
+                <span>Perfis e Visibilidade</span>
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
           <TabsContent value="usuarios" className="mt-6 space-y-4">
             {/* Search */}

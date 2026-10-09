@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Smile, Calendar, Users, BookOpen, BarChart3, ClipboardList, FileText, ShieldAlert } from "lucide-react";
+import { Smile, Calendar, Users, BookOpen, BarChart3, ClipboardList, FileText, UserCheck } from "lucide-react";
 import { 
   PulsoCampanhasBuilder, 
   ColaboradorPulsoViewV2,
@@ -36,54 +36,80 @@ export default function CuidarMais() {
       <div className="space-y-6">
         <Tabs defaultValue={defaultTab} className="space-y-6">
           {(isAdmin || isGestor) && (
-            <TabsList className="grid w-full max-w-5xl grid-cols-4 sm:grid-cols-8 gap-2 h-auto p-1">
-              <TabsTrigger value="pulso" className="flex items-center gap-2">
-                <Smile className="h-4 w-4" />
-                <span className="hidden sm:inline">Pulso</span>
-              </TabsTrigger>
-              
-              {isAdmin && (
-                <TabsTrigger value="campanhas" className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4" />
-                  <span className="hidden sm:inline">Campanhas</span>
+            <div className="w-full overflow-x-auto pb-1">
+              <TabsList className="inline-flex w-auto min-w-full sm:min-w-0 items-center justify-start gap-1.5 p-1.5 bg-muted/60 backdrop-blur-sm border border-border/60 rounded-xl shadow-xs">
+                <TabsTrigger
+                  value="pulso"
+                  className="flex items-center gap-2 px-3.5 py-2 text-xs font-medium rounded-lg transition-all data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-xs hover:text-foreground"
+                >
+                  <Smile className="h-4 w-4" />
+                  <span>Pulso</span>
                 </TabsTrigger>
-              )}
-              
-              {canViewResultados && (
-                <TabsTrigger value="resultados" className="flex items-center gap-2">
-                  <Users className="h-4 w-4" />
-                  <span className="hidden sm:inline">Resultados</span>
-                </TabsTrigger>
-              )}
-              
-              {canViewAcompanhamentos && (
-                <TabsTrigger value="acompanhamentos" className="flex items-center gap-2">
-                  <ClipboardList className="h-4 w-4" />
-                  <span className="hidden sm:inline">Acompanhamentos</span>
-                </TabsTrigger>
-              )}
-              
-              {isAdmin && (
-                <>
-                  <TabsTrigger value="fiscalizacao" className="flex items-center gap-2">
-                    <ShieldAlert className="h-4 w-4" />
-                    <span className="hidden sm:inline">Fiscalização</span>
+                
+                {isAdmin && (
+                  <TabsTrigger
+                    value="campanhas"
+                    className="flex items-center gap-2 px-3.5 py-2 text-xs font-medium rounded-lg transition-all data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-xs hover:text-foreground"
+                  >
+                    <Calendar className="h-4 w-4" />
+                    <span>Campanhas</span>
                   </TabsTrigger>
-                  <TabsTrigger value="relatorio" className="flex items-center gap-2">
-                    <FileText className="h-4 w-4" />
-                    <span className="hidden sm:inline">Relatório</span>
+                )}
+                
+                {canViewResultados && (
+                  <TabsTrigger
+                    value="resultados"
+                    className="flex items-center gap-2 px-3.5 py-2 text-xs font-medium rounded-lg transition-all data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-xs hover:text-foreground"
+                  >
+                    <Users className="h-4 w-4" />
+                    <span>Resultados</span>
                   </TabsTrigger>
-                  <TabsTrigger value="agregados" className="flex items-center gap-2">
-                    <BarChart3 className="h-4 w-4" />
-                    <span className="hidden sm:inline">Agregados</span>
+                )}
+                
+                {canViewAcompanhamentos && (
+                  <TabsTrigger
+                    value="acompanhamentos"
+                    className="flex items-center gap-2 px-3.5 py-2 text-xs font-medium rounded-lg transition-all data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-xs hover:text-foreground"
+                  >
+                    <ClipboardList className="h-4 w-4" />
+                    <span>Acompanhamentos</span>
                   </TabsTrigger>
-                  <TabsTrigger value="materiais" className="flex items-center gap-2">
-                    <BookOpen className="h-4 w-4" />
-                    <span className="hidden sm:inline">Materiais</span>
-                  </TabsTrigger>
-                </>
-              )}
-            </TabsList>
+                )}
+                
+                {isAdmin && (
+                  <>
+                    <TabsTrigger
+                      value="fiscalizacao"
+                      className="flex items-center gap-2 px-3.5 py-2 text-xs font-medium rounded-lg transition-all data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-xs hover:text-foreground"
+                    >
+                      <UserCheck className="h-4 w-4" />
+                      <span>Acompanhamento Gestores</span>
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="relatorio"
+                      className="flex items-center gap-2 px-3.5 py-2 text-xs font-medium rounded-lg transition-all data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-xs hover:text-foreground"
+                    >
+                      <FileText className="h-4 w-4" />
+                      <span>Relatório</span>
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="agregados"
+                      className="flex items-center gap-2 px-3.5 py-2 text-xs font-medium rounded-lg transition-all data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-xs hover:text-foreground"
+                    >
+                      <BarChart3 className="h-4 w-4" />
+                      <span>Agregados</span>
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="materiais"
+                      className="flex items-center gap-2 px-3.5 py-2 text-xs font-medium rounded-lg transition-all data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-xs hover:text-foreground"
+                    >
+                      <BookOpen className="h-4 w-4" />
+                      <span>Materiais</span>
+                    </TabsTrigger>
+                  </>
+                )}
+              </TabsList>
+            </div>
           )}
 
           <TabsContent value="pulso">

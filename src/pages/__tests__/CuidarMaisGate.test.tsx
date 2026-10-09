@@ -53,52 +53,52 @@ const renderComponent = () => {
   );
 };
 
-describe("CuidarMais - Fiscalização Gate", () => {
-  it("deve renderizar aba de Fiscalização para Admin Empresa", async () => {
+describe("CuidarMais - Acompanhamento Gestores Gate", () => {
+  it("deve renderizar aba de Acompanhamento Gestores para Admin Empresa", async () => {
     const { useAuth } = await import("@/hooks/useAuth");
     vi.mocked(useAuth).mockReturnValue({ role: "admin_empresa" } as any);
     
     renderComponent();
     
-    expect(screen.queryByText("Fiscalização")).toBeInTheDocument();
+    expect(screen.queryByText("Acompanhamento Gestores")).toBeInTheDocument();
   });
 
-  it("deve renderizar aba de Fiscalização para Admin Master", async () => {
+  it("deve renderizar aba de Acompanhamento Gestores para Admin Master", async () => {
     const { useAuth } = await import("@/hooks/useAuth");
     vi.mocked(useAuth).mockReturnValue({ role: "admin_master" } as any);
     
     renderComponent();
     
-    expect(screen.queryByText("Fiscalização")).toBeInTheDocument();
+    expect(screen.queryByText("Acompanhamento Gestores")).toBeInTheDocument();
   });
 
-  it("deve renderizar aba de Fiscalização para Analista RH", async () => {
+  it("deve renderizar aba de Acompanhamento Gestores para Analista RH", async () => {
     const { useAuth } = await import("@/hooks/useAuth");
     vi.mocked(useAuth).mockReturnValue({ role: "analista_rh" } as any);
     
     renderComponent();
     
-    expect(screen.queryByText("Fiscalização")).toBeInTheDocument();
+    expect(screen.queryByText("Acompanhamento Gestores")).toBeInTheDocument();
   });
 
-  it("NÃO deve renderizar aba de Fiscalização para Gestor de Departamento", async () => {
+  it("NÃO deve renderizar aba de Acompanhamento Gestores para Gestor de Departamento", async () => {
     const { useAuth } = await import("@/hooks/useAuth");
     vi.mocked(useAuth).mockReturnValue({ role: "gestor_departamento" } as any);
     
     renderComponent();
     
-    expect(screen.queryByText("Fiscalização")).not.toBeInTheDocument();
+    expect(screen.queryByText("Acompanhamento Gestores")).not.toBeInTheDocument();
     // Mas deve renderizar Acompanhamentos
     expect(screen.queryByText("Acompanhamentos")).toBeInTheDocument();
   });
 
-  it("NÃO deve renderizar aba de Fiscalização para Colaborador", async () => {
+  it("NÃO deve renderizar aba de Acompanhamento Gestores para Colaborador", async () => {
     const { useAuth } = await import("@/hooks/useAuth");
     vi.mocked(useAuth).mockReturnValue({ role: "colaborador" } as any);
     
     renderComponent();
     
-    expect(screen.queryByText("Fiscalização")).not.toBeInTheDocument();
+    expect(screen.queryByText("Acompanhamento Gestores")).not.toBeInTheDocument();
     expect(screen.queryByText("Acompanhamentos")).not.toBeInTheDocument();
   });
 

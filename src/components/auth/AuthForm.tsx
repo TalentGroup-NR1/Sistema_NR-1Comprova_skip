@@ -71,7 +71,7 @@ export function AuthForm() {
         toast({
           variant: 'destructive',
           title: 'Empresa suspensa',
-          description: 'Empresa suspensa. Contate suporte@nr1pronto.com.br',
+          description: 'Empresa suspensa. Contate suporte@nr-1comprova.com.br',
         });
         return;
       }

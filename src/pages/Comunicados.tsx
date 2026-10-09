@@ -93,32 +93,34 @@ export default function Comunicados() {
         {/* Content */}
         {isAdmin ? (
           <Tabs defaultValue="gerenciar" className="space-y-6">
-            <TabsList>
-              <TabsTrigger value="gerenciar" className="flex items-center gap-2">
-                <LayoutDashboard className="h-4 w-4" />
-                Gerenciar
-              </TabsTrigger>
-              <TabsTrigger value="enviar" className="flex items-center gap-2">
-                <Send className="h-4 w-4" />
-                Enviar
-              </TabsTrigger>
-              <TabsTrigger value="campanhas" className="flex items-center gap-2">
-                <Sparkles className="h-4 w-4" />
-                Campanhas
-              </TabsTrigger>
-              <TabsTrigger value="portal" className="flex items-center gap-2">
-                <Eye className="h-4 w-4" />
-                Visualização
-              </TabsTrigger>
-              <TabsTrigger value="leituras" className="flex items-center gap-2">
-                <ClipboardCheck className="h-4 w-4" />
-                Leituras Comunicados
-              </TabsTrigger>
-              <TabsTrigger value="leituras-campanhas" className="flex items-center gap-2">
-                <ClipboardCheck className="h-4 w-4" />
-                Leituras Campanhas
-              </TabsTrigger>
-            </TabsList>
+            <div className="w-full overflow-x-auto pb-1">
+              <TabsList className="w-auto min-w-full sm:min-w-0">
+                <TabsTrigger value="gerenciar" className="flex items-center gap-2">
+                  <LayoutDashboard className="h-4 w-4" />
+                  Gerenciar
+                </TabsTrigger>
+                <TabsTrigger value="enviar" className="flex items-center gap-2">
+                  <Send className="h-4 w-4" />
+                  Enviar
+                </TabsTrigger>
+                <TabsTrigger value="campanhas" className="flex items-center gap-2">
+                  <Sparkles className="h-4 w-4" />
+                  Campanhas
+                </TabsTrigger>
+                <TabsTrigger value="portal" className="flex items-center gap-2">
+                  <Eye className="h-4 w-4" />
+                  Visualização
+                </TabsTrigger>
+                <TabsTrigger value="leituras" className="flex items-center gap-2">
+                  <ClipboardCheck className="h-4 w-4" />
+                  Leituras Comunicados
+                </TabsTrigger>
+                <TabsTrigger value="leituras-campanhas" className="flex items-center gap-2">
+                  <ClipboardCheck className="h-4 w-4" />
+                  Leituras Campanhas
+                </TabsTrigger>
+              </TabsList>
+            </div>
 
             <TabsContent value="gerenciar">
               <ComunicadosList />

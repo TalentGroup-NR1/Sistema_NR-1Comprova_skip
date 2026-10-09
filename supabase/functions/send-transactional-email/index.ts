@@ -5,11 +5,11 @@ import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors'
 import { TEMPLATES } from '../_shared/transactional-email-templates/registry.ts'
 
 // Configuration baked in at scaffold time
-const SITE_NAME = "nr-1pronto"
-// SENDER_DOMAIN is the verified sender subdomain FQDN (e.g., "notify.nr1pronto.com.br").
-const SENDER_DOMAIN = Deno.env.get("SENDER_DOMAIN") || "notify.nr1pronto.com.br"
-// FROM_DOMAIN is the domain shown in the From: header (e.g., "nr1pronto.com.br").
-const FROM_DOMAIN = Deno.env.get("FROM_DOMAIN") || "nr1pronto.com.br"
+const SITE_NAME = Deno.env.get("SITE_NAME") || "NR-1Comprova"
+// SENDER_DOMAIN is the verified sender subdomain FQDN (e.g., "notify.nr-1comprova.com.br" or "nr-1comprova.com.br").
+const SENDER_DOMAIN = Deno.env.get("SENDER_DOMAIN") || "nr-1comprova.com.br"
+// FROM_DOMAIN is the domain shown in the From: header (e.g., "nr-1comprova.com.br").
+const FROM_DOMAIN = Deno.env.get("FROM_DOMAIN") || "nr-1comprova.com.br"
 
 // Generate a cryptographically random 32-byte hex token
 function generateToken(): string {

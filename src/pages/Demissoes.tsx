@@ -24,24 +24,26 @@ export default function Demissoes() {
           </CardHeader>
           <CardContent>
             <Tabs defaultValue="ativos" className="w-full">
-              <TabsList className="grid w-full grid-cols-4 mb-6">
-                <TabsTrigger value="ativos" className="gap-2">
-                  <Users className="h-4 w-4" />
-                  Colaboradores Ativos
-                </TabsTrigger>
-                <TabsTrigger value="experiencia" className="gap-2">
-                  <CalendarClock className="h-4 w-4" />
-                  Controle de Experiência
-                </TabsTrigger>
-                <TabsTrigger value="desligados" className="gap-2">
-                  <UserMinus className="h-4 w-4" />
-                  Desligados
-                </TabsTrigger>
-                <TabsTrigger value="auditoria" className="gap-2">
-                  <History className="h-4 w-4" />
-                  Auditoria
-                </TabsTrigger>
-              </TabsList>
+              <div className="w-full overflow-x-auto pb-1 mb-6">
+                <TabsList className="w-auto min-w-full sm:min-w-0">
+                  <TabsTrigger value="ativos" className="gap-2">
+                    <Users className="h-4 w-4" />
+                    Colaboradores Ativos
+                  </TabsTrigger>
+                  <TabsTrigger value="experiencia" className="gap-2">
+                    <CalendarClock className="h-4 w-4" />
+                    Controle de Experiência
+                  </TabsTrigger>
+                  <TabsTrigger value="desligados" className="gap-2">
+                    <UserMinus className="h-4 w-4" />
+                    Desligados
+                  </TabsTrigger>
+                  <TabsTrigger value="auditoria" className="gap-2">
+                    <History className="h-4 w-4" />
+                    Auditoria
+                  </TabsTrigger>
+                </TabsList>
+              </div>
 
               <TabsContent value="ativos">
                 <ColaboradoresAtivosTab companyId={effectiveCompanyId} />

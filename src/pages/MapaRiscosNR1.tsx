@@ -77,44 +77,46 @@ export default function MapaRiscosNR1() {
 
         {isAdminMaster && modoPgr === "zero" && (
           <Tabs defaultValue={defaultTab} className="space-y-6">
-            <TabsList className="grid w-full max-w-[1200px] grid-cols-9">
-              <TabsTrigger value="dashboard" className="flex items-center gap-2">
-                <LayoutDashboard className="h-4 w-4" />
-                <span className="hidden sm:inline">Dashboard</span>
-              </TabsTrigger>
-              <TabsTrigger value="instrumentos" className="flex items-center gap-2">
-                <Library className="h-4 w-4" />
-                <span className="hidden sm:inline">Instrumentos</span>
-              </TabsTrigger>
-              <TabsTrigger value="campanhas" className="flex items-center gap-2">
-                <Brain className="h-4 w-4" />
-                <span className="hidden sm:inline">Campanhas</span>
-              </TabsTrigger>
-              <TabsTrigger value="heatmap" className="flex items-center gap-2">
-                <Flame className="h-4 w-4" />
-                <span className="hidden sm:inline">Heatmap</span>
-              </TabsTrigger>
-              <TabsTrigger value="matriz" className="flex items-center gap-2">
-                <Grid3X3 className="h-4 w-4" />
-                <span className="hidden sm:inline">Matriz de Risco</span>
-              </TabsTrigger>
-              <TabsTrigger value="planos" className="flex items-center gap-2">
-                <KanbanSquare className="h-4 w-4" />
-                <span className="hidden sm:inline">Planos de Ação</span>
-              </TabsTrigger>
-              <TabsTrigger value="aep" className="flex items-center gap-2 text-blue-600 data-[state=active]:text-blue-700">
-                <CheckSquare className="h-4 w-4" />
-                <span className="hidden sm:inline">Checklist AEP</span>
-              </TabsTrigger>
-              <TabsTrigger value="relatorios" className="flex items-center gap-2">
-                <FileText className="h-4 w-4" />
-                <span className="hidden sm:inline">Relatórios</span>
-              </TabsTrigger>
-              <TabsTrigger value="inteligencia" className="flex items-center gap-2">
-                <Brain className="h-4 w-4 text-purple-500" />
-                <span className="hidden sm:inline">Inteligência RH</span>
-              </TabsTrigger>
-            </TabsList>
+            <div className="w-full overflow-x-auto pb-1">
+              <TabsList className="w-auto min-w-full sm:min-w-0">
+                <TabsTrigger value="dashboard" className="flex items-center gap-2">
+                  <LayoutDashboard className="h-4 w-4" />
+                  <span className="hidden sm:inline">Dashboard</span>
+                </TabsTrigger>
+                <TabsTrigger value="instrumentos" className="flex items-center gap-2">
+                  <Library className="h-4 w-4" />
+                  <span className="hidden sm:inline">Instrumentos</span>
+                </TabsTrigger>
+                <TabsTrigger value="campanhas" className="flex items-center gap-2">
+                  <Brain className="h-4 w-4" />
+                  <span className="hidden sm:inline">Campanhas</span>
+                </TabsTrigger>
+                <TabsTrigger value="heatmap" className="flex items-center gap-2">
+                  <Flame className="h-4 w-4" />
+                  <span className="hidden sm:inline">Heatmap</span>
+                </TabsTrigger>
+                <TabsTrigger value="matriz" className="flex items-center gap-2">
+                  <Grid3X3 className="h-4 w-4" />
+                  <span className="hidden sm:inline">Matriz de Risco</span>
+                </TabsTrigger>
+                <TabsTrigger value="planos" className="flex items-center gap-2">
+                  <KanbanSquare className="h-4 w-4" />
+                  <span className="hidden sm:inline">Planos de Ação</span>
+                </TabsTrigger>
+                <TabsTrigger value="aep" className="flex items-center gap-2 text-blue-600 data-[state=active]:text-blue-700">
+                  <CheckSquare className="h-4 w-4" />
+                  <span className="hidden sm:inline">Checklist AEP</span>
+                </TabsTrigger>
+                <TabsTrigger value="relatorios" className="flex items-center gap-2">
+                  <FileText className="h-4 w-4" />
+                  <span className="hidden sm:inline">Relatórios</span>
+                </TabsTrigger>
+                <TabsTrigger value="inteligencia" className="flex items-center gap-2">
+                  <Brain className="h-4 w-4 text-purple-500" />
+                  <span className="hidden sm:inline">Inteligência RH</span>
+                </TabsTrigger>
+              </TabsList>
+            </div>
 
             <TabsContent value="dashboard"><DashboardPsico /></TabsContent>
             <TabsContent value="instrumentos"><InstrumentosTab /></TabsContent>

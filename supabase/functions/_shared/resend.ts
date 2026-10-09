@@ -8,7 +8,7 @@ export interface SendEmailParams {
 
 export async function sendEmail({
   to,
-  from = "Sua Empresa <noreply@talentred.com.br>",
+  from = Deno.env.get("DEFAULT_FROM_EMAIL") || "NR-1Comprova <no-reply@nr-1comprova.com.br>",
   subject,
   html,
   text,

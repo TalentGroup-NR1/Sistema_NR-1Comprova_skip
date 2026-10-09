@@ -31,16 +31,18 @@ export default function Ferias() {
   return (
     <MainLayout>
       <Tabs value={tab} onValueChange={setTab} className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="dashboard">Visão Geral</TabsTrigger>
-          <TabsTrigger value="aprovacoes" className="gap-2">
-            Aprovações Pendentes
-            {pendentes && pendentes.length > 0 && (
-              <Badge variant="destructive" className="h-5 min-w-5 px-1.5">{pendentes.length}</Badge>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="colaboradores">Colaboradores</TabsTrigger>
-        </TabsList>
+        <div className="w-full overflow-x-auto pb-1">
+          <TabsList className="w-auto min-w-full sm:min-w-0">
+            <TabsTrigger value="dashboard">Visão Geral</TabsTrigger>
+            <TabsTrigger value="aprovacoes" className="gap-2">
+              Aprovações Pendentes
+              {pendentes && pendentes.length > 0 && (
+                <Badge variant="destructive" className="h-5 min-w-5 px-1.5">{pendentes.length}</Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="colaboradores">Colaboradores</TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="dashboard">
           <FeriasDashboard

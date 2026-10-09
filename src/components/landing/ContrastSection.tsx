@@ -4,10 +4,9 @@ import { Reveal } from "@/components/landing/Reveal";
 import { Eyebrow } from "@/components/landing/premium";
 
 const OLD_WAY = [
-  "Planilhas soltas e PDFs estáticos esquecidos após a auditoria.",
-  "Descrições de cargos teóricas baseadas no que o RH acha que é feito.",
-  "Sem participação do trabalhador gerando riscos em fiscalizações.",
+  "Planilhas soltas e PDFs estáticos esquecidos na gaveta após a auditoria.",
   "Ações sem acompanhamento de prazos, responsáveis ou evidências.",
+  "Falta de visibilidade clara, objetiva e contínua para a gestão.",
 ];
 
 const NEW_WAY = [
@@ -16,16 +15,12 @@ const NEW_WAY = [
     text: "Leitura automática de laudos e conversão em Kanban vivo.",
   },
   {
-    title: "Mapeamento do Trabalho Real",
-    text: "O colaborador descreve a rotina real e aponta gargalos.",
+    title: "Gestão Ativa de Ações",
+    text: "Quadros visuais (5W2H) com prazos, responsáveis e acompanhamento em tempo real.",
   },
   {
-    title: "Gestão Ativa do Plano de Ação",
-    text: "Quadros visuais (5W2H) com acompanhamento em tempo real.",
-  },
-  {
-    title: "Validação Contínua",
-    text: "Pulsos do Cuidar+ medem se a ação reduziu o estresse.",
+    title: "Visibilidade e Acompanhamento Contínuo",
+    text: "Visão clara e objetiva da evolução do ambiente de trabalho para a tomada de decisão.",
   },
 ];
 

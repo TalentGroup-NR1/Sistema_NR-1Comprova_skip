@@ -18,8 +18,9 @@ export default function Treinamentos() {
     <MainLayout>
       <div className="space-y-6">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full max-w-2xl" style={{ gridTemplateColumns: isAdmin ? "repeat(4, 1fr)" : "1fr" }}>
-            <TabsTrigger value="catalogo" className="flex items-center gap-2">
+          <div className="w-full overflow-x-auto pb-1">
+            <TabsList className="w-auto min-w-full sm:min-w-0">
+              <TabsTrigger value="catalogo" className="flex items-center gap-2">
               <Library className="h-4 w-4" />
               Catálogo
             </TabsTrigger>
@@ -40,6 +41,7 @@ export default function Treinamentos() {
               </>
             )}
           </TabsList>
+        </div>
 
           <TabsContent value="catalogo" className="mt-6">
             <TreinamentosCatalogo />

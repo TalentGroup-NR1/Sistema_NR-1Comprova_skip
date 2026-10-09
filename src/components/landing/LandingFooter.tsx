@@ -1,39 +1,15 @@
 import { Link } from "react-router-dom";
-import { Linkedin, Instagram, ShieldCheck, Activity, Lock } from "lucide-react";
+import { Linkedin, Instagram } from "lucide-react";
 import {
-  LANDING_CNPJ,
   LANDING_INSTAGRAM,
   LANDING_LINKEDIN,
   LANDING_SUPPORT_EMAIL,
 } from "@/lib/landing";
 
-const SEALS = [
-  { icon: ShieldCheck, title: "Conforme NR-01", sub: "MTE" },
-  { icon: Activity, title: "Adequado à NR-17", sub: "Ergonomia" },
-  { icon: Lock, title: "Proteção de Dados", sub: "LGPD" },
-];
-
 export function LandingFooter() {
   return (
     <footer className="lp-dark relative border-t border-white/10 font-brand">
       <div className="mx-auto max-w-7xl px-5 py-14">
-        <div className="mb-12 grid gap-3 sm:grid-cols-3">
-          {SEALS.map((s) => (
-            <div
-              key={s.title}
-              className="lp-glass flex items-center gap-4 rounded-2xl px-5 py-4 transition-colors hover:border-[#00E676]/30"
-            >
-              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-[#00E676]/20 to-[#00E5FF]/20 text-[#00E676] ring-1 ring-[#00E676]/30">
-                <s.icon className="h-5 w-5" />
-              </span>
-              <span className="leading-tight">
-                <span className="block text-sm font-bold text-white">{s.title}</span>
-                <span className="block text-xs text-white/50">{s.sub}</span>
-              </span>
-            </div>
-          ))}
-        </div>
-
         <div className="flex flex-col gap-10 md:flex-row md:items-start md:justify-between">
           <div>
             <div className="flex items-center gap-3">
@@ -97,7 +73,7 @@ export function LandingFooter() {
         </div>
 
         <p className="mt-10 border-t border-white/10 pt-6 text-xs text-white/50">
-          © 2026 NR-1Comprova Consultoria de R&amp;S Ltda. CNPJ: {LANDING_CNPJ}
+          © 2026 NR-1Comprova Consultoria de R&amp;S Ltda. Todos os direitos reservados.
         </p>
       </div>
     </footer>

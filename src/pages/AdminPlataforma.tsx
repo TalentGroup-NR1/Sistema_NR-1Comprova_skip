@@ -36,18 +36,20 @@ const AdminPlataforma = () => {
           onValueChange={(v) => setSearchParams(v === 'empresas' ? {} : { tab: v })}
           className="space-y-6"
         >
-          <TabsList>
-            <TabsTrigger value="empresas">Empresas</TabsTrigger>
-            <TabsTrigger value="solicitacoes" className="gap-2">
-              Solicitações
-              {novas > 0 && (
-                <Badge variant="destructive" className="h-5 px-1.5 text-[10px]">
-                  {novas}
-                </Badge>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="insights">Insights</TabsTrigger>
-          </TabsList>
+          <div className="w-full overflow-x-auto pb-1">
+            <TabsList className="w-auto min-w-full sm:min-w-0">
+              <TabsTrigger value="empresas">Empresas</TabsTrigger>
+              <TabsTrigger value="solicitacoes" className="gap-2">
+                Solicitações
+                {novas > 0 && (
+                  <Badge variant="destructive" className="h-5 px-1.5 text-[10px]">
+                    {novas}
+                  </Badge>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="insights">Insights</TabsTrigger>
+            </TabsList>
+          </div>
 
           <TabsContent value="empresas" className="space-y-6">
             <PlataformaMetricsCards />

@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Users, UserMinus, Calendar, FileText, BarChart3, Settings, Bell, ChevronLeft, ChevronRight, ChevronDown, Building2, ClipboardList, GraduationCap, Heart, Shield, ShieldAlert, MessageSquare, Briefcase, TrendingUp, Megaphone, UserSearch, Clock, Plane, ListChecks, ShieldCheck, LogOut, Palette, User, Network, Server } from "lucide-react";
+import { LayoutDashboard, Users, UserMinus, Calendar, FileText, Settings, Bell, ChevronLeft, ChevronRight, ChevronDown, Building2, ClipboardList, GraduationCap, Heart, Shield, ShieldAlert, MessageSquare, Briefcase, TrendingUp, Megaphone, UserSearch, Clock, Plane, ListChecks, ShieldCheck, LogOut, Palette, User, Network, Server } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -57,7 +57,7 @@ const desenvolvimentoItems: NavItem[] = [
   // [HIDDEN-FOR-PRESENTATION] Revert: remove comment from the line below to restore
   // { icon: UserSearch, label: "Análise de Perfil", href: "/analise-perfil", roles: ['admin_master', 'admin_empresa', 'analista_rh'] },
   { icon: FileText, label: "Diário de Bordo", href: "/diario-bordo" },
-  { icon: ClipboardList, label: "Avaliação", href: "/avaliacoes" },
+  { icon: ClipboardList, label: "Avaliação de Desempenho", href: "/avaliacoes" },
   { icon: MessageSquare, label: "Feedback", href: "/feedback-gestao", roles: ['admin_master', 'admin_empresa', 'analista_rh', 'gestor_departamento'] },
   { icon: GraduationCap, label: "Treinamento", href: "/treinamentos" },
   { icon: Heart, label: "Cuidar+", href: "/cuidar-mais" },
@@ -68,7 +68,6 @@ const desenvolvimentoItems: NavItem[] = [
 const configuracoesItems: NavItem[] = [
   { icon: Settings, label: "Configurações da Empresa", href: "/configuracoes-empresa", roles: ['admin_empresa'] },
   { icon: Building2, label: "Cadastro de Empresa", href: "/empresas", roles: ['admin_master'] },
-  { icon: BarChart3, label: "Relatórios", href: "/relatorios", roles: ['admin_master', 'admin_empresa'] },
   { icon: FileText, label: "Relatórios Executivos", href: "/relatorios-executivos", roles: ['admin_master', 'admin_empresa', 'analista_rh'] },
   { icon: Shield, label: "Gerenciar Usuários", href: "/acessos", roles: ['admin_master', 'admin_empresa'] },
   { icon: ShieldCheck, label: "Fale Conosco", href: "/denuncias", roles: ['admin_master', 'admin_empresa', 'analista_rh'] },

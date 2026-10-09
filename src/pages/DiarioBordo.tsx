@@ -58,8 +58,9 @@ export default function DiarioBordo() {
       <div className="space-y-6">
         <Tabs defaultValue={defaultTab} className="w-full">
           {!isColaborador && (
-            <div className="flex flex-wrap items-center gap-3 justify-between">
-              <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 lg:w-auto lg:inline-grid">
+            <div className="flex flex-wrap items-center gap-3 justify-between pb-1">
+              <div className="overflow-x-auto">
+                <TabsList className="w-auto">
                 {isAdmin && (
                   <TabsTrigger value="dashboard" className="flex items-center gap-2">
                     <LayoutDashboard className="h-4 w-4" />
@@ -85,6 +86,7 @@ export default function DiarioBordo() {
                   </TabsTrigger>
                 )}
               </TabsList>
+            </div>
 
               {(isAdmin || isGestor) && (
                 <Tabs value={statusFilter} onValueChange={(v) => setStatusFilter(v as 'ATIVO' | 'DESLIGADO')}>

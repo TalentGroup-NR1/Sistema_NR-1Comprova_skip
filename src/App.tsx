@@ -40,7 +40,6 @@ import AlterarSenha from "./pages/AlterarSenha";
 import Treinamentos from "./pages/Treinamentos";
 import TreinamentoView from "./pages/TreinamentoView";
 import Demissoes from "./pages/Demissoes";
-import Relatorios from "./pages/Relatorios";
 import ValidarCertificado from "./pages/ValidarCertificado";
 import Beneficios from "./pages/Beneficios";
 import Notificacoes from "./pages/Notificacoes";
@@ -169,7 +168,7 @@ const App = () => (
               <Route path="/beneficios" element={<ProtectedRoute><Beneficios /></ProtectedRoute>} />
               <Route path="/relatorios" element={
                 <ProtectedRoute allowedRoles={['admin_master', 'admin_empresa', 'analista_rh']}>
-                  <Relatorios />
+                  <Navigate to="/relatorios-executivos" replace />
                 </ProtectedRoute>
               } />
               <Route path="/validar-certificado" element={<ValidarCertificado />} />
