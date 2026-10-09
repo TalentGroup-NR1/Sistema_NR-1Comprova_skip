@@ -212,31 +212,34 @@ export function ConfiguracaoTab({ companyId, podeEditar, podeExcluir }: Props) {
         emptyText="Cadastre o primeiro cargo"
       />
 
-      <EntidadeTabela<Ghe>
-        titulo="Grupos (GHE)"
-        descricao="Grupos Homogêneos de Exposição, base para o Mapa de Riscos NR-1."
-        icone={<Users className="h-5 w-5 text-primary" />}
-        itens={ghes.data ?? []}
-        isLoading={ghes.isLoading}
-        colunas={[
-          { header: 'Código', render: (r) => r.codigo ?? '—' },
-          { header: 'Nome do Grupo', render: (r) => <span className="font-medium">{r.nome}</span> },
-          {
-            header: 'Descrição',
-            render: (r) => (
-              <span className="line-clamp-1 text-muted-foreground">{r.descricao ?? '—'}</span>
-            ),
-          },
-        ]}
-        buscaEm={(r) => `${r.codigo ?? ''} ${r.nome} ${r.descricao ?? ''}`}
-        podeEditar={podeEditar}
-        podeExcluir={podeExcluir}
-        onNovo={() => setDialog({ tabela: 'ghes', row: null })}
-        onEditar={(r) => setDialog({ tabela: 'ghes', row: r as unknown as Row })}
-        onExcluir={(r) => mutGhe.excluir.mutate(r.id)}
-        labelNovo="Novo Grupo"
-        emptyText="Cadastre o primeiro grupo (GHE)"
-      />
+      {/* Flag de controle de exibição do card Grupos (GHE) — Paralisado temporariamente pelo Gestor. Para reexibir, altere para true */}
+      {false /* SHOW_GHES_CARD */ && (
+        <EntidadeTabela<Ghe>
+          titulo="Grupos (GHE)"
+          descricao="Grupos Homogêneos de Exposição, base para o Mapa de Riscos NR-1."
+          icone={<Users className="h-5 w-5 text-primary" />}
+          itens={ghes.data ?? []}
+          isLoading={ghes.isLoading}
+          colunas={[
+            { header: 'Código', render: (r) => r.codigo ?? '—' },
+            { header: 'Nome do Grupo', render: (r) => <span className="font-medium">{r.nome}</span> },
+            {
+              header: 'Descrição',
+              render: (r) => (
+                <span className="line-clamp-1 text-muted-foreground">{r.descricao ?? '—'}</span>
+              ),
+            },
+          ]}
+          buscaEm={(r) => `${r.codigo ?? ''} ${r.nome} ${r.descricao ?? ''}`}
+          podeEditar={podeEditar}
+          podeExcluir={podeExcluir}
+          onNovo={() => setDialog({ tabela: 'ghes', row: null })}
+          onEditar={(r) => setDialog({ tabela: 'ghes', row: r as unknown as Row })}
+          onExcluir={(r) => mutGhe.excluir.mutate(r.id)}
+          labelNovo="Novo Grupo"
+          emptyText="Cadastre o primeiro grupo (GHE)"
+        />
+      )}
 
       <EntidadeTabela<NivelMaturidade>
         titulo="Níveis / Maturidade"

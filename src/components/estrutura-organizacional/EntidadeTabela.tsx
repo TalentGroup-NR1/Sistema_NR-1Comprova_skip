@@ -122,9 +122,9 @@ export function EntidadeTabela<T extends { id: string; ativo: boolean }>({
           </div>
         ) : (
           <>
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
+            <div className="max-h-[380px] overflow-y-auto overflow-x-auto rounded-xl border border-border scrollbar-thin">
+              <Table className="border-0 rounded-none">
+                <TableHeader className="sticky top-0 z-10 bg-card/95 backdrop-blur-sm shadow-sm border-b border-border">
                   <TableRow>
                     {colunas.map((c) => (
                       <TableHead key={c.header} className={c.className}>
