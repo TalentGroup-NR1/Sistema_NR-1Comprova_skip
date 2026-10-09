@@ -79,7 +79,6 @@ export function useUserStats() {
     total: users?.length || 0,
     active: users?.filter(u => u.is_active).length || 0,
     inactive: users?.filter(u => !u.is_active).length || 0,
-    roles: 5,
   };
 
   return stats;
