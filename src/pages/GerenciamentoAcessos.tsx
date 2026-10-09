@@ -9,7 +9,6 @@ import {
   Shield, 
   Search,
   Users,
-  Key,
   UserCheck,
   UserX,
   Plus,
@@ -80,7 +79,7 @@ export default function GerenciamentoAcessos() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           <Card className="shadow-card">
             <CardContent className="p-4 flex items-center gap-3">
               <div className="p-2 rounded-lg bg-primary/10">
@@ -111,17 +110,6 @@ export default function GerenciamentoAcessos() {
               <div>
                 <p className="text-2xl font-bold text-foreground">{stats.inactive}</p>
                 <p className="text-xs text-muted-foreground">Inativos</p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="shadow-card">
-            <CardContent className="p-4 flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-info/10">
-                <Key className="h-5 w-5 text-info" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-foreground">{stats.roles}</p>
-                <p className="text-xs text-muted-foreground">Perfis</p>
               </div>
             </CardContent>
           </Card>
@@ -181,16 +169,6 @@ export default function GerenciamentoAcessos() {
           </TabsContent>
 
           <TabsContent value="pendentes" className="mt-6 space-y-4">
-            {/* Info card */}
-            <Card className="shadow-card border-warning/30 bg-warning/5">
-              <CardContent className="p-4">
-                <p className="text-sm text-muted-foreground">
-                  <strong>Colaboradores pendentes:</strong> São colaboradores cadastrados no sistema que ainda não possuem acesso (usuário/senha). 
-                  Ao finalizar o cadastro, você definirá uma senha inicial e o colaborador será obrigado a alterá-la no primeiro login.
-                </p>
-              </CardContent>
-            </Card>
-
             {/* Search */}
             <div className="relative max-w-md">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
