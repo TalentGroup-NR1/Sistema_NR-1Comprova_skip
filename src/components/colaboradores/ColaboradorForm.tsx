@@ -220,9 +220,9 @@ export function ColaboradorForm({
   const validateCurrentTab = async (): Promise<boolean> => {
     const currentSchema = visibleTabs[safeCurrentTab].schema;
     if (!currentSchema) return true; // Promoções tab has no schema validation
-    
+
     const values = form.getValues();
-    
+
     try {
       await currentSchema.parseAsync(values);
       return true;
@@ -363,7 +363,7 @@ export function ColaboradorForm({
                     Voltar
                   </Button>
 
-              <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2">
                     {safeCurrentTab < visibleTabs.length - 1 && !['promocoes', 'transferencias', 'lgpd'].includes(visibleTabs[safeCurrentTab + 1]?.id ?? '') && (
                       <Button type="button" onClick={handleNext}>
                         Próximo
