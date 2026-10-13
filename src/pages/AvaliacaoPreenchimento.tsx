@@ -15,6 +15,8 @@ import {
   CompetenciaFormData,
   ObjetivoFormData
 } from "@/hooks/useAvaliacoesAplicadas";
+import { FormularioIndisponivelScreen } from "@/components/auth/FormularioIndisponivelScreen";
+import { verificarModuloTokenAtivo, isErroModuloDesativado } from "@/lib/validarModuloToken";
 
 interface RespostaState {
   competencias: Record<string, { nota: string; comentario: string }>;
@@ -38,6 +40,18 @@ export default function AvaliacaoPreenchimento() {
     competencias: {},
     objetivos: {},
   });
+  const [moduloDesabilitado, setModuloDesabilitado] = useState(false);
+
+  // Validação de governança de módulo contratado
+  useEffect(() => {
+    if (!token) return;
+    verificarModuloTokenAtivo('/avaliacoes', {
+      token,
+      tabelaOrigem: 'avaliacao',
+    }).then((ativo) => {
+      if (!ativo) setModuloDesabilitado(true);
+    });
+  }, [token]);
 
   // Carregar respostas existentes (rascunho)
   useEffect(() => {
@@ -131,6 +145,10 @@ export default function AvaliacaoPreenchimento() {
         </div>
       </div>
     );
+  }
+
+  if (moduloDesabilitado || isErroModuloDesativado(submitMutation.error)) {
+    return <FormularioIndisponivelScreen moduloNome="Avaliação de Desempenho" />;
   }
 
   if (error || !avaliacao) {

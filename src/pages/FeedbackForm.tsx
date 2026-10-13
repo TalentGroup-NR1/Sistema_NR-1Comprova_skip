@@ -8,9 +8,10 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Slider } from '@/components/ui/slider';
 import { Skeleton } from '@/components/ui/skeleton';
-import { CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { FormularioIndisponivelScreen } from '@/components/auth/FormularioIndisponivelScreen';
+import { verificarModuloTokenAtivo, isErroModuloDesativado } from '@/lib/validarModuloToken';
 
 interface Question {
   id: string;
@@ -34,7 +35,7 @@ interface FeedbackFormData {
 }
 
 export default function FeedbackForm() {
-  const { token } = useParams<{ token: string }>();
+  const { token, slug } = useParams<{ token: string; slug?: string }>();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -43,6 +44,7 @@ export default function FeedbackForm() {
   const [formData, setFormData] = useState<FeedbackFormData | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [answers, setAnswers] = useState<Record<string, { numeric?: number; text?: string }>>({});
+  const [moduloDesabilitado, setModuloDesabilitado] = useState(false);
 
   useEffect(() => {
     if (token) loadFormData();
@@ -50,6 +52,19 @@ export default function FeedbackForm() {
 
   const loadFormData = async () => {
     try {
+      // Validação de governança de módulo contratado
+      const moduloAtivo = await verificarModuloTokenAtivo('/feedback-gestao', {
+        token,
+        slug,
+        tabelaOrigem: 'feedback',
+      });
+
+      if (!moduloAtivo) {
+        setModuloDesabilitado(true);
+        setLoading(false);
+        return;
+      }
+
       const { data, error } = await supabase.rpc('get_feedback_cycle_by_token', { p_token: token });
       if (error) throw error;
       if (!data || data.length === 0) {
@@ -102,6 +117,10 @@ export default function FeedbackForm() {
       setSubmitted(true);
       toast.success('Feedback enviado com sucesso!');
     } catch (err: any) {
+      if (isErroModuloDesativado(err)) {
+        setModuloDesabilitado(true);
+        return;
+      }
       toast.error(err.message || 'Erro ao enviar feedback');
     } finally {
       setSubmitting(false);
@@ -129,6 +148,10 @@ export default function FeedbackForm() {
         </Card>
       </div>
     );
+  }
+
+  if (moduloDesabilitado) {
+    return <FormularioIndisponivelScreen moduloNome="Feedback Contínuo & 1:1" />;
   }
 
   if (error) {

@@ -11,6 +11,8 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { FormularioIndisponivelScreen } from "@/components/auth/FormularioIndisponivelScreen";
+import { verificarModuloTokenAtivo, isErroModuloDesativado } from "@/lib/validarModuloToken";
 
 interface Pergunta {
   id: string;
@@ -56,11 +58,24 @@ export default function CuidarMaisForm() {
   const [desejaContato, setDesejaContato] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
+  const [moduloDesabilitado, setModuloDesabilitado] = useState(false);
 
   useEffect(() => {
     const fetchQuestionario = async () => {
       if (!token) {
         setError("Link inválido");
+        setIsLoading(false);
+        return;
+      }
+
+      // Validação de governança de módulo contratado
+      const moduloAtivo = await verificarModuloTokenAtivo('/cuidar-mais', {
+        token,
+        tabelaOrigem: 'cuidar_mais',
+      });
+
+      if (!moduloAtivo) {
+        setModuloDesabilitado(true);
         setIsLoading(false);
         return;
       }
@@ -144,6 +159,10 @@ export default function CuidarMaisForm() {
       toast.success("Respostas enviadas com sucesso!");
     } catch (err: unknown) {
       console.error("Erro ao enviar respostas:", err);
+      if (isErroModuloDesativado(err)) {
+        setModuloDesabilitado(true);
+        return;
+      }
       const errorMessage = err instanceof Error ? err.message : "Erro desconhecido";
       toast.error("Erro ao enviar respostas: " + errorMessage);
     } finally {
@@ -160,6 +179,10 @@ export default function CuidarMaisForm() {
         </div>
       </div>
     );
+  }
+
+  if (moduloDesabilitado) {
+    return <FormularioIndisponivelScreen moduloNome="Cuidar+ (Saúde Mental & Clima)" />;
   }
 
   if (error) {

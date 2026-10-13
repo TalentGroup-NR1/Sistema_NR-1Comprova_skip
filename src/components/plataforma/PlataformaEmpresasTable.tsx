@@ -7,7 +7,8 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { usePlataformaEmpresas, useToggleEmpresaStatus } from '@/hooks/usePlataforma';
-import { Search } from 'lucide-react';
+import { Search, Boxes } from 'lucide-react';
+import { GerenciarModulosEmpresaDialog } from './GerenciarModulosEmpresaDialog';
 
 const PAGE_SIZE = 20;
 
@@ -18,6 +19,7 @@ export function PlataformaEmpresasTable() {
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('todos');
   const [page, setPage] = useState(1);
+  const [empresaModulos, setEmpresaModulos] = useState<{ id: string; name: string; brand_name?: string | null } | null>(null);
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -117,15 +119,32 @@ export function PlataformaEmpresasTable() {
                     {new Date(e.created_at).toLocaleDateString('pt-BR')}
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button
-                      size="sm"
-                      variant={e.status === 'active' ? 'outline' : 'default'}
-                      disabled={e.is_internal || toggleStatus.isPending}
-                      title={e.is_internal ? 'Empresas internas não podem ser suspensas' : undefined}
-                      onClick={() => handleToggle(e.id, e.status !== 'active')}
-                    >
-                      {e.status === 'active' ? 'Suspender' : 'Ativar'}
-                    </Button>
+                    <div className="flex items-center justify-end gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() =>
+                          setEmpresaModulos({
+                            id: e.id,
+                            name: e.name,
+                            brand_name: e.brand_name,
+                          })
+                        }
+                        title="Gerenciar módulos contratados pela empresa"
+                      >
+                        <Boxes className="h-3.5 w-3.5 mr-1 text-muted-foreground" />
+                        Módulos
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant={e.status === 'active' ? 'outline' : 'default'}
+                        disabled={e.is_internal || toggleStatus.isPending}
+                        title={e.is_internal ? 'Empresas internas não podem ser suspensas' : undefined}
+                        onClick={() => handleToggle(e.id, e.status !== 'active')}
+                      >
+                        {e.status === 'active' ? 'Suspender' : 'Ativar'}
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
@@ -147,6 +166,12 @@ export function PlataformaEmpresasTable() {
           </div>
         )}
       </CardContent>
+
+      <GerenciarModulosEmpresaDialog
+        open={!!empresaModulos}
+        onOpenChange={(open) => !open && setEmpresaModulos(null)}
+        empresa={empresaModulos}
+      />
     </Card>
   );
 }

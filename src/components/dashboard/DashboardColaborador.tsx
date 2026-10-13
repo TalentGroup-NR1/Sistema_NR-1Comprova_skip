@@ -8,6 +8,7 @@ import { MinhasAvaliacoesPendentes } from "@/components/dashboard/MinhasAvaliaco
 import { BeneficiosDestaque } from "@/components/beneficios/catalogo";
 import { useAniversariantesGlobais } from "@/hooks/useAniversariantesGlobais";
 import { useMyColaborador } from "@/hooks/useMyFeedbackCycles";
+import { useIsModuleVisible } from "@/hooks/useVisibleModules";
 import { PartyPopper, ArrowRight, Coffee, Leaf, Megaphone } from "lucide-react";
 
 import { BirthdayGreetingModal } from "@/components/dashboard/BirthdayGreetingModal";
@@ -256,6 +257,13 @@ export function DashboardColaborador() {
     setGreetingOpen(open);
   };
 
+  const { isVisible: verBeneficios } = useIsModuleVisible('/beneficios');
+  const { isVisible: verFerias } = useIsModuleVisible('/ferias');
+  const { isVisible: verCuidar } = useIsModuleVisible('/cuidar-mais');
+  const { isVisible: verAvaliacoes } = useIsModuleVisible('/avaliacoes');
+  const { isVisible: verDiario } = useIsModuleVisible('/diario-bordo');
+  const { isVisible: verComunicados } = useIsModuleVisible('/comunicados');
+
   return (
     <div className="w-full space-y-6 animate-in fade-in duration-300">
       <BirthdayGreetingModal
@@ -270,7 +278,6 @@ export function DashboardColaborador() {
         eventDate={greetingState.eventDate}
       />
 
-
       {/* Saudação humanizada */}
       <GreetingHeader />
 
@@ -278,33 +285,40 @@ export function DashboardColaborador() {
       <AniversarioEmpresaBanner />
 
       {/* Benefícios em destaque */}
-      <BeneficiosDestaque />
+      {verBeneficios && <BeneficiosDestaque />}
 
-      {/* Área nobre: Meu Ponto (esq) + Campanhas Ativas (dir) — 50/50 */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
-        <ProximasFeriasCard />
-        <CampanhasSection />
-      </div>
+      {/* Área nobre: Férias / Campanhas Ativas Cuidar+ */}
+      {(verFerias || verCuidar) && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
+          {verFerias && <ProximasFeriasCard />}
+          {verCuidar && <CampanhasSection />}
+        </div>
+      )}
 
       {/* Seção de Comunicados Oficiais — largura total */}
-      <UltimoComunicadoCard />
+      {verComunicados && <UltimoComunicadoCard />}
 
-      {/* Linha de apoio: Férias · Pendências · Cuidar+ */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
-        {/* {podeAcessarPonto?.podeAcessar && <ProximasFeriasCard />} - Ocultado temporariamente pois o Ponto Eletrônico foi removido e as férias subiram para a área nobre */}
+      {/* Linha de apoio: Pendências · Cuidar+ */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch">
         <MinhasPendenciasCard />
-        <CuidarMaisQuickCard />
+        {verCuidar && <CuidarMaisQuickCard />}
       </div>
 
-      {/* Conteúdos secundários — mantidos */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
-        <div className="h-full [&>*]:h-full">
-          <MinhasAvaliacoesPendentes />
+      {/* Conteúdos secundários: Avaliações e Diário de Bordo */}
+      {(verAvaliacoes || verDiario) && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
+          {verAvaliacoes && (
+            <div className="h-full [&>*]:h-full">
+              <MinhasAvaliacoesPendentes />
+            </div>
+          )}
+          {verDiario && (
+            <div className="h-full [&>*]:h-full">
+              <MeusDiariosPendentes />
+            </div>
+          )}
         </div>
-        <div className="h-full [&>*]:h-full">
-          <MeusDiariosPendentes />
-        </div>
-      </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <BirthdaysList

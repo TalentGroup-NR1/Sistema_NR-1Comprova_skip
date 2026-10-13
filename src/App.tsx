@@ -86,46 +86,46 @@ const App = () => (
               <Route path="/" element={<HomeRoute />} />
               <Route path="/blog" element={<Blog />} />
               <Route path="/blog/:slug" element={<BlogPostPage />} />
-              <Route path="/colaboradores" element={<ProtectedRoute><Colaboradores /></ProtectedRoute>} />
-              <Route path="/diario-bordo" element={<ProtectedRoute><DiarioBordo /></ProtectedRoute>} />
-              <Route path="/cuidar-mais" element={<ProtectedRoute><CuidarMais /></ProtectedRoute>} />
-              <Route path="/mapa-riscos-nr1" element={<ProtectedRoute><MapaRiscosNR1 /></ProtectedRoute>} />
-              <Route path="/laudo/:aplicacaoId" element={<ProtectedRoute><LaudoAepPage /></ProtectedRoute>} />
+              <Route path="/colaboradores" element={<ProtectedRoute moduleKey="/colaboradores"><Colaboradores /></ProtectedRoute>} />
+              <Route path="/diario-bordo" element={<ProtectedRoute moduleKey="/diario-bordo"><DiarioBordo /></ProtectedRoute>} />
+              <Route path="/cuidar-mais" element={<ProtectedRoute moduleKey="/cuidar-mais"><CuidarMais /></ProtectedRoute>} />
+              <Route path="/mapa-riscos-nr1" element={<ProtectedRoute moduleKey="/mapa-riscos-nr1"><MapaRiscosNR1 /></ProtectedRoute>} />
+              <Route path="/laudo/:aplicacaoId" element={<ProtectedRoute moduleKey="/mapa-riscos-nr1"><LaudoAepPage /></ProtectedRoute>} />
               <Route path="/estrutura-organizacional" element={
-                <ProtectedRoute allowedRoles={['admin_master', 'admin_empresa', 'analista_rh', 'gestor_departamento']}>
+                <ProtectedRoute allowedRoles={['admin_master', 'admin_empresa', 'analista_rh', 'gestor_departamento']} moduleKey="/estrutura-organizacional">
                   <EstruturaOrganizacional />
                 </ProtectedRoute>
               } />
-              <Route path="/comunicados" element={<ProtectedRoute><Comunicados /></ProtectedRoute>} />
-              <Route path="/campanhas" element={<ProtectedRoute><Campanhas /></ProtectedRoute>} />
-              <Route path="/organograma" element={<ProtectedRoute><Organograma /></ProtectedRoute>} />
+              <Route path="/comunicados" element={<ProtectedRoute moduleKey="/comunicados"><Comunicados /></ProtectedRoute>} />
+              <Route path="/campanhas" element={<ProtectedRoute moduleKey="/cuidar-mais"><Campanhas /></ProtectedRoute>} />
+              <Route path="/organograma" element={<ProtectedRoute moduleKey="/estrutura-organizacional"><Organograma /></ProtectedRoute>} />
               <Route path="/ferias" element={
-                <ProtectedRoute allowedRoles={['admin_master', 'admin_empresa', 'analista_rh', 'gestor_departamento']}>
+                <ProtectedRoute allowedRoles={['admin_master', 'admin_empresa', 'analista_rh', 'gestor_departamento']} moduleKey="/ferias">
                   <Ferias />
                 </ProtectedRoute>
               } />
               <Route path="/minhas-ferias" element={
-                <ProtectedRoute>
+                <ProtectedRoute moduleKey="/ferias">
                   <MinhasFerias />
                 </ProtectedRoute>
               } />
               <Route path="/minhas-atividades" element={
-                <ProtectedRoute>
+                <ProtectedRoute moduleKey="/minhas-tarefas">
                   <MinhasAtividades />
                 </ProtectedRoute>
               } />
               <Route path="/minhas-tarefas" element={
-                <ProtectedRoute>
+                <ProtectedRoute moduleKey="/minhas-tarefas">
                   <MinhasTarefas />
                 </ProtectedRoute>
               } />
               <Route path="/demissoes" element={
-                <ProtectedRoute allowedRoles={['admin_master', 'admin_empresa', 'analista_rh']}>
+                <ProtectedRoute allowedRoles={['admin_master', 'admin_empresa', 'analista_rh']} moduleKey="/demissoes">
                   <Demissoes />
                 </ProtectedRoute>
               } />
               <Route path="/feedback-gestao" element={
-                <ProtectedRoute allowedRoles={['admin_master', 'admin_empresa', 'analista_rh', 'gestor_departamento']}>
+                <ProtectedRoute allowedRoles={['admin_master', 'admin_empresa', 'analista_rh', 'gestor_departamento']} moduleKey="/feedback-gestao">
                   <FeedbackGestao />
                 </ProtectedRoute>
               } />
@@ -145,7 +145,7 @@ const App = () => (
                 </ProtectedRoute>
               } />
               <Route path="/avaliacoes" element={
-                <ProtectedRoute allowedRoles={['admin_master', 'admin_empresa', 'analista_rh', 'gestor_departamento', 'colaborador']}>
+                <ProtectedRoute allowedRoles={['admin_master', 'admin_empresa', 'analista_rh', 'gestor_departamento', 'colaborador']} moduleKey="/avaliacoes">
                   <Avaliacoes />
                 </ProtectedRoute>
               } />
@@ -154,32 +154,32 @@ const App = () => (
               <Route path="/cuidar-mais-form/:token" element={<CuidarMaisForm />} />
               <Route path="/avaliacao/preencher/:token" element={<AvaliacaoPreenchimento />} />
               <Route path="/avaliacao/resultado/:avaliacaoId" element={
-                <ProtectedRoute allowedRoles={['admin_master', 'admin_empresa', 'analista_rh', 'gestor_departamento']}>
+                <ProtectedRoute allowedRoles={['admin_master', 'admin_empresa', 'analista_rh', 'gestor_departamento']} moduleKey="/avaliacoes">
                   <AvaliacaoResultado />
                 </ProtectedRoute>
               } />
               <Route path="/pdi/:pdiId" element={
-                <ProtectedRoute allowedRoles={['admin_master', 'admin_empresa', 'analista_rh', 'gestor_departamento', 'colaborador']}>
+                <ProtectedRoute allowedRoles={['admin_master', 'admin_empresa', 'analista_rh', 'gestor_departamento', 'colaborador']} moduleKey="/avaliacoes">
                   <PDIDetail />
                 </ProtectedRoute>
               } />
-              <Route path="/treinamentos" element={<ProtectedRoute><Treinamentos /></ProtectedRoute>} />
-              <Route path="/treinamento/:id" element={<ProtectedRoute><TreinamentoView /></ProtectedRoute>} />
-              <Route path="/beneficios" element={<ProtectedRoute><Beneficios /></ProtectedRoute>} />
+              <Route path="/treinamentos" element={<ProtectedRoute moduleKey="/treinamentos"><Treinamentos /></ProtectedRoute>} />
+              <Route path="/treinamento/:id" element={<ProtectedRoute moduleKey="/treinamentos"><TreinamentoView /></ProtectedRoute>} />
+              <Route path="/beneficios" element={<ProtectedRoute moduleKey="/beneficios"><Beneficios /></ProtectedRoute>} />
               <Route path="/relatorios" element={
-                <ProtectedRoute allowedRoles={['admin_master', 'admin_empresa', 'analista_rh']}>
+                <ProtectedRoute allowedRoles={['admin_master', 'admin_empresa', 'analista_rh']} moduleKey="/relatorios-executivos">
                   <Navigate to="/relatorios-executivos" replace />
                 </ProtectedRoute>
               } />
               <Route path="/validar-certificado" element={<ValidarCertificado />} />
               <Route path="/notificacoes" element={<ProtectedRoute><Notificacoes /></ProtectedRoute>} />
               <Route path="/ficha-profissional/:colaboradorId" element={
-                <ProtectedRoute allowedRoles={['admin_master', 'admin_empresa', 'analista_rh', 'gestor_departamento']}>
+                <ProtectedRoute allowedRoles={['admin_master', 'admin_empresa', 'analista_rh', 'gestor_departamento']} moduleKey="/colaboradores">
                   <FichaProfissional />
                 </ProtectedRoute>
               } />
               <Route path="/relatorios-executivos" element={
-                <ProtectedRoute allowedRoles={['admin_master', 'admin_empresa', 'analista_rh']}>
+                <ProtectedRoute allowedRoles={['admin_master', 'admin_empresa', 'analista_rh']} moduleKey="/relatorios-executivos">
                   <RelatoriosExecutivos />
                 </ProtectedRoute>
               } />
@@ -190,12 +190,12 @@ const App = () => (
               } />
               <Route path="/ponto-eletronico" element={<Navigate to="/" replace />} />
               <Route path="/denuncias" element={
-                <ProtectedRoute allowedRoles={['admin_master', 'admin_empresa', 'analista_rh']}>
+                <ProtectedRoute allowedRoles={['admin_master', 'admin_empresa', 'analista_rh']} moduleKey="/denuncias">
                   <Denuncias />
                 </ProtectedRoute>
               } />
               <Route path="/comportamentos-ofensivos" element={
-                <ProtectedRoute allowedRoles={['admin_master', 'admin_empresa', 'analista_rh']}>
+                <ProtectedRoute allowedRoles={['admin_master', 'admin_empresa', 'analista_rh']} moduleKey="/denuncias">
                   <ComportamentosOfensivos />
                 </ProtectedRoute>
               } />

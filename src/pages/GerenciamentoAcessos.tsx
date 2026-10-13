@@ -20,7 +20,6 @@ import { useColaboradoresPendentes } from "@/hooks/useColaboradoresPendentes";
 import { UserTable } from "@/components/users/UserTable";
 import { UserForm } from "@/components/users/UserForm";
 import { PendingColaboradoresTable } from "@/components/users/PendingColaboradoresTable";
-import { RolePermissionsTab } from "@/components/users/RolePermissionsTab";
 
 export default function GerenciamentoAcessos() {
   const { isAdminMaster, isAdminEmpresa } = useAuth();
@@ -143,10 +142,6 @@ export default function GerenciamentoAcessos() {
                   </Badge>
                 )}
               </TabsTrigger>
-              <TabsTrigger value="perfis" className="flex items-center gap-2">
-                <Shield className="h-4 w-4" />
-                <span>Perfis e Visibilidade</span>
-              </TabsTrigger>
             </TabsList>
           </div>
 
@@ -184,10 +179,6 @@ export default function GerenciamentoAcessos() {
             <Card className="shadow-card">
               <PendingColaboradoresTable searchTerm={searchTerm} />
             </Card>
-          </TabsContent>
-
-          <TabsContent value="perfis" className="mt-6">
-            <RolePermissionsTab />
           </TabsContent>
         </Tabs>
 

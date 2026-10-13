@@ -27,7 +27,7 @@ import { useDenunciasMonitor } from "@/hooks/useDenuncias";
 import { useToast } from "@/hooks/use-toast";
 import { useMyPulseStatus } from "@/hooks/usePulseSurvey";
 import { useBranding } from "@/hooks/useBranding";
-import { useVisibleModules } from "@/hooks/useVisibleModules";
+import { useVisibleModules, useIsModuleVisible } from "@/hooks/useVisibleModules";
 
 
 interface NavItem {
@@ -122,6 +122,7 @@ export function Sidebar() {
   const isFriday = new Date().getDay() === 5;
   const { data: pulseStatus } = useMyPulseStatus();
   const { data: visibleModules } = useVisibleModules();
+  const { isVisible: isDenunciasVisible } = useIsModuleVisible('/denuncias');
 
   const handleSignOut = async () => {
     const { error } = await signOut();
@@ -371,24 +372,26 @@ export function Sidebar() {
       </div>
 
       {/* Fale Conosco (logo abaixo de Notificações) */}
-      <div className="px-3 pb-3">
-        <Tooltip delayDuration={0}>
-          <TooltipTrigger asChild>
-            <button
-              onClick={() => setDenunciasOpen(true)}
-              className="flex items-center gap-3 px-3 py-2 rounded-md transition-all duration-200 group relative w-full text-sidebar-foreground hover:bg-[hsl(var(--sidebar-hover))] text-[14px] font-medium"
-            >
-              <ShieldCheck className="h-[18px] w-[18px] flex-shrink-0 text-[hsl(var(--sidebar-icon))] group-hover:text-sidebar-foreground" />
-              {!collapsed && <span>Fale Conosco</span>}
-            </button>
-          </TooltipTrigger>
-          {collapsed && (
-            <TooltipContent side="right" className="font-medium bg-popover text-popover-foreground border border-border shadow-md">
-              Fale Conosco
-            </TooltipContent>
-          )}
-        </Tooltip>
-      </div>
+      {isDenunciasVisible && (
+        <div className="px-3 pb-3">
+          <Tooltip delayDuration={0}>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => setDenunciasOpen(true)}
+                className="flex items-center gap-3 px-3 py-2 rounded-md transition-all duration-200 group relative w-full text-sidebar-foreground hover:bg-[hsl(var(--sidebar-hover))] text-[14px] font-medium"
+              >
+                <ShieldCheck className="h-[18px] w-[18px] flex-shrink-0 text-[hsl(var(--sidebar-icon))] group-hover:text-sidebar-foreground" />
+                {!collapsed && <span>Fale Conosco</span>}
+              </button>
+            </TooltipTrigger>
+            {collapsed && (
+              <TooltipContent side="right" className="font-medium bg-popover text-popover-foreground border border-border shadow-md">
+                Fale Conosco
+              </TooltipContent>
+            )}
+          </Tooltip>
+        </div>
+      )}
 
       {/* User menu (fixo no rodapé da sidebar) */}
       <div className="p-3 border-t border-sidebar-border">

@@ -10,6 +10,7 @@ import { PromocoesRecentesCard } from "@/components/dashboard/PromocoesRecentesC
 import { FuncionariosPorEmpresaCard } from "@/components/dashboard/FuncionariosPorEmpresaCard";
 import { useDashboardMetrics } from "@/hooks/useDashboardMetrics";
 import { useAniversariantesGlobais } from "@/hooks/useAniversariantesGlobais";
+import { useIsModuleVisible } from "@/hooks/useVisibleModules";
 import { Users, UserPlus, UserMinus } from "lucide-react";
 
 const MES_NOMES = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
@@ -54,9 +55,12 @@ export function DashboardAdmin() {
     : `+${contratadosMes} admissões / −${demitidosMes} desligamentos no mês`;
 
 
+  const { isVisible: verDiario } = useIsModuleVisible('/diario-bordo');
+  const { isVisible: verColaboradores } = useIsModuleVisible('/colaboradores');
+
   return (
     <>
-      <DiariosBordoHojeAlert />
+      {verDiario && <DiariosBordoHojeAlert />}
       <AniversariosHojeAlert
         aniversariantes={aniversariantes}
         aniversariosEmpresa={aniversariosEmpresa}
@@ -103,16 +107,20 @@ export function DashboardAdmin() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column - 2/3 */}
         <div className="lg:col-span-2 space-y-6">
-          <RecentEmployees 
-            colaboradores={recentes} 
-            isLoading={isLoading} 
-            delay={400}
-          />
-          <DiarioBordoReminders 
-            cycles={diarioBordoReminders} 
-            isLoading={isLoading}
-            delay={500}
-          />
+          {verColaboradores && (
+            <RecentEmployees 
+              colaboradores={recentes} 
+              isLoading={isLoading} 
+              delay={400}
+            />
+          )}
+          {verDiario && (
+            <DiarioBordoReminders 
+              cycles={diarioBordoReminders} 
+              isLoading={isLoading}
+              delay={500}
+            />
+          )}
         </div>
 
         {/* Right Column - 1/3 */}

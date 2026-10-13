@@ -2,6 +2,8 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth, AppRole } from '@/hooks/useAuth';
 import { Loader2 } from 'lucide-react';
 import { BlockedUserScreen } from './BlockedUserScreen';
+import { ModuleNotContractedScreen } from './ModuleNotContractedScreen';
+import { useIsModuleVisible } from '@/hooks/useVisibleModules';
 import { isPublicRoute } from '@/lib/publicRoutes';
 import { useRef, useEffect, useState } from 'react';
 
@@ -10,13 +12,23 @@ interface ProtectedRouteProps {
   requireAdmin?: boolean;
   requireSuperAdmin?: boolean;
   allowedRoles?: AppRole[];
+  /** Chave do módulo canônico ou sub-rota para guarda comercial (ex: '/avaliacoes') */
+  moduleKey?: string;
   /** Para onde enviar visitantes não autenticados (padrão: /auth) */
   unauthenticatedRedirect?: string;
 }
 
-export function ProtectedRoute({ children, requireAdmin = false, requireSuperAdmin = false, allowedRoles, unauthenticatedRedirect }: ProtectedRouteProps) {
+export function ProtectedRoute({ 
+  children, 
+  requireAdmin = false, 
+  requireSuperAdmin = false, 
+  allowedRoles, 
+  moduleKey,
+  unauthenticatedRedirect 
+}: ProtectedRouteProps) {
   const { isAuthenticated, loading, isAdmin, isSuperAdmin, role, mustChangePassword, isBlocked, blockReason } = useAuth();
   const location = useLocation();
+  const { isVisible, isSuperAdminBypass } = useIsModuleVisible(moduleKey);
   
   // Track previous authentication state to prevent flicker during token refresh
   const wasAuthenticatedRef = useRef(isAuthenticated);
@@ -27,7 +39,6 @@ export function ProtectedRoute({ children, requireAdmin = false, requireSuperAdm
     if (wasAuthenticatedRef.current && !isAuthenticated && !loading) {
       setIsWaitingForRefresh(true);
       const timeout = setTimeout(() => {
-        // After waiting, if still not authenticated, allow redirect
         setIsWaitingForRefresh(false);
       }, 500);
       return () => clearTimeout(timeout);
@@ -76,7 +87,6 @@ export function ProtectedRoute({ children, requireAdmin = false, requireSuperAdm
   }
 
   // Check for specific allowed roles
-
   if (allowedRoles && role && !allowedRoles.includes(role)) {
     return <Navigate to="/" replace />;
   }
@@ -84,6 +94,25 @@ export function ProtectedRoute({ children, requireAdmin = false, requireSuperAdm
   // Legacy requireAdmin check
   if (requireAdmin && !isAdmin) {
     return <Navigate to="/" replace />;
+  }
+
+  // Guarda Comercial de Módulo (Modelo Solides)
+  if (moduleKey && !isVisible) {
+    return <ModuleNotContractedScreen moduleKey={moduleKey} />;
+  }
+
+  // Banner discreto quando Super Admin acessa módulo que está desativado para a empresa
+  if (moduleKey && isSuperAdminBypass) {
+    return (
+      <>
+        <div className="bg-amber-500/15 border-b border-amber-500/30 px-4 py-2 text-xs font-medium text-amber-800 dark:text-amber-300 flex items-center justify-between z-50">
+          <span>
+            ⚠️ Visualizando como Super Admin: o módulo <strong>{moduleKey}</strong> está desativado para o tenant.
+          </span>
+        </div>
+        {children}
+      </>
+    );
   }
 
   return <>{children}</>;
