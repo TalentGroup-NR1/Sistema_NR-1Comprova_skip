@@ -81,6 +81,67 @@ function validarArquivoPdf(nome: string, tamanho: number): { ok: boolean; erro?:
 }
 
 // ────────────────────────────────────────────────────────────
+// Funções puras de Retry e Backoff da Edge Function pgr-importar
+// ────────────────────────────────────────────────────────────
+const RETRY_DELAYS_MS = [1000, 4000, 10000];
+
+function isRetryableHttpStatus(status: number): boolean {
+  return status === 429 || (status >= 500 && status <= 504);
+}
+
+function calcRetryDelayMs(attempt: number, addJitter = false): number {
+  const base = RETRY_DELAYS_MS[attempt] ?? 10000;
+  if (!addJitter) return base;
+  const jitter = Math.floor(Math.random() * (base * 0.2));
+  return base + jitter;
+}
+
+function mapFriendlyErrorMessage(rawError: string): string {
+  const isCorsOrFetch = rawError.includes("Failed to send a request") || rawError.includes("NetworkError") || rawError.includes("fetch");
+  const isUnavailable = rawError.includes("503") || rawError.includes("429") || rawError.includes("high demand") || rawError.includes("UNAVAILABLE") || rawError.includes("RESOURCE_EXHAUSTED");
+  const isTimeout = rawError.includes("tempo esgotado") || rawError.includes("AbortError");
+
+  if (isCorsOrFetch) {
+    return "Falha de conexão com o serviço de análise (CORS ou rede). Verifique sua conexão e tente novamente.";
+  }
+  if (isUnavailable) {
+    return "O serviço de inteligência artificial está temporariamente ocupado com alta demanda. Por favor, aguarde alguns minutos e tente novamente.";
+  }
+  if (isTimeout) {
+    return "A análise demorou mais que o esperado (documento muito extenso). Tente reimportar um arquivo menor ou em outro momento.";
+  }
+  return rawError || "Falha ao processar o documento do PGR.";
+}
+
+async function simularChamadaGeminiComRetry(
+  mockResponses: Array<{ status: number; body: string }>,
+  onRetry?: (attempt: number, delayMs: number) => void
+) {
+  let attempt = 0;
+  for (; attempt <= RETRY_DELAYS_MS.length; attempt++) {
+    const res = mockResponses[attempt] || { status: 500, body: "fallback error" };
+    if (res.status === 200) {
+      return { ok: true, data: JSON.parse(res.body), attemptsUsed: attempt + 1 };
+    }
+
+    const isRetryable = isRetryableHttpStatus(res.status);
+    if (!isRetryable) {
+      throw new Error(`http_${res.status}|${res.body}`);
+    }
+
+    if (attempt < RETRY_DELAYS_MS.length) {
+      const delay = calcRetryDelayMs(attempt, false);
+      if (onRetry) onRetry(attempt, delay);
+      continue;
+    }
+
+    throw new Error(`http_${res.status}|${res.body}`);
+  }
+
+  throw new Error("api_error|sem resposta");
+}
+
+// ────────────────────────────────────────────────────────────
 // Funções puras de autorização (pgr-excluir)
 // ────────────────────────────────────────────────────────────
 function canDeleteImportacao(callerRoles: string[], callerCompanyId: string | null, importacaoCompanyId: string): boolean {
@@ -432,4 +493,126 @@ describe("pgr-importar: Mapeamento 5W2H (rowsToInsert)", () => {
     expect(row.prazo).toBeNull();
   });
 });
+
+describe("pgr-importar: Retry com Backoff e Tolerância a Indisponibilidade Transitória", () => {
+  it("deve classificar 429, 502, 503 e 504 como erros transitórios (retryable)", () => {
+    expect(isRetryableHttpStatus(429)).toBe(true);
+    expect(isRetryableHttpStatus(500)).toBe(true);
+    expect(isRetryableHttpStatus(502)).toBe(true);
+    expect(isRetryableHttpStatus(503)).toBe(true);
+    expect(isRetryableHttpStatus(504)).toBe(true);
+  });
+
+  it("NÃO deve classificar erros permanentes como retryable (400, 401, 403, 404, 413)", () => {
+    expect(isRetryableHttpStatus(200)).toBe(false);
+    expect(isRetryableHttpStatus(400)).toBe(false);
+    expect(isRetryableHttpStatus(401)).toBe(false);
+    expect(isRetryableHttpStatus(403)).toBe(false);
+    expect(isRetryableHttpStatus(404)).toBe(false);
+    expect(isRetryableHttpStatus(413)).toBe(false);
+  });
+
+  it("deve calcular as pausas de backoff proporcionais (~1s, ~4s, ~10s)", () => {
+    expect(calcRetryDelayMs(0, false)).toBe(1000);
+    expect(calcRetryDelayMs(1, false)).toBe(4000);
+    expect(calcRetryDelayMs(2, false)).toBe(10000);
+    // Para tentativa extra ou além, fallback teto de 10s
+    expect(calcRetryDelayMs(3, false)).toBe(10000);
+  });
+
+  it("deve suceder na primeira tentativa sem executar retry quando status é 200", async () => {
+    const retries: number[] = [];
+    const res = await simularChamadaGeminiComRetry(
+      [{ status: 200, body: '{"dados_empresa": {"nome": "Empresa A"}}' }],
+      (att) => retries.push(att)
+    );
+    expect(res.ok).toBe(true);
+    expect(res.attemptsUsed).toBe(1);
+    expect(retries).toHaveLength(0);
+  });
+
+  it("deve recuperar de 503 transitório (High Demand) na 2ª tentativa", async () => {
+    const retries: Array<{ attempt: number; delay: number }> = [];
+    const res = await simularChamadaGeminiComRetry(
+      [
+        { status: 503, body: "This model is currently experiencing high demand" },
+        { status: 200, body: '{"riscos": [{"perigo": "Ruído"}]}' },
+      ],
+      (att, delay) => retries.push({ attempt: att, delay })
+    );
+
+    expect(res.ok).toBe(true);
+    expect(res.attemptsUsed).toBe(2);
+    expect(retries).toHaveLength(1);
+    expect(retries[0].attempt).toBe(0);
+    expect(retries[0].delay).toBe(1000); // 1s
+  });
+
+  it("deve recuperar de 429 seguido de 503 na 3ª tentativa", async () => {
+    const retries: Array<{ attempt: number; delay: number }> = [];
+    const res = await simularChamadaGeminiComRetry(
+      [
+        { status: 429, body: "Resource exhausted" },
+        { status: 503, body: "Service unavailable" },
+        { status: 200, body: '{"riscos": []}' },
+      ],
+      (att, delay) => retries.push({ attempt: att, delay })
+    );
+
+    expect(res.ok).toBe(true);
+    expect(res.attemptsUsed).toBe(3);
+    expect(retries).toHaveLength(2);
+    expect(retries[0].delay).toBe(1000); // ~1s
+    expect(retries[1].delay).toBe(4000); // ~4s
+  });
+
+  it("deve falhar IMEDIATAMENTE sem retentativas em erro permanente 400 (Bad Request)", async () => {
+    const retries: number[] = [];
+    await expect(
+      simularChamadaGeminiComRetry(
+        [{ status: 400, body: "Invalid PDF structure" }],
+        (att) => retries.push(att)
+      )
+    ).rejects.toThrow("http_400|Invalid PDF structure");
+
+    expect(retries).toHaveLength(0); // Nenhum retry desperdiçado
+  });
+
+  it("deve esgotar as 3 tentativas adicionais (4 totais) se 503 persistir", async () => {
+    const retries: number[] = [];
+    await expect(
+      simularChamadaGeminiComRetry(
+        [
+          { status: 503, body: "High demand 1" },
+          { status: 503, body: "High demand 2" },
+          { status: 503, body: "High demand 3" },
+          { status: 503, body: "High demand 4" },
+        ],
+        (att) => retries.push(att)
+      )
+    ).rejects.toThrow("http_503|High demand 4");
+
+    expect(retries).toHaveLength(3); // Tentativas adicionais 0 (1s), 1 (4s), 2 (10s)
+  });
+
+  it("deve formatar erro técnico de 503/alta demanda em mensagem amigável sem expor dados brutos", () => {
+    const bruto = 'http_503|{"error": {"code": 503, "message": "This model is currently experiencing high demand."}}';
+    const amigavel = mapFriendlyErrorMessage(bruto);
+    expect(amigavel).toBe(
+      "O serviço de inteligência artificial está temporariamente ocupado com alta demanda. Por favor, aguarde alguns minutos e tente novamente."
+    );
+    expect(amigavel).not.toContain("503");
+    expect(amigavel).not.toContain("This model is currently");
+    expect(amigavel).not.toContain("{");
+  });
+
+  it("deve formatar erro de rede/CORS em mensagem amigável acionável", () => {
+    const bruto = "Failed to send a request to the Edge Function";
+    const amigavel = mapFriendlyErrorMessage(bruto);
+    expect(amigavel).toBe(
+      "Falha de conexão com o serviço de análise (CORS ou rede). Verifique sua conexão e tente novamente."
+    );
+  });
+});
+
 

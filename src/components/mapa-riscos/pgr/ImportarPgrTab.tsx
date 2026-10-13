@@ -616,7 +616,7 @@ export function ImportarPgrTab() {
                 <span className="font-semibold">Erro no processamento do documento</span>
                 <span>{(iniciar.error as any)?.message ?? "Ocorreu uma falha ao analisar o PGR."}</span>
                 <span className="text-xs text-red-800/80 mt-1">
-                  Orientação: Se o documento for muito extenso ou escaneado com muitas páginas, experimente dividir o arquivo e enviar apenas as seções do Inventário de Riscos e do Plano de Ação.
+                  Orientação: Caso a IA esteja temporariamente com alta demanda, aguarde 2 a 3 minutos e tente novamente. Para documentos muito extensos, experimente importar apenas o trecho contendo o Inventário de Riscos e o Plano de Ação.
                 </span>
               </AlertDescription>
             </Alert>

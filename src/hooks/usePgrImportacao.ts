@@ -197,9 +197,16 @@ export function useIniciarImportacaoPgr() {
             console.warn("[usePgrImportacao] Edge Function error (background):", actualError);
             const msg = actualError.message ?? "";
             const isCorsOrFetch = msg.includes("Failed to send a request") || msg.includes("NetworkError") || msg.includes("fetch");
-            const userFriendlyMsg = isCorsOrFetch
-              ? "Falha de conexão com o serviço de análise (CORS ou rede). Verifique sua conexão e tente novamente."
-              : `Erro na execução da análise: ${msg}`;
+            const isOverloaded = msg.includes("503") || msg.includes("429") || msg.includes("high demand") || msg.includes("UNAVAILABLE") || msg.includes("alta demanda") || msg.includes("ocupado");
+            
+            let userFriendlyMsg: string;
+            if (isCorsOrFetch) {
+              userFriendlyMsg = "Falha de conexão com o serviço de análise (CORS ou rede). Verifique sua conexão e tente novamente.";
+            } else if (isOverloaded) {
+              userFriendlyMsg = "O serviço de inteligência artificial está temporariamente ocupado com alta demanda. Por favor, aguarde alguns minutos e tente novamente.";
+            } else {
+              userFriendlyMsg = msg.startsWith("Erro") ? msg : `Erro na execução da análise: ${msg}`;
+            }
             await (supabase as any)
               .from("pgr_importacoes")
               .update({ status: "erro", erro_mensagem: userFriendlyMsg })
@@ -225,7 +232,12 @@ export function useIniciarImportacaoPgr() {
         );
       }
       if (resultado.status === "erro") {
-        throw new Error(resultado.erro_mensagem || "Falha ao processar o documento do PGR.");
+        const rawErr = resultado.erro_mensagem || "";
+        const isOverloaded = rawErr.includes("503") || rawErr.includes("429") || rawErr.includes("high demand") || rawErr.includes("UNAVAILABLE");
+        const finalMsg = isOverloaded
+          ? "O serviço de inteligência artificial está temporariamente ocupado com alta demanda. Por favor, aguarde alguns minutos e tente novamente."
+          : (rawErr || "Falha ao processar o documento do PGR.");
+        throw new Error(finalMsg);
       }
       return resultado;
     },

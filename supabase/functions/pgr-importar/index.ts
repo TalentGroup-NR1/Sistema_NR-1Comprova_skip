@@ -9,7 +9,20 @@ import { fallbackLocalAnalise } from "../_shared/pgrFallback.ts";
 
 const MAX_FILE_SIZE_BYTES = 10 * 1_048_576; // 10 MB
 const TIMEOUT_MS = 240000; // 240 segundos (4 minutos) - teto de espera da IA
+export const RETRY_DELAYS_MS = [1000, 4000, 10000]; // ~1s, ~4s, ~10s (até 3 tentativas adicionais / 4 no total)
 
+/** Códigos de status HTTP da API Gemini que justificam retentativa automática (erros transitórios de demanda/rate-limit). */
+export function isRetryableHttpStatus(status: number): boolean {
+  return status === 429 || (status >= 500 && status <= 504);
+}
+
+/** Calcula o tempo de pausa para retentativa com jitter leve (até 20%) para evitar sincronismo. */
+export function calcRetryDelayMs(attempt: number, addJitter = true): number {
+  const base = RETRY_DELAYS_MS[attempt] ?? 10000;
+  if (!addJitter) return base;
+  const jitter = Math.floor(Math.random() * (base * 0.2));
+  return base + jitter;
+}
 
 const RequestSchema = z.object({
   importacao_id: z.string().uuid(),
@@ -119,12 +132,11 @@ Nunca armazene ou extraia nomes de trabalhadores identificados (dado de saúde s
   const ac = new AbortController();
   const timeoutId = setTimeout(() => ac.abort(), TIMEOUT_MS);
 
-  let response;
-  let retryCount = 0;
+  let response: Response | undefined;
+  let lastErrorSnippet = "";
   const inicio = Date.now();
   try {
-    for (let attempt = 0; attempt < 3; attempt++) {
-      retryCount = attempt;
+    for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt++) {
       const elapsed = Date.now() - inicio;
       if (elapsed > TIMEOUT_MS) {
         console.warn(`[Gemini API] Timeout atingido (${elapsed}ms). Abortando retry.`);
@@ -155,33 +167,57 @@ Nunca armazene ou extraia nomes de trabalhadores identificados (dado de saúde s
           signal: ac.signal
         });
 
-        if (response.ok) break;
-
-        // Se der 429 ou 5xx tenta mais uma vez
-        if (response.status === 429 || response.status >= 500) {
-          if (attempt < 2) {
-            const delay = 400 * Math.pow(2, attempt);
-            console.log(`[Gemini API] Retry trigger on status ${response.status} (attempt ${attempt + 1}/2). Waiting ${delay}ms...`);
-            await new Promise(r => setTimeout(r, delay));
-            continue;
+        if (response.ok) {
+          if (attempt > 0) {
+            console.log(`[Gemini API] Sucesso na tentativa ${attempt + 1} após retentativa com backoff.`);
           }
+          break;
         }
 
-        const body = await response.text();
-        const snippet = body.substring(0, 500);
-        console.error(`[Gemini API Error] status=${response.status} time=${new Date().toISOString()} bodySnippet=${snippet}`);
+        const isRetryable = isRetryableHttpStatus(response.status);
+        const errBody = await response.text();
+        lastErrorSnippet = errBody.substring(0, 500);
 
-        throw new Error(`http_${response.status}|${snippet}`);
-      } catch (err) {
-        if (attempt === 2 || (err instanceof Error && err.name === 'AbortError')) throw err;
+        // Erros permanentes (ex: 400 Bad Request, 401/403 Auth, 404 Modelo, 413 Payload) -> não retenta
+        if (!isRetryable) {
+          console.error(`[Gemini API Erro Permanente] status=${response.status} time=${new Date().toISOString()} body=${lastErrorSnippet}`);
+          throw new Error(`http_${response.status}|${lastErrorSnippet}`);
+        }
+
+        // Se o erro for transitório (429 ou 502/503/504) e restam retries -> pausa com backoff
+        if (attempt < RETRY_DELAYS_MS.length) {
+          const delay = calcRetryDelayMs(attempt);
+          console.warn(`[Gemini API Alta Demanda/RateLimit] status=${response.status} (tentativa ${attempt + 1}/${RETRY_DELAYS_MS.length + 1}). Aguardando ${delay}ms para retry...`);
+          await new Promise((r) => setTimeout(r, delay));
+          continue;
+        }
+
+        // Esgotou todas as 3 tentativas adicionais
+        console.error(`[Gemini API Retentativas Esgotadas] status=${response.status} após ${attempt + 1} tentativas.`);
+        throw new Error(`http_${response.status}|${lastErrorSnippet}`);
+
+      } catch (err: any) {
+        // Se for abort/timeout do controller, ou erro permanente já disparado, propaga imediatamente
+        if (err instanceof Error && (err.name === 'AbortError' || err.message === 'tempo esgotado' || err.message?.startsWith('http_'))) {
+          throw err;
+        }
+
+        // Erro de rede/socket transitório no fetch()
+        if (attempt < RETRY_DELAYS_MS.length) {
+          const delay = calcRetryDelayMs(attempt);
+          console.warn(`[Gemini API Erro de Rede] ${err?.message}. Tentativa ${attempt + 1}/${RETRY_DELAYS_MS.length + 1}. Aguardando ${delay}ms para retry...`);
+          await new Promise((r) => setTimeout(r, delay));
+          continue;
+        }
+        throw err;
       }
     }
   } finally {
     clearTimeout(timeoutId);
   }
 
-  if (!response) {
-    throw new Error("api_error");
+  if (!response || !response.ok) {
+    throw new Error(`api_error|${lastErrorSnippet || "sem resposta"}`);
   }
 
   const result = await response.json();
@@ -378,21 +414,32 @@ serve(async (req) => {
       console.warn(`[pgr-importar][${requestId}] Gemini analysis failed:`, iaErr);
       
       const isTimeout = iaErr?.name === "AbortError" || iaErr?.message === "tempo esgotado";
-      const isUnavailable = iaErr?.message?.includes("http_5") || iaErr?.message?.includes("http_429");
+      const errMsg = iaErr?.message || "";
+      const isUnavailable = errMsg.includes("http_5") || 
+                            errMsg.includes("http_429") || 
+                            errMsg.includes("high demand") || 
+                            errMsg.includes("UNAVAILABLE") ||
+                            errMsg.includes("RESOURCE_EXHAUSTED");
       
       let amigavelMsg = "Falha na extração de dados do PGR.";
-      if (isTimeout) amigavelMsg = "A IA demorou muito para responder. Tente reimportar um arquivo menor ou em outro momento.";
-      if (isUnavailable) amigavelMsg = "A IA está indisponível no momento. Tente reimportar em alguns minutos.";
+      if (isTimeout) {
+        amigavelMsg = "A análise demorou mais que o esperado (documento muito extenso). Tente reimportar um arquivo menor ou em outro momento.";
+      } else if (isUnavailable) {
+        amigavelMsg = "O serviço de inteligência artificial está temporariamente ocupado com alta demanda. Por favor, aguarde alguns minutos e tente novamente.";
+      } else {
+        amigavelMsg = "Não foi possível extrair dados do documento PGR. Verifique se o arquivo PDF está legível e tente novamente.";
+      }
 
-      const msgErro = `${amigavelMsg} (Detalhe: ${iaErr?.message || "erro interno"})`;
+      // Detalhes técnicos ficam no log interno do servidor para auditoria técnica (sem expor 503 bruto ao cliente)
+      console.error(`[pgr-importar][${requestId}] Log técnico da falha de IA:`, errMsg);
       
       // Atualiza diretamente para erro para não prender o usuário em "processando" ou "aguardando revisão"
       await supabaseAdmin.from("pgr_importacoes")
-        .update({ status: "erro", erro_mensagem: msgErro })
+        .update({ status: "erro", erro_mensagem: amigavelMsg })
         .eq("id", importacao_id);
         
       return new Response(
-        JSON.stringify({ error: msgErro }),
+        JSON.stringify({ error: amigavelMsg }),
         { status: 200, headers: jsonHeaders }
       );
     }
