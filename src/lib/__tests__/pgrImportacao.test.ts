@@ -1,4 +1,11 @@
 import { describe, it, expect } from "vitest";
+import {
+  sanitizeJsonString,
+  repairTruncatedJson,
+  fallbackExtractObjects,
+  consolidateAndDeduplicate,
+  parsePgrGeminiResponse
+} from "../pgrResilientParser";
 
 // ────────────────────────────────────────────────────────────
 // Funções puras extraídas da Edge Function pgr-importar
@@ -105,12 +112,20 @@ function resolveGeminiModel(envValue?: string | null): string {
 
 function mapFriendlyErrorMessage(rawError: string): string {
   const isCorsOrFetch = rawError.includes("Failed to send a request") || rawError.includes("NetworkError") || rawError.includes("fetch");
+  const isSemSecoes = rawError.includes("documento_sem_secoes") || rawError.includes("Nenhuma seção");
+  const isCorrompido = rawError.includes("corrompido") || rawError.includes("formato_invalido");
   const is404 = rawError.includes("404") || rawError.includes("NOT_FOUND") || rawError.includes("no longer available");
   const isUnavailable = rawError.includes("503") || rawError.includes("429") || rawError.includes("high demand") || rawError.includes("UNAVAILABLE") || rawError.includes("RESOURCE_EXHAUSTED");
   const isTimeout = rawError.includes("tempo esgotado") || rawError.includes("AbortError");
 
   if (isCorsOrFetch) {
     return "Falha de conexão com o serviço de análise (CORS ou rede). Verifique sua conexão e tente novamente.";
+  }
+  if (isSemSecoes) {
+    return "Nenhuma seção de Inventário de Riscos ou Plano de Ação foi identificada no documento. Verifique se o arquivo enviado é um PGR completo e legível.";
+  }
+  if (isCorrompido) {
+    return "O arquivo PDF enviado parece corrompido ou ilegível. Tente salvar novamente o documento em formato PDF padrão e reenvie.";
   }
   if (is404) {
     return "O modelo de IA está em atualização ou temporariamente indisponível. Por favor, contate o suporte técnico.";
@@ -651,5 +666,115 @@ describe("pgr-importar: Resolução Dinâmica de Modelo (GEMINI_MODEL) e Erro 40
     expect(amigavel).not.toContain("gemini-2.0-flash");
   });
 });
+
+describe("pgr-importar: Robustez de Extração e Parser Resiliente para Documentos Longos", () => {
+  it("deve sanitizar JSON com markdown e vírgulas pendentes (trailing commas) - Camada 1", () => {
+    const raw = `\`\`\`json
+    {
+      "dados_empresa": {
+        "nome_empresa": "Empresa Teste S/A",
+      },
+      "riscos": [
+        {
+          "perigo": "Ruído Contínuo",
+          "categoria": "fisico",
+          "descricao": "Exposição a motores industriais",
+        },
+      ],
+      "plano_acao": [
+        {
+          "acao": "Fornecer protetor auricular tipo concha",
+        },
+      ],
+    }
+    \`\`\``;
+
+    const parsed = parsePgrGeminiResponse(raw);
+    expect(parsed.camadaUtilizada).toBe(1);
+    expect(parsed.isParcial).toBe(false);
+    expect(parsed.riscos.length).toBe(1);
+    expect(parsed.riscos[0].perigo).toBe("Ruído Contínuo");
+    expect(parsed.plano_acao.length).toBe(1);
+    expect(parsed.plano_acao[0].acao).toBe("Fornecer protetor auricular tipo concha");
+  });
+
+  it("deve reparar JSON truncado no meio de objeto/array (finishReason MAX_TOKENS) - Camada 2", () => {
+    // Simula resposta cortada no meio de uma string de descrição dentro de um array
+    const rawTruncated = `{"dados_empresa": {"nome_empresa": "Metalúrgica ABC", "cnpj": "12.345.678/0001-90"}, "riscos": [{"perigo": "Calor Radiante", "categoria": "fisico", "descricao": "Exposição a fornos de fundição com temperatura de`;
+
+    const parsed = parsePgrGeminiResponse(rawTruncated, "MAX_TOKENS");
+    expect(parsed.camadaUtilizada).toBe(2);
+    expect(parsed.isParcial).toBe(true);
+    expect(parsed.riscos.length).toBe(1);
+    expect(parsed.riscos[0].perigo).toBe("Calor Radiante");
+    expect(parsed.dados_empresa.nome_empresa).toBe("Metalúrgica ABC");
+    expect(parsed.aviso).toBeDefined();
+    expect(parsed.aviso).toContain("Importação parcial");
+    expect(parsed.aviso).toContain("1 risco(s)");
+  });
+
+  it("deve reparar JSON truncado que terminou em chave/vírgula pendente - Camada 2", () => {
+    const rawTruncated = `{"dados_empresa": {"nome_empresa": "Construtora XYZ"}, "riscos": [{"perigo": "Queda em altura", "categoria": "acidente"}], "plano_acao": [{"acao": "Instalação de linha de vida", "prazo": "15 dias"}, {"acao": "Treinamento NR-35",`;
+
+    const repaired = repairTruncatedJson(rawTruncated);
+    const obj = JSON.parse(repaired);
+    expect(obj.riscos.length).toBe(1);
+    expect(obj.riscos[0].perigo).toBe("Queda em altura");
+    expect(obj.plano_acao.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("deve recuperar riscos e ações via fallback regex quando raiz do JSON está corrompida - Camada 3", () => {
+    // String onde a raiz não é JSON válido ou foi severamente danificada
+    const rawCorrupted = `ERRO NO INÍCIO DO STREAM ... {"algum_lixo": [
+      ... texto descritivo aleatório ...
+      {"perigo": "Vapores Orgânicos", "categoria": "quimico", "descricao": "Exposição a solventes de pintura"}
+      ... mais texto intermediário ...
+      {"acao": "Instalação de exaustor mecânico na cabine de pintura", "prazo": "30 dias"}
+    `;
+
+    const parsed = parsePgrGeminiResponse(rawCorrupted);
+    expect(parsed.camadaUtilizada).toBe(3);
+    expect(parsed.isParcial).toBe(true);
+    expect(parsed.riscos.length).toBe(1);
+    expect(parsed.riscos[0].perigo).toBe("Vapores Orgânicos");
+    expect(parsed.plano_acao.length).toBe(1);
+    expect(parsed.plano_acao[0].acao).toBe("Instalação de exaustor mecânico na cabine de pintura");
+    expect(parsed.aviso).toBeDefined();
+  });
+
+  it("deve consolidar e deduplicar riscos repetidos sem perder informações", () => {
+    const riscos = [
+      { perigo: "Ruído", categoria: "fisico", descricao: "Ruído leve" },
+      { perigo: "Ruído", categoria: "fisico", descricao: "Ruído detalhado com 85dB" },
+      { perigo: "Postura Inadequada", categoria: "ergonomico", descricao: "Trabalho em pé" },
+    ];
+    const plano = [
+      { acao: "Fornecer protetor auricular" },
+      { acao: "Fornecer protetor auricular" },
+      { acao: "Ajustar bancada de trabalho" },
+    ];
+
+    const consolidado = consolidateAndDeduplicate(riscos as any, plano as any);
+    expect(consolidado.riscos.length).toBe(2);
+    expect(consolidado.plano_acao.length).toBe(2);
+  });
+
+  it("deve identificar documento sem seções de riscos/planos e mapear para mensagem amigável", () => {
+    const erroSemSecoes = "documento_sem_secoes";
+    const amigavel = mapFriendlyErrorMessage(erroSemSecoes);
+    expect(amigavel).toBe(
+      "Nenhuma seção de Inventário de Riscos ou Plano de Ação foi identificada no documento. Verifique se o arquivo enviado é um PGR completo e legível."
+    );
+  });
+
+  it("deve identificar arquivo corrompido e mapear para mensagem amigável específica", () => {
+    const erroCorrompido = "arquivo_corrompido";
+    const amigavel = mapFriendlyErrorMessage(erroCorrompido);
+    expect(amigavel).toBe(
+      "O arquivo PDF enviado parece corrompido ou ilegível. Tente salvar novamente o documento em formato PDF padrão e reenvie."
+    );
+  });
+});
+
 
 

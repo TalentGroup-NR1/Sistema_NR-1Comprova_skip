@@ -340,6 +340,12 @@ function HistoricoCard({ importacao, onOpen }: { importacao: PgrImportacao; onOp
             {importacao.created_at ? format(new Date(importacao.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR }) : "Data não disponível"}
             {importacao.status === "confirmado" && ` · ${totalRiscos} riscos · ${totalAcoes} ações`}
           </div>
+          {importacao.extracao_raw?.aviso && importacao.status !== "erro" && (
+            <div className="text-xs text-amber-700 font-medium flex items-center gap-1 mt-0.5">
+              <AlertTriangle className="h-3 w-3 text-amber-600 shrink-0" />
+              Importação parcial — revise os itens extraídos
+            </div>
+          )}
           {importacao.status === "erro" && importacao.erro_mensagem && (
             <div className="text-xs text-red-600 mt-1 truncate max-w-sm" title={importacao.erro_mensagem}>
               {importacao.erro_mensagem}
@@ -424,9 +430,12 @@ function PainelRevisao({
       {/* Coluna 1: Formulários de Revisão */}
       <div className="space-y-6 flex flex-col h-full overflow-y-auto pr-2">
         {raw?.aviso && (
-          <Alert>
-            <AlertTriangle className="h-4 w-4" />
-            <AlertDescription>{raw.aviso}</AlertDescription>
+          <Alert className="border-amber-300 bg-amber-50 text-amber-900 shadow-sm">
+            <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0" />
+            <AlertDescription className="font-medium">
+              <span className="font-semibold block mb-0.5 text-amber-950">Atenção: Importação Parcial</span>
+              {raw.aviso}
+            </AlertDescription>
           </Alert>
         )}
 

@@ -6,6 +6,7 @@ import { GoogleGenerativeAI } from "npm:@google/generative-ai";
 import { mapGeminiRiscos } from "../_shared/pgrMapper.ts";
 import { buildCorsHeaders } from "../_shared/cors.ts";
 import { fallbackLocalAnalise } from "../_shared/pgrFallback.ts";
+import { parsePgrGeminiResponse } from "../_shared/pgrResilientParser.ts";
 
 const MAX_FILE_SIZE_BYTES = 10 * 1_048_576; // 10 MB
 const TIMEOUT_MS = 240000; // 240 segundos (4 minutos) - teto de espera da IA
@@ -83,14 +84,21 @@ async function analisarPgrComGemini(bytes: Uint8Array, apiKey: string): Promise<
   for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
   const base64 = btoa(binary);
 
-  const systemPrompt = `Você é um especialista em Segurança do Trabalho e NR-1 (Programa de Gerenciamento de Riscos — PGR).
-Extraia do documento PGR todos os riscos e todas as ações do plano de ação, sem omitir nenhum.
-Seja agnóstico à estrutura do documento. Resolva a seção por significado e não por título literal (ex. "Inventário de Riscos", "Levantamento de Perigos", "Matriz", etc).
-Normalize sinônimos (ex. perigo, fator de risco, agente nocivo).
-Percorra o documento inteiro, incluindo anexos e tabelas embutidas.
-Não invente valores; se o campo estiver ausente, retorne nulo ou vazio.
-Identifique a escala da matriz de risco no documento (ex. 3x3, 4x4, 5x5).
-Nunca armazene ou extraia nomes de trabalhadores identificados (dado de saúde sensível). Em riscos psicossociais, não armazene resposta individual identificada.`;
+  const systemPrompt = `Você é um auditor especialista em Segurança e Saúde no Trabalho e NR-1 (Programa de Gerenciamento de Riscos — PGR).
+Seu objetivo é extrair com precisão técnica EXCLUSIVAMENTE os dados essenciais para o Inventário de Riscos e o Plano de Ação da NR-1.
+
+DIRETRIZES DE FOCO E CONCISÃO:
+1. Ignore seções narrativas, introduções gerais, sumários, histórico da empresa, listagens genéricas de normas regulamentadoras e memoriais de cálculo extensos.
+2. Foque estritamente nas seções nucleares do documento:
+   - "Identificação da Empresa e Responsável Técnico";
+   - "Inventário de Riscos" / "Levantamento de Perigos" / "Matriz de Riscos";
+   - "Plano de Ação" / "Cronograma de Ações" / "Medidas de Prevenção".
+3. CONCISÃO OBRIGATÓRIA (preservação de tokens e clareza operacional):
+   - Para cada risco: descrição clara e concisa em 1 a 2 linhas (evite copiar parágrafos inteiros).
+   - Para cada ação: medida objetiva em 1 linha.
+4. Categorias de risco aceitas: fisico, quimico, biologico, ergonomico, acidente, psicossocial.
+5. Se não houver inventário ou plano explícito no documento, retorne arrays vazios. Não invente dados fictícios.
+6. Nunca extraia nomes ou dados pessoais de trabalhadores identificados (privacidade/LGPD).`;
 
   const schema = {
     type: "OBJECT",
@@ -241,21 +249,22 @@ Nunca armazene ou extraia nomes de trabalhadores identificados (dado de saúde s
 
   const result = await response.json();
   const candidate = result.candidates?.[0];
-  
-  if (candidate?.finishReason === 'MAX_TOKENS') {
-    throw new Error('truncated');
+  const finishReason = candidate?.finishReason;
+  const content = candidate?.content?.parts?.[0]?.text ?? "{}";
+
+  // Processa o conteúdo através do parser resiliente em 3 camadas
+  const parsed = parsePgrGeminiResponse(content, finishReason);
+
+  const totalRiscos = parsed.riscos.length;
+  const totalAcoes = parsed.plano_acao.length;
+
+  // Se nenhum dado foi identificado após todas as 3 camadas
+  if (totalRiscos === 0 && totalAcoes === 0) {
+    console.warn("[Gemini API] Documento sem seções identificáveis de riscos ou plano de ação.");
+    throw new Error("documento_sem_secoes");
   }
 
-  let content = candidate?.content?.parts?.[0]?.text ?? "{}";
-  // Parse resiliente: tira possíveis blocos markdown q o Gemini possa ter retornado mesmo com schema
-  content = content.replace(/^```json/gmi, "").replace(/```$/gmi, "").trim();
-
-  try {
-    return JSON.parse(content);
-  } catch (err) {
-    console.error("[Gemini API] JSON Parse falhou. Content:", content.substring(0, 200) + "...");
-    throw new Error("parse_failed");
-  }
+  return parsed as unknown as Record<string, unknown>;
 }
 
 
@@ -404,9 +413,26 @@ serve(async (req) => {
       
       // Mapeia do JSON Gemini para o formato esperado pelo frontend (extracao_raw original)
       const r = rawGemini as any;
+      const riscosMapeados = mapGeminiRiscos(r.riscos);
+      const planoMapeado = (r.plano_acao || []).map((a: any) => ({
+        medida: a.acao ?? a.medida ?? "Ação não especificada",
+        prazo_sugerido: a.prazo ?? a.prazo_sugerido ?? null,
+        responsavel_sugerido: a.responsavel ?? a.responsavel_sugerido ?? null,
+        prioridade: "media",
+        risco_referenciado: null,
+        status: a.status === "concluida" || a.status === "concluído" ? "concluida" : "pendente",
+        por_que: a.por_que ?? null,
+        onde: a.onde ?? null,
+        como: a.como ?? null,
+        custo_estimado: a.custo_estimado ?? null,
+      }));
+
+      const isParcial = !!r.isParcial;
+      modoExtracao = isParcial ? "ia_gemini_multimodal_parcial" : "ia_gemini_multimodal";
+
       extracao_raw = {
         dados_empresa: {
-          nome: r.dados_empresa?.nome_empresa ?? null,
+          nome: r.dados_empresa?.nome_empresa ?? r.dados_empresa?.nome ?? null,
           cnpj: r.dados_empresa?.cnpj ?? null,
           responsavel_tecnico: r.dados_empresa?.responsavel_tecnico ?? null,
           cargo_responsavel: r.dados_empresa?.cargo_responsavel ?? null,
@@ -414,26 +440,23 @@ serve(async (req) => {
           data_elaboracao: r.dados_empresa?.data_elaboracao ?? null,
           validade: r.dados_empresa?.validade ?? null
         },
-        riscos: mapGeminiRiscos(r.riscos),
-        plano_acao: (r.plano_acao || []).map((a: any) => ({
-          medida: a.acao ?? "Ação não especificada",
-          prazo_sugerido: a.prazo ?? null,
-          responsavel_sugerido: a.responsavel ?? null,
-          prioridade: "media",
-          risco_referenciado: null,
-          status: a.status === "concluida" || a.status === "concluído" ? "concluida" : "pendente"
-        })),
-        modo_extracao: "ia_gemini_multimodal"
+        riscos: riscosMapeados,
+        plano_acao: planoMapeado,
+        modo_extracao: modoExtracao,
+        ...(r.aviso ? { aviso: r.aviso } : {})
       };
-      modoExtracao = "ia_gemini_multimodal";
+
       const riscoCount = Array.isArray(extracao_raw.riscos) ? extracao_raw.riscos.length : 0;
-      console.log(`[pgr-importar][${requestId}] Gemini analysis done: ${riscoCount} risks found`);
+      const acaoCount = Array.isArray(extracao_raw.plano_acao) ? extracao_raw.plano_acao.length : 0;
+      console.log(`[pgr-importar][${requestId}] Gemini analysis done: ${riscoCount} risks, ${acaoCount} actions found (parcial=${isParcial})`);
 
     } catch (iaErr: any) {
       console.warn(`[pgr-importar][${requestId}] Gemini analysis failed:`, iaErr);
       
       const isTimeout = iaErr?.name === "AbortError" || iaErr?.message === "tempo esgotado";
       const errMsg = iaErr?.message || "";
+      const isSemSecoes = errMsg.includes("documento_sem_secoes");
+      const isCorrompido = errMsg.includes("corrompido") || errMsg.includes("formato_invalido");
       const is404 = errMsg.includes("http_404") || errMsg.includes("NOT_FOUND") || errMsg.includes("no longer available");
       const isUnavailable = errMsg.includes("http_5") || 
                             errMsg.includes("http_429") || 
@@ -444,6 +467,10 @@ serve(async (req) => {
       let amigavelMsg = "Falha na extração de dados do PGR.";
       if (isTimeout) {
         amigavelMsg = "A análise demorou mais que o esperado (documento muito extenso). Tente reimportar um arquivo menor ou em outro momento.";
+      } else if (isSemSecoes) {
+        amigavelMsg = "Nenhuma seção de Inventário de Riscos ou Plano de Ação foi identificada no documento. Verifique se o arquivo enviado é um PGR completo e legível.";
+      } else if (isCorrompido) {
+        amigavelMsg = "O arquivo PDF enviado parece corrompido ou ilegível. Tente salvar novamente o documento em formato PDF padrão e reenvie.";
       } else if (is404) {
         amigavelMsg = "O modelo de IA está em atualização ou temporariamente indisponível. Por favor, contate o suporte técnico.";
       } else if (isUnavailable) {
