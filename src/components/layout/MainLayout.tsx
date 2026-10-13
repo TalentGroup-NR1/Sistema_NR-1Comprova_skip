@@ -11,6 +11,7 @@ import { PulseBlockerModal } from "@/components/cuidar-mais/pulso/PulseBlockerMo
 import { PontoAssinaturaBlockerModal } from "@/components/ponto/PontoAssinaturaBlockerModal";
 import { useBranding } from "@/hooks/useBranding";
 import { WelcomeWizard } from "@/components/onboarding/WelcomeWizard";
+import { GestorAlertBanner } from "./GestorAlertBanner";
 
 
 interface MainLayoutProps {
@@ -126,6 +127,7 @@ export function MainLayout({ children }: MainLayoutProps) {
         </div>
 
         <Header />
+        <GestorAlertBanner />
         <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
           {children}
         </main>

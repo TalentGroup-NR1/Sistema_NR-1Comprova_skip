@@ -7,6 +7,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 import { ShieldAlert } from "lucide-react";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 interface FiscalizacaoResult {
   gestor_id: string;
@@ -29,6 +30,19 @@ export function FiscalizacaoList() {
       });
       if (error) throw error;
       return data as FiscalizacaoResult[];
+    },
+    enabled: !!companyId,
+  });
+
+  const { data: drilldown } = useQuery({
+    queryKey: ["pulse-drilldown", companyId],
+    queryFn: async () => {
+      if (!companyId) return [];
+      const { data, error } = await supabase.rpc("get_cuidar_drilldown", {
+        p_company_id: companyId
+      });
+      if (error) throw error;
+      return data;
     },
     enabled: !!companyId,
   });
@@ -120,6 +134,106 @@ export function FiscalizacaoList() {
                   </ul>
                 </div>
               )}
+
+              {/* DRILL-DOWN ACCORDION */}
+              {(() => {
+                const gestorDrilldown = drilldown?.find((d: any) => d.gestor_id === g.gestor_id);
+                if (!gestorDrilldown || !gestorDrilldown.casos || gestorDrilldown.casos.length === 0) return null;
+
+                const aguardando = gestorDrilldown.casos.filter((c: any) => c.status === 'novo' || c.is_atrasado);
+                const emAndamento = gestorDrilldown.casos.filter((c: any) => c.status === 'em_andamento' && !c.is_atrasado);
+                
+                const hasAguardando = aguardando.length > 0;
+
+                return (
+                  <div className="mt-4 pt-4 border-t">
+                    <Accordion type="single" collapsible className="w-full">
+                      <AccordionItem value="drilldown" className="border-b-0">
+                        <AccordionTrigger className="py-2 hover:no-underline rounded-md hover:bg-slate-50 px-2 transition-all">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-semibold">Detalhamento de Casos</span>
+                            {hasAguardando && (
+                              <span className="relative flex h-3 w-3">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+                              </span>
+                            )}
+                          </div>
+                        </AccordionTrigger>
+                        <AccordionContent className="pt-2 px-2 max-h-60 overflow-y-auto">
+                          {hasAguardando && (
+                            <div className="mb-4">
+                              <h5 className="text-xs font-bold text-red-600 mb-2 flex items-center gap-1">
+                                <ShieldAlert className="h-3 w-3" />
+                                Aguardando ação
+                              </h5>
+                              <ul className="space-y-3">
+                                {aguardando.map((c: any, idx: number) => (
+                                  <li key={idx} className="text-xs border-l-2 border-red-300 pl-2">
+                                    <div className="font-semibold text-slate-800">{c.colaborador_nome}</div>
+                                    <div className="text-slate-600 flex justify-between mt-1">
+                                      <span>Resposta: <strong className="text-slate-800">{c.resposta_texto}</strong> ({c.origem})</span>
+                                      {c.data_resposta && <span className="text-slate-500">{format(new Date(c.data_resposta), "dd/MM/yyyy", { locale: ptBR })}</span>}
+                                    </div>
+                                    <div className="mt-1 flex items-center justify-between">
+                                      <Badge variant="outline" className="text-[9px] bg-red-50 text-red-600 border-red-200">
+                                        {c.is_atrasado ? 'Atrasado' : 'Novo'}
+                                      </Badge>
+                                      <span className="text-slate-500 font-medium">{c.dias_decorridos} dia(s) em aberto</span>
+                                    </div>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+
+                          {emAndamento.length > 0 && (
+                            <div>
+                              <h5 className="text-xs font-bold text-blue-600 mb-2">Em andamento</h5>
+                              <ul className="space-y-3">
+                                {emAndamento.map((c: any, idx: number) => (
+                                  <li key={idx} className="text-xs border-l-2 border-blue-300 pl-2">
+                                    <div className="font-semibold text-slate-800">{c.colaborador_nome}</div>
+                                    <div className="text-slate-600 flex justify-between mt-1">
+                                      <span>Resposta: <strong className="text-slate-800">{c.resposta_texto}</strong> ({c.origem})</span>
+                                      {c.data_resposta && <span className="text-slate-500">{format(new Date(c.data_resposta), "dd/MM/yyyy", { locale: ptBR })}</span>}
+                                    </div>
+                                    <div className="mt-1 flex items-center justify-between">
+                                      <Badge variant="outline" className="text-[9px] bg-blue-50 text-blue-600 border-blue-200">
+                                        Em andamento
+                                      </Badge>
+                                      <span className="text-slate-500 font-medium">{c.dias_decorridos} dia(s)</span>
+                                    </div>
+                                    {c.iniciado_em && (
+                                      <div className="mt-2 p-2 bg-slate-50 border rounded text-slate-700">
+                                        <div className="flex justify-between items-center mb-1">
+                                          <span className="font-medium">Atitude do Gestor</span>
+                                          <span className="text-[10px] text-slate-500">
+                                            Iniciado em {format(new Date(c.iniciado_em), "dd/MM/yyyy", { locale: ptBR })}
+                                          </span>
+                                        </div>
+                                        {c.objetivo && c.objetivo !== '***' && (
+                                          <p className="text-[10px] mb-1"><span className="font-semibold">Objetivo:</span> {c.objetivo}</p>
+                                        )}
+                                        {c.acoes && Array.isArray(c.acoes) && c.acoes.length > 0 && c.acoes[0] !== '***' && (
+                                          <div className="text-[10px]"><span className="font-semibold">Ações planejadas:</span> {c.acoes.length}</div>
+                                        )}
+                                        {c.objetivo === '***' && (
+                                          <p className="text-[10px] italic text-slate-500">Conteúdo detalhado protegido por regra de papel.</p>
+                                        )}
+                                      </div>
+                                    )}
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                        </AccordionContent>
+                      </AccordionItem>
+                    </Accordion>
+                  </div>
+                );
+              })()}
             </CardContent>
           </Card>
         ))}

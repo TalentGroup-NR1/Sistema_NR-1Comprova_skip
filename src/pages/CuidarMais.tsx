@@ -14,9 +14,11 @@ import { AcompanhamentosList } from "@/components/cuidar-mais/acompanhamentos/Ac
 import { FiscalizacaoList } from "@/components/cuidar-mais/fiscalizacao/FiscalizacaoList";
 import { RelatorioTab } from "@/components/cuidar-mais/relatorio";
 import { useAuth } from "@/hooks/useAuth";
+import { useSearchParams } from "react-router-dom";
 
 export default function CuidarMais() {
   const { role } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [selectedColaboradorId, setSelectedColaboradorId] = useState<string | null>(null);
 
   const isAdmin = role === 'admin_master' || role === 'admin_empresa' || role === 'analista_rh';
@@ -30,11 +32,19 @@ export default function CuidarMais() {
   // num valor que ainda não tem TabsContent renderizado (causa de tela branca
   // enquanto o role estava carregando).
   const defaultTab = 'pulso';
+  const currentTab = searchParams.get('tab') || defaultTab;
+
+  const handleTabChange = (val: string) => {
+    setSearchParams(prev => {
+      prev.set('tab', val);
+      return prev;
+    });
+  };
 
   return (
     <MainLayout>
       <div className="space-y-6">
-        <Tabs defaultValue={defaultTab} className="space-y-6">
+        <Tabs value={currentTab} onValueChange={handleTabChange} className="space-y-6">
           {(isAdmin || isGestor) && (
             <div className="w-full overflow-x-auto pb-1">
               <TabsList className="inline-flex w-auto min-w-full sm:min-w-0 items-center justify-start gap-1.5 p-1.5 bg-muted/60 backdrop-blur-sm border border-border/60 rounded-xl shadow-xs">
