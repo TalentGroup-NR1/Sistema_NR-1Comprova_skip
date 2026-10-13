@@ -140,7 +140,7 @@ export const MODULOS_CONTRATAVEIS: ModuloContratavel[] = [
     pilar: 'Saúde Mental & Psicossocial',
     descricao: 'Pesquisas de pulso frequentes, termômetro emocional, alertas de acolhimento e biblioteca de apoio.',
     rota: '/cuidar-mais',
-    subRotas: ['/cuidar-mais-form'],
+    subRotas: ['/cuidar-mais-form', '/campanhas'],
     isBase: false,
     ordem: 11,
   },
@@ -152,7 +152,7 @@ export const MODULOS_CONTRATAVEIS: ModuloContratavel[] = [
     pilar: 'Saúde & Segurança Ocupacional',
     descricao: 'Importação/IA de PGR, matriz de risco ocupacional, instrumentos científicos (COPSOQ/PROART/HSE) e Checklist AEP.',
     rota: '/mapa-riscos-nr1',
-    subRotas: ['/laudo'],
+    subRotas: ['/laudo', '/laudo-aep', '/evidencias'],
     isBase: false,
     ordem: 12,
   },
@@ -203,15 +203,53 @@ export const MAPA_ROTA_MODULO: Record<string, string> = (() => {
       map[sub] = mod.key;
     });
   });
+  // Adiciona atalhos de sub-rotas dinâmicas
+  map['/pdi'] = '/avaliacoes';
+  map['/avaliacao'] = '/avaliacoes';
+  map['/treinamento'] = '/treinamentos';
+  map['/campanhas'] = '/cuidar-mais';
+  map['/laudo-aep'] = '/mapa-riscos-nr1';
+  map['/evidencias'] = '/mapa-riscos-nr1';
+  map['/organograma'] = '/estrutura-organizacional';
+  map['/minhas-ferias'] = '/ferias';
+  map['/minhas-atividades'] = '/minhas-tarefas';
+  map['/relatorios'] = '/relatorios-executivos';
+  map['/ficha-profissional'] = '/colaboradores';
+  map['/comportamentos-ofensivos'] = '/denuncias';
   return map;
 })();
 
+/**
+ * Resolve qualquer caminho/pathname (incluindo rotas aninhadas com parâmetros)
+ * para a chave canônica do módulo pai contratável.
+ */
+export function resolverModuloPai(pathname: string): string {
+  if (!pathname) return pathname;
+  if (MAPA_ROTA_MODULO[pathname]) {
+    return MAPA_ROTA_MODULO[pathname];
+  }
+  for (const mod of MODULOS_CONTRATAVEIS) {
+    if (pathname === mod.key || pathname.startsWith(mod.key + '/')) {
+      return mod.key;
+    }
+    for (const sub of mod.subRotas) {
+      if (pathname === sub || pathname.startsWith(sub + '/')) {
+        return mod.key;
+      }
+    }
+  }
+  return pathname;
+}
+
 /** Retorna a chave do módulo contratável correspondente a uma rota */
 export function obterModuloPorRota(pathname: string): ModuloContratavel | undefined {
-  // Encontra por correspondência exata ou prefixo de rota
-  return MODULOS_CONTRATAVEIS.find((mod) => {
-    if (mod.key === pathname) return true;
-    if (mod.subRotas.some((sub) => pathname === sub || pathname.startsWith(sub + '/'))) return true;
-    return false;
-  });
+  const chavePai = resolverModuloPai(pathname);
+  return MODULOS_CONTRATAVEIS.find((mod) => mod.key === chavePai);
+}
+
+/** Verifica se um módulo é a base inegociável da plataforma (/colaboradores) */
+export function isModuloBase(moduleKey?: string): boolean {
+  if (!moduleKey) return false;
+  const pai = resolverModuloPai(moduleKey);
+  return pai === '/colaboradores';
 }

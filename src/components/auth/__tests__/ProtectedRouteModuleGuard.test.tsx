@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { ProtectedRoute } from '../ProtectedRoute';
 import * as AuthHook from '@/hooks/useAuth';
@@ -30,7 +30,9 @@ describe('ProtectedRoute com Guarda de Módulos (moduleKey)', () => {
     vi.mocked(VisibleModulesHook.useIsModuleVisible).mockReturnValue({
       isVisible: true,
       isLoading: false,
+      isError: false,
       isSuperAdminBypass: false,
+      refetch: vi.fn(),
     });
 
     render(
@@ -51,7 +53,7 @@ describe('ProtectedRoute com Guarda de Módulos (moduleKey)', () => {
     expect(screen.getByText('Conteúdo do Módulo de Avaliações')).toBeInTheDocument();
   });
 
-  it('bloqueia e exibe ModuleNotContractedScreen quando o módulo não está contratado', () => {
+  it('bloqueia rota direta com ModuleNotContractedScreen quando o módulo não está contratado', () => {
     vi.mocked(AuthHook.useAuth).mockReturnValue({
       isAuthenticated: true,
       loading: false,
@@ -63,17 +65,19 @@ describe('ProtectedRoute com Guarda de Módulos (moduleKey)', () => {
     vi.mocked(VisibleModulesHook.useIsModuleVisible).mockReturnValue({
       isVisible: false,
       isLoading: false,
+      isError: false,
       isSuperAdminBypass: false,
+      refetch: vi.fn(),
     });
 
     render(
-      <MemoryRouter initialEntries={['/avaliacoes']}>
+      <MemoryRouter initialEntries={['/ferias']}>
         <Routes>
           <Route
-            path="/avaliacoes"
+            path="/ferias"
             element={
-              <ProtectedRoute moduleKey="/avaliacoes">
-                <div>Conteúdo do Módulo de Avaliações</div>
+              <ProtectedRoute moduleKey="/ferias">
+                <div>Painel de Férias</div>
               </ProtectedRoute>
             }
           />
@@ -82,8 +86,89 @@ describe('ProtectedRoute com Guarda de Módulos (moduleKey)', () => {
     );
 
     expect(screen.getByText('Módulo não contratado')).toBeInTheDocument();
-    expect(screen.getByText(/Avaliação de Desempenho/)).toBeInTheDocument();
-    expect(screen.queryByText('Conteúdo do Módulo de Avaliações')).not.toBeInTheDocument();
+    expect(screen.getByText(/Gestão de Férias/)).toBeInTheDocument();
+    expect(screen.queryByText('Painel de Férias')).not.toBeInTheDocument();
+  });
+
+  it('exibe loader durante carregamento inicial de visibilidade (evita flash)', () => {
+    vi.mocked(AuthHook.useAuth).mockReturnValue({
+      isAuthenticated: true,
+      loading: false,
+      role: 'admin_empresa',
+      isBlocked: false,
+      mustChangePassword: false,
+    } as any);
+
+    vi.mocked(VisibleModulesHook.useIsModuleVisible).mockReturnValue({
+      isVisible: false,
+      isLoading: true,
+      isError: false,
+      isSuperAdminBypass: false,
+      refetch: vi.fn(),
+    });
+
+    const { container } = render(
+      <MemoryRouter initialEntries={['/ferias']}>
+        <Routes>
+          <Route
+            path="/ferias"
+            element={
+              <ProtectedRoute moduleKey="/ferias">
+                <div>Painel de Férias</div>
+              </ProtectedRoute>
+            }
+          />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    // Loader está ativo e conteúdo bloqueado/protegido
+    expect(container.querySelector('.animate-spin')).toBeInTheDocument();
+    expect(screen.queryByText('Painel de Férias')).not.toBeInTheDocument();
+    expect(screen.queryByText('Módulo não contratado')).not.toBeInTheDocument();
+  });
+
+  it('em erro persistente da RPC, oculta módulo e oferece opção de tentar novamente', () => {
+    const refetchMock = vi.fn();
+
+    vi.mocked(AuthHook.useAuth).mockReturnValue({
+      isAuthenticated: true,
+      loading: false,
+      role: 'admin_empresa',
+      isBlocked: false,
+      mustChangePassword: false,
+    } as any);
+
+    vi.mocked(VisibleModulesHook.useIsModuleVisible).mockReturnValue({
+      isVisible: false,
+      isLoading: false,
+      isError: true,
+      isSuperAdminBypass: false,
+      refetch: refetchMock,
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/ferias']}>
+        <Routes>
+          <Route
+            path="/ferias"
+            element={
+              <ProtectedRoute moduleKey="/ferias">
+                <div>Painel de Férias</div>
+              </ProtectedRoute>
+            }
+          />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    expect(screen.getByText('Instabilidade temporária')).toBeInTheDocument();
+    expect(screen.queryByText('Painel de Férias')).not.toBeInTheDocument();
+
+    const retryBtn = screen.getByText('Tentar Novamente');
+    expect(retryBtn).toBeInTheDocument();
+    fireEvent.click(retryBtn);
+    expect(refetchMock).toHaveBeenCalled();
   });
 
   it('permite Super Admin acessar com banner informativo mesmo se módulo desativado', () => {
@@ -99,7 +184,9 @@ describe('ProtectedRoute com Guarda de Módulos (moduleKey)', () => {
     vi.mocked(VisibleModulesHook.useIsModuleVisible).mockReturnValue({
       isVisible: true,
       isLoading: false,
+      isError: false,
       isSuperAdminBypass: true,
+      refetch: vi.fn(),
     });
 
     render(

@@ -28,7 +28,13 @@ export function ProtectedRoute({
 }: ProtectedRouteProps) {
   const { isAuthenticated, loading, isAdmin, isSuperAdmin, role, mustChangePassword, isBlocked, blockReason } = useAuth();
   const location = useLocation();
-  const { isVisible, isSuperAdminBypass } = useIsModuleVisible(moduleKey);
+  const { 
+    isVisible, 
+    isLoading: isModuleLoading, 
+    isError: isModuleError, 
+    isSuperAdminBypass, 
+    refetch: refetchModule 
+  } = useIsModuleVisible(moduleKey);
   
   // Track previous authentication state to prevent flicker during token refresh
   const wasAuthenticatedRef = useRef(isAuthenticated);
@@ -97,8 +103,22 @@ export function ProtectedRoute({
   }
 
   // Guarda Comercial de Módulo (Modelo Solides)
+  if (moduleKey && isModuleLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   if (moduleKey && !isVisible) {
-    return <ModuleNotContractedScreen moduleKey={moduleKey} />;
+    return (
+      <ModuleNotContractedScreen 
+        moduleKey={moduleKey} 
+        isError={isModuleError}
+        onRetry={() => refetchModule()}
+      />
+    );
   }
 
   // Banner discreto quando Super Admin acessa módulo que está desativado para a empresa

@@ -28,6 +28,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useMyPulseStatus } from "@/hooks/usePulseSurvey";
 import { useBranding } from "@/hooks/useBranding";
 import { useVisibleModules, useIsModuleVisible } from "@/hooks/useVisibleModules";
+import { resolverModuloPai, isModuloBase, obterModuloPorRota } from "@/lib/modulosContrataveis";
 
 
 interface NavItem {
@@ -121,7 +122,7 @@ export function Sidebar() {
   const selectedCompany = companies?.find(c => c.id === selectedCompanyId);
   const isFriday = new Date().getDay() === 5;
   const { data: pulseStatus } = useMyPulseStatus();
-  const { data: visibleModules } = useVisibleModules();
+  const { data: visibleModules, isLoading: isLoadingModules, isError: isModulesError } = useVisibleModules();
   const { isVisible: isDenunciasVisible } = useIsModuleVisible('/denuncias');
 
   const handleSignOut = async () => {
@@ -144,16 +145,49 @@ export function Sidebar() {
       roleFiltered = items.filter(item => !item.roles);
     }
     
-    // Second, filter by dynamic visibility (RBAC Frontend Phase A)
+    // Super Admin sem empresa selecionada: visão irrestrita da plataforma (bypass explícito)
+    if (isSuperAdmin && !selectedCompanyId) {
+      return roleFiltered;
+    }
+
+    // Fail-Closed durante carregamento inicial sem cache: apenas recursos base ou Dashboard
+    if (isLoadingModules && (!visibleModules || visibleModules.length === 0)) {
+      return roleFiltered.filter(item => item.href === '/' || isModuloBase(item.href));
+    }
+
+    // Fail-Closed em erro de RPC persistente: oculta módulos contratáveis (apenas base)
+    if (isModulesError) {
+      return roleFiltered.filter(item => item.href === '/' || isModuloBase(item.href));
+    }
+
+    // Filtragem comercial baseada na resposta da RPC
     if (visibleModules && visibleModules.length > 0) {
       return roleFiltered.filter(item => {
-        const config = visibleModules.find(v => v.module_key === item.href);
-        if (config && config.visible === false) return false;
+        // Módulo base (/colaboradores) e dashboard sempre visíveis
+        const moduloPai = resolverModuloPai(item.href);
+        if (isModuloBase(moduloPai) || item.href === '/') {
+          return true;
+        }
+
+        const config = visibleModules.find(
+          v => v.module_key === item.href || v.module_key === moduloPai
+        );
+        if (config) {
+          return config.visible === true;
+        }
+
+        // Se for um módulo do catálogo comercial mas não retornado como true: ocultar (fail-closed)
+        const ehModuloContratavel = obterModuloPorRota(item.href);
+        if (ehModuloContratavel) {
+          return false;
+        }
+
         return true;
       });
     }
-    
-    return roleFiltered;
+
+    // Fallback restritivo de segurança para usuários de empresa (apenas base)
+    return roleFiltered.filter(item => item.href === '/' || isModuloBase(item.href));
   };
 
 

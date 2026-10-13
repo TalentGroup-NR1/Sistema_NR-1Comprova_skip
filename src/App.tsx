@@ -91,6 +91,8 @@ const App = () => (
               <Route path="/cuidar-mais" element={<ProtectedRoute moduleKey="/cuidar-mais"><CuidarMais /></ProtectedRoute>} />
               <Route path="/mapa-riscos-nr1" element={<ProtectedRoute moduleKey="/mapa-riscos-nr1"><MapaRiscosNR1 /></ProtectedRoute>} />
               <Route path="/laudo/:aplicacaoId" element={<ProtectedRoute moduleKey="/mapa-riscos-nr1"><LaudoAepPage /></ProtectedRoute>} />
+              <Route path="/laudo-aep" element={<ProtectedRoute moduleKey="/mapa-riscos-nr1"><LaudoAepPage /></ProtectedRoute>} />
+              <Route path="/laudo-aep/:aplicacaoId" element={<ProtectedRoute moduleKey="/mapa-riscos-nr1"><LaudoAepPage /></ProtectedRoute>} />
               <Route path="/estrutura-organizacional" element={
                 <ProtectedRoute allowedRoles={['admin_master', 'admin_empresa', 'analista_rh', 'gestor_departamento']} moduleKey="/estrutura-organizacional">
                   <EstruturaOrganizacional />
@@ -163,7 +165,10 @@ const App = () => (
                   <PDIDetail />
                 </ProtectedRoute>
               } />
+              <Route path="/pdi" element={<ProtectedRoute moduleKey="/avaliacoes"><Navigate to="/avaliacoes" replace /></ProtectedRoute>} />
+              <Route path="/avaliacao" element={<ProtectedRoute moduleKey="/avaliacoes"><Navigate to="/avaliacoes" replace /></ProtectedRoute>} />
               <Route path="/treinamentos" element={<ProtectedRoute moduleKey="/treinamentos"><Treinamentos /></ProtectedRoute>} />
+              <Route path="/treinamento" element={<ProtectedRoute moduleKey="/treinamentos"><Navigate to="/treinamentos" replace /></ProtectedRoute>} />
               <Route path="/treinamento/:id" element={<ProtectedRoute moduleKey="/treinamentos"><TreinamentoView /></ProtectedRoute>} />
               <Route path="/beneficios" element={<ProtectedRoute moduleKey="/beneficios"><Beneficios /></ProtectedRoute>} />
               <Route path="/relatorios" element={
@@ -204,7 +209,7 @@ const App = () => (
                   <AdminPlataforma />
                 </ProtectedRoute>
               } />
-              <Route path="/evidencias" element={<Evidencias />} />
+              <Route path="/evidencias" element={<ProtectedRoute moduleKey="/mapa-riscos-nr1"><Evidencias /></ProtectedRoute>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
