@@ -96,13 +96,24 @@ function calcRetryDelayMs(attempt: number, addJitter = false): number {
   return base + jitter;
 }
 
+function resolveGeminiModel(envValue?: string | null): string {
+  if (envValue && envValue.trim() !== "") {
+    return envValue.trim().replace(/^models\//, "");
+  }
+  return "gemini-3.8-flash";
+}
+
 function mapFriendlyErrorMessage(rawError: string): string {
   const isCorsOrFetch = rawError.includes("Failed to send a request") || rawError.includes("NetworkError") || rawError.includes("fetch");
+  const is404 = rawError.includes("404") || rawError.includes("NOT_FOUND") || rawError.includes("no longer available");
   const isUnavailable = rawError.includes("503") || rawError.includes("429") || rawError.includes("high demand") || rawError.includes("UNAVAILABLE") || rawError.includes("RESOURCE_EXHAUSTED");
   const isTimeout = rawError.includes("tempo esgotado") || rawError.includes("AbortError");
 
   if (isCorsOrFetch) {
     return "Falha de conexão com o serviço de análise (CORS ou rede). Verifique sua conexão e tente novamente.";
+  }
+  if (is404) {
+    return "O modelo de IA está em atualização ou temporariamente indisponível. Por favor, contate o suporte técnico.";
   }
   if (isUnavailable) {
     return "O serviço de inteligência artificial está temporariamente ocupado com alta demanda. Por favor, aguarde alguns minutos e tente novamente.";
@@ -612,6 +623,32 @@ describe("pgr-importar: Retry com Backoff e Tolerância a Indisponibilidade Tran
     expect(amigavel).toBe(
       "Falha de conexão com o serviço de análise (CORS ou rede). Verifique sua conexão e tente novamente."
     );
+  });
+});
+
+describe("pgr-importar: Resolução Dinâmica de Modelo (GEMINI_MODEL) e Erro 404", () => {
+  it("deve usar o fallback padrão gemini-3.8-flash quando GEMINI_MODEL não estiver definido", () => {
+    expect(resolveGeminiModel(undefined)).toBe("gemini-3.8-flash");
+    expect(resolveGeminiModel("")).toBe("gemini-3.8-flash");
+    expect(resolveGeminiModel("   ")).toBe("gemini-3.8-flash");
+  });
+
+  it("deve respeitar a variável de ambiente GEMINI_MODEL quando definida", () => {
+    expect(resolveGeminiModel("gemini-custom-pro")).toBe("gemini-custom-pro");
+  });
+
+  it("deve remover prefixo 'models/' se informado na variável de ambiente", () => {
+    expect(resolveGeminiModel("models/gemini-3.8-flash")).toBe("gemini-3.8-flash");
+    expect(resolveGeminiModel("models/gemini-next-gen")).toBe("gemini-next-gen");
+  });
+
+  it("deve mapear erro 404 de modelo descontinuado para mensagem amigável específica", () => {
+    const logReal404 = 'http_404|{"error": {"code": 404, "message": "This model models/gemini-2.0-flash is no longer available. Please update your code to use models/gemini-3.8-flash.", "status": "NOT_FOUND"}}';
+    const amigavel = mapFriendlyErrorMessage(logReal404);
+    expect(amigavel).toBe("O modelo de IA está em atualização ou temporariamente indisponível. Por favor, contate o suporte técnico.");
+    expect(amigavel).not.toContain("404");
+    expect(amigavel).not.toContain("NOT_FOUND");
+    expect(amigavel).not.toContain("gemini-2.0-flash");
   });
 });
 

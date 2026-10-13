@@ -197,11 +197,14 @@ export function useIniciarImportacaoPgr() {
             console.warn("[usePgrImportacao] Edge Function error (background):", actualError);
             const msg = actualError.message ?? "";
             const isCorsOrFetch = msg.includes("Failed to send a request") || msg.includes("NetworkError") || msg.includes("fetch");
+            const is404 = msg.includes("404") || msg.includes("NOT_FOUND") || msg.includes("em atualização") || msg.includes("no longer available");
             const isOverloaded = msg.includes("503") || msg.includes("429") || msg.includes("high demand") || msg.includes("UNAVAILABLE") || msg.includes("alta demanda") || msg.includes("ocupado");
             
             let userFriendlyMsg: string;
             if (isCorsOrFetch) {
               userFriendlyMsg = "Falha de conexão com o serviço de análise (CORS ou rede). Verifique sua conexão e tente novamente.";
+            } else if (is404) {
+              userFriendlyMsg = "O modelo de IA está em atualização ou temporariamente indisponível. Por favor, contate o suporte técnico.";
             } else if (isOverloaded) {
               userFriendlyMsg = "O serviço de inteligência artificial está temporariamente ocupado com alta demanda. Por favor, aguarde alguns minutos e tente novamente.";
             } else {
@@ -233,8 +236,11 @@ export function useIniciarImportacaoPgr() {
       }
       if (resultado.status === "erro") {
         const rawErr = resultado.erro_mensagem || "";
-        const isOverloaded = rawErr.includes("503") || rawErr.includes("429") || rawErr.includes("high demand") || rawErr.includes("UNAVAILABLE");
-        const finalMsg = isOverloaded
+        const is404 = rawErr.includes("404") || rawErr.includes("NOT_FOUND") || rawErr.includes("em atualização") || rawErr.includes("no longer available");
+        const isOverloaded = rawErr.includes("503") || rawErr.includes("429") || rawErr.includes("high demand") || rawErr.includes("UNAVAILABLE") || rawErr.includes("alta demanda");
+        const finalMsg = is404
+          ? "O modelo de IA está em atualização ou temporariamente indisponível. Por favor, contate o suporte técnico."
+          : isOverloaded
           ? "O serviço de inteligência artificial está temporariamente ocupado com alta demanda. Por favor, aguarde alguns minutos e tente novamente."
           : (rawErr || "Falha ao processar o documento do PGR.");
         throw new Error(finalMsg);

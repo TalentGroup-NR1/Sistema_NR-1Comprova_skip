@@ -24,6 +24,23 @@ export function calcRetryDelayMs(attempt: number, addJitter = true): number {
   return base + jitter;
 }
 
+/**
+ * Retorna o nome do modelo Gemini a ser utilizado.
+ * Lê prioritariamente da variável de ambiente GEMINI_MODEL configurada no Supabase Secrets.
+ * Fallback padrão oficial: 'gemini-3.8-flash'.
+ */
+export function getGeminiModelName(): string {
+  try {
+    const envModel = Deno.env.get("GEMINI_MODEL")?.trim();
+    if (envModel) {
+      return envModel.replace(/^models\//, "");
+    }
+  } catch {
+    // Ambiente sem Deno.env (ex.: testes unitários isolados)
+  }
+  return "gemini-3.8-flash";
+}
+
 const RequestSchema = z.object({
   importacao_id: z.string().uuid(),
 });
@@ -58,7 +75,7 @@ function extractTextFromPDFBytes(bytes: Uint8Array): string {
 }
 
 /**
- * Extrai dados do PGR (PDF) usando Gemini 2.0 Flash Multimodal.
+ * Extrai dados do PGR (PDF) usando Gemini 3.8 Flash Multimodal (ou modelo definido em GEMINI_MODEL).
  * O PDF é enviado inteiramente como base64, dispensando OCR local ou extração manual.
  */
 async function analisarPgrComGemini(bytes: Uint8Array, apiKey: string): Promise<Record<string, unknown>> {
@@ -144,7 +161,8 @@ Nunca armazene ou extraia nomes de trabalhadores identificados (dado de saúde s
       }
 
       try {
-        response = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent", {
+        const modelName = getGeminiModelName();
+        response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent`, {
           method: "POST",
           headers: {
             "x-goog-api-key": apiKey.trim(),
@@ -161,6 +179,7 @@ Nunca armazene ou extraia nomes de trabalhadores identificados (dado de saúde s
               responseMimeType: "application/json",
               responseSchema: schema,
               temperature: 0.2,
+              // Teto suportado pelo Gemini 3.8 Flash: até 65.536 tokens de saída
               maxOutputTokens: 65536
             }
           }),
@@ -415,6 +434,7 @@ serve(async (req) => {
       
       const isTimeout = iaErr?.name === "AbortError" || iaErr?.message === "tempo esgotado";
       const errMsg = iaErr?.message || "";
+      const is404 = errMsg.includes("http_404") || errMsg.includes("NOT_FOUND") || errMsg.includes("no longer available");
       const isUnavailable = errMsg.includes("http_5") || 
                             errMsg.includes("http_429") || 
                             errMsg.includes("high demand") || 
@@ -424,13 +444,15 @@ serve(async (req) => {
       let amigavelMsg = "Falha na extração de dados do PGR.";
       if (isTimeout) {
         amigavelMsg = "A análise demorou mais que o esperado (documento muito extenso). Tente reimportar um arquivo menor ou em outro momento.";
+      } else if (is404) {
+        amigavelMsg = "O modelo de IA está em atualização ou temporariamente indisponível. Por favor, contate o suporte técnico.";
       } else if (isUnavailable) {
         amigavelMsg = "O serviço de inteligência artificial está temporariamente ocupado com alta demanda. Por favor, aguarde alguns minutos e tente novamente.";
       } else {
         amigavelMsg = "Não foi possível extrair dados do documento PGR. Verifique se o arquivo PDF está legível e tente novamente.";
       }
 
-      // Detalhes técnicos ficam no log interno do servidor para auditoria técnica (sem expor 503 bruto ao cliente)
+      // Detalhes técnicos completos ficam no log interno do servidor para auditoria técnica
       console.error(`[pgr-importar][${requestId}] Log técnico da falha de IA:`, errMsg);
       
       // Atualiza diretamente para erro para não prender o usuário em "processando" ou "aguardando revisão"
