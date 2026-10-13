@@ -2,7 +2,7 @@
 -- SCRIPT DE LIMPEZA INTEGRAL DAS EMPRESAS LEGADAS (TG MAIS e TG UNITI)
 -- SISTEMA NR1COMPROVA - BANCO DE PRODUÇÃO SUPABASE
 -- DATA DE CRIAÇÃO: 13/10/2026
--- VERSÃO: 1.0 (REVISÃO ANTES DA EXECUÇÃO)
+-- VERSÃO: 1.1 (COM INCLUSÃO EXPLICITA DO MÓDULO PSICO: RESPOSTAS, ATRIBUIÇÕES, GHES)
 -- 
 -- OBJETIVO:
 --   Remover com segurança estrita todos os dados das empresas:
@@ -15,7 +15,7 @@
 --       Horizonte Contabilidade (8ce4c4cd-0d6f-48c3-a938-6570b5bc41b4).
 --   - Preservação TOTAL de catálogos e sementes globais (AND company_id IS NOT NULL).
 --   - Zero uso de DROP TABLE ou TRUNCATE. Todo DELETE possui cláusula WHERE estrita.
---   - Verificação com SELECT count(*) pré e pós em CADA UMA das 87 etapas.
+--   - Verificação com SELECT count(*) pré e pós em CADA UMA das etapas.
 --   - Remoção posterior de vínculos das 25 contas legadas em auth.users.
 -- ============================================================================
 
@@ -511,14 +511,14 @@ WHERE company_id IN ('b496582a-fe27-4131-a6fc-bc540f470100', 'fcdfc7aa-f768-4547
 -- ============================================================================
 SELECT 'PRE_pgr_risco_detalhes' AS etapa, count(*) AS registros_alvo 
 FROM public."pgr_risco_detalhes" 
-WHERE ghe_risco_id IN (SELECT id FROM public.nr1_ghe_riscos WHERE company_id IN ('b496582a-fe27-4131-a6fc-bc540f470100', 'fcdfc7aa-f768-4547-82eb-a8bf583ff756'));
+WHERE risco_ghe_id IN (SELECT id FROM public.nr1_ghe_riscos WHERE company_id IN ('b496582a-fe27-4131-a6fc-bc540f470100', 'fcdfc7aa-f768-4547-82eb-a8bf583ff756'));
 
 DELETE FROM public."pgr_risco_detalhes" 
-WHERE ghe_risco_id IN (SELECT id FROM public.nr1_ghe_riscos WHERE company_id IN ('b496582a-fe27-4131-a6fc-bc540f470100', 'fcdfc7aa-f768-4547-82eb-a8bf583ff756'));
+WHERE risco_ghe_id IN (SELECT id FROM public.nr1_ghe_riscos WHERE company_id IN ('b496582a-fe27-4131-a6fc-bc540f470100', 'fcdfc7aa-f768-4547-82eb-a8bf583ff756'));
 
 SELECT 'POS_pgr_risco_detalhes' AS etapa, count(*) AS registros_remanescentes 
 FROM public."pgr_risco_detalhes" 
-WHERE ghe_risco_id IN (SELECT id FROM public.nr1_ghe_riscos WHERE company_id IN ('b496582a-fe27-4131-a6fc-bc540f470100', 'fcdfc7aa-f768-4547-82eb-a8bf583ff756'));
+WHERE risco_ghe_id IN (SELECT id FROM public.nr1_ghe_riscos WHERE company_id IN ('b496582a-fe27-4131-a6fc-bc540f470100', 'fcdfc7aa-f768-4547-82eb-a8bf583ff756'));
 
 -- ============================================================================
 -- ETAPA 35: public.pgr_secoes [INDIRECT]
@@ -927,7 +927,63 @@ FROM public."nr1_matriz_config"
 WHERE company_id IN ('b496582a-fe27-4131-a6fc-bc540f470100', 'fcdfc7aa-f768-4547-82eb-a8bf583ff756');
 
 -- ============================================================================
--- ETAPA 64: public.birthday_greeting_acknowledgments [USER_CHILD]
+-- ETAPA 64: public.psico_respostas [INDIRECT]
+-- ============================================================================
+SELECT 'PRE_psico_respostas' AS etapa, count(*) AS registros_alvo 
+FROM public."psico_respostas" 
+WHERE avaliacao_id IN (SELECT id FROM public.psico_avaliacoes WHERE company_id IN ('b496582a-fe27-4131-a6fc-bc540f470100', 'fcdfc7aa-f768-4547-82eb-a8bf583ff756'));
+
+DELETE FROM public."psico_respostas" 
+WHERE avaliacao_id IN (SELECT id FROM public.psico_avaliacoes WHERE company_id IN ('b496582a-fe27-4131-a6fc-bc540f470100', 'fcdfc7aa-f768-4547-82eb-a8bf583ff756'));
+
+SELECT 'POS_psico_respostas' AS etapa, count(*) AS registros_remanescentes 
+FROM public."psico_respostas" 
+WHERE avaliacao_id IN (SELECT id FROM public.psico_avaliacoes WHERE company_id IN ('b496582a-fe27-4131-a6fc-bc540f470100', 'fcdfc7aa-f768-4547-82eb-a8bf583ff756'));
+
+-- ============================================================================
+-- ETAPA 65: public.psico_atribuicoes [INDIRECT]
+-- ============================================================================
+SELECT 'PRE_psico_atribuicoes' AS etapa, count(*) AS registros_alvo 
+FROM public."psico_atribuicoes" 
+WHERE avaliacao_id IN (SELECT id FROM public.psico_avaliacoes WHERE company_id IN ('b496582a-fe27-4131-a6fc-bc540f470100', 'fcdfc7aa-f768-4547-82eb-a8bf583ff756'));
+
+DELETE FROM public."psico_atribuicoes" 
+WHERE avaliacao_id IN (SELECT id FROM public.psico_avaliacoes WHERE company_id IN ('b496582a-fe27-4131-a6fc-bc540f470100', 'fcdfc7aa-f768-4547-82eb-a8bf583ff756'));
+
+SELECT 'POS_psico_atribuicoes' AS etapa, count(*) AS registros_remanescentes 
+FROM public."psico_atribuicoes" 
+WHERE avaliacao_id IN (SELECT id FROM public.psico_avaliacoes WHERE company_id IN ('b496582a-fe27-4131-a6fc-bc540f470100', 'fcdfc7aa-f768-4547-82eb-a8bf583ff756'));
+
+-- ============================================================================
+-- ETAPA 66: public.psico_avaliacao_ghes [INDIRECT]
+-- ============================================================================
+SELECT 'PRE_psico_avaliacao_ghes' AS etapa, count(*) AS registros_alvo 
+FROM public."psico_avaliacao_ghes" 
+WHERE avaliacao_id IN (SELECT id FROM public.psico_avaliacoes WHERE company_id IN ('b496582a-fe27-4131-a6fc-bc540f470100', 'fcdfc7aa-f768-4547-82eb-a8bf583ff756'));
+
+DELETE FROM public."psico_avaliacao_ghes" 
+WHERE avaliacao_id IN (SELECT id FROM public.psico_avaliacoes WHERE company_id IN ('b496582a-fe27-4131-a6fc-bc540f470100', 'fcdfc7aa-f768-4547-82eb-a8bf583ff756'));
+
+SELECT 'POS_psico_avaliacao_ghes' AS etapa, count(*) AS registros_remanescentes 
+FROM public."psico_avaliacao_ghes" 
+WHERE avaliacao_id IN (SELECT id FROM public.psico_avaliacoes WHERE company_id IN ('b496582a-fe27-4131-a6fc-bc540f470100', 'fcdfc7aa-f768-4547-82eb-a8bf583ff756'));
+
+-- ============================================================================
+-- ETAPA 67: public.psico_avaliacoes [DIRECT]
+-- ============================================================================
+SELECT 'PRE_psico_avaliacoes' AS etapa, count(*) AS registros_alvo 
+FROM public."psico_avaliacoes" 
+WHERE company_id IN ('b496582a-fe27-4131-a6fc-bc540f470100', 'fcdfc7aa-f768-4547-82eb-a8bf583ff756');
+
+DELETE FROM public."psico_avaliacoes" 
+WHERE company_id IN ('b496582a-fe27-4131-a6fc-bc540f470100', 'fcdfc7aa-f768-4547-82eb-a8bf583ff756');
+
+SELECT 'POS_psico_avaliacoes' AS etapa, count(*) AS registros_remanescentes 
+FROM public."psico_avaliacoes" 
+WHERE company_id IN ('b496582a-fe27-4131-a6fc-bc540f470100', 'fcdfc7aa-f768-4547-82eb-a8bf583ff756');
+
+-- ============================================================================
+-- ETAPA 68: public.birthday_greeting_acknowledgments [USER_CHILD]
 -- ============================================================================
 SELECT 'PRE_birthday_greeting_acknowledgments' AS etapa, count(*) AS registros_alvo 
 FROM public."birthday_greeting_acknowledgments" 
@@ -1019,7 +1075,7 @@ WHERE user_id IN (
   );
 
 -- ============================================================================
--- ETAPA 65: public.tasks [USER_CHILD]
+-- ETAPA 69: public.tasks [USER_CHILD]
 -- ============================================================================
 SELECT 'PRE_tasks' AS etapa, count(*) AS registros_alvo 
 FROM public."tasks" 
@@ -1111,7 +1167,7 @@ WHERE user_id IN (
   );
 
 -- ============================================================================
--- ETAPA 66: public.user_preferences [USER_CHILD]
+-- ETAPA 70: public.user_preferences [USER_CHILD]
 -- ============================================================================
 SELECT 'PRE_user_preferences' AS etapa, count(*) AS registros_alvo 
 FROM public."user_preferences" 
@@ -1203,7 +1259,7 @@ WHERE user_id IN (
   );
 
 -- ============================================================================
--- ETAPA 67: public.user_roles [USER_CHILD]
+-- ETAPA 71: public.user_roles [USER_CHILD]
 -- ============================================================================
 SELECT 'PRE_user_roles' AS etapa, count(*) AS registros_alvo 
 FROM public."user_roles" 
@@ -1295,7 +1351,7 @@ WHERE user_id IN (
   );
 
 -- ============================================================================
--- ETAPA 68: public.descricoes_cargo [DIRECT]
+-- ETAPA 72: public.descricoes_cargo [DIRECT]
 -- ============================================================================
 SELECT 'PRE_descricoes_cargo' AS etapa, count(*) AS registros_alvo 
 FROM public."descricoes_cargo" 
@@ -1309,7 +1365,7 @@ FROM public."descricoes_cargo"
 WHERE company_id IN ('b496582a-fe27-4131-a6fc-bc540f470100', 'fcdfc7aa-f768-4547-82eb-a8bf583ff756');
 
 -- ============================================================================
--- ETAPA 69: public.colaboradores [DIRECT]
+-- ETAPA 73: public.colaboradores [DIRECT]
 -- ============================================================================
 SELECT 'PRE_colaboradores' AS etapa, count(*) AS registros_alvo 
 FROM public."colaboradores" 
@@ -1323,7 +1379,7 @@ FROM public."colaboradores"
 WHERE company_id IN ('b496582a-fe27-4131-a6fc-bc540f470100', 'fcdfc7aa-f768-4547-82eb-a8bf583ff756');
 
 -- ============================================================================
--- ETAPA 70: public.nr1_ghe_riscos [DIRECT_NO_FK]
+-- ETAPA 74: public.nr1_ghe_riscos [DIRECT_NO_FK]
 -- ============================================================================
 SELECT 'PRE_nr1_ghe_riscos' AS etapa, count(*) AS registros_alvo 
 FROM public."nr1_ghe_riscos" 
@@ -1337,7 +1393,7 @@ FROM public."nr1_ghe_riscos"
 WHERE company_id IN ('b496582a-fe27-4131-a6fc-bc540f470100', 'fcdfc7aa-f768-4547-82eb-a8bf583ff756');
 
 -- ============================================================================
--- ETAPA 71: public.cargos [DIRECT]
+-- ETAPA 75: public.cargos [DIRECT]
 -- ============================================================================
 SELECT 'PRE_cargos' AS etapa, count(*) AS registros_alvo 
 FROM public."cargos" 
@@ -1351,7 +1407,7 @@ FROM public."cargos"
 WHERE company_id IN ('b496582a-fe27-4131-a6fc-bc540f470100', 'fcdfc7aa-f768-4547-82eb-a8bf583ff756');
 
 -- ============================================================================
--- ETAPA 72: public.ghe_epis [DIRECT]
+-- ETAPA 76: public.ghe_epis [DIRECT]
 -- ============================================================================
 SELECT 'PRE_ghe_epis' AS etapa, count(*) AS registros_alvo 
 FROM public."ghe_epis" 
@@ -1365,7 +1421,7 @@ FROM public."ghe_epis"
 WHERE company_id IN ('b496582a-fe27-4131-a6fc-bc540f470100', 'fcdfc7aa-f768-4547-82eb-a8bf583ff756');
 
 -- ============================================================================
--- ETAPA 73: public.ghes [DIRECT]
+-- ETAPA 77: public.ghes [DIRECT]
 -- ============================================================================
 SELECT 'PRE_ghes' AS etapa, count(*) AS registros_alvo 
 FROM public."ghes" 
@@ -1379,7 +1435,7 @@ FROM public."ghes"
 WHERE company_id IN ('b496582a-fe27-4131-a6fc-bc540f470100', 'fcdfc7aa-f768-4547-82eb-a8bf583ff756');
 
 -- ============================================================================
--- ETAPA 74: public.setores [DIRECT]
+-- ETAPA 78: public.setores [DIRECT]
 -- ============================================================================
 SELECT 'PRE_setores' AS etapa, count(*) AS registros_alvo 
 FROM public."setores" 
@@ -1393,7 +1449,7 @@ FROM public."setores"
 WHERE company_id IN ('b496582a-fe27-4131-a6fc-bc540f470100', 'fcdfc7aa-f768-4547-82eb-a8bf583ff756');
 
 -- ============================================================================
--- ETAPA 75: public.departamentos [DIRECT]
+-- ETAPA 79: public.departamentos [DIRECT]
 -- ============================================================================
 SELECT 'PRE_departamentos' AS etapa, count(*) AS registros_alvo 
 FROM public."departamentos" 
@@ -1407,7 +1463,7 @@ FROM public."departamentos"
 WHERE company_id IN ('b496582a-fe27-4131-a6fc-bc540f470100', 'fcdfc7aa-f768-4547-82eb-a8bf583ff756');
 
 -- ============================================================================
--- ETAPA 76: public.unidades_organizacionais [DIRECT]
+-- ETAPA 80: public.unidades_organizacionais [DIRECT]
 -- ============================================================================
 SELECT 'PRE_unidades_organizacionais' AS etapa, count(*) AS registros_alvo 
 FROM public."unidades_organizacionais" 
@@ -1421,7 +1477,7 @@ FROM public."unidades_organizacionais"
 WHERE company_id IN ('b496582a-fe27-4131-a6fc-bc540f470100', 'fcdfc7aa-f768-4547-82eb-a8bf583ff756');
 
 -- ============================================================================
--- ETAPA 77: public.banco_horas_perfis [DIRECT]
+-- ETAPA 81: public.banco_horas_perfis [DIRECT]
 -- ============================================================================
 SELECT 'PRE_banco_horas_perfis' AS etapa, count(*) AS registros_alvo 
 FROM public."banco_horas_perfis" 
@@ -1435,7 +1491,7 @@ FROM public."banco_horas_perfis"
 WHERE company_id IN ('b496582a-fe27-4131-a6fc-bc540f470100', 'fcdfc7aa-f768-4547-82eb-a8bf583ff756');
 
 -- ============================================================================
--- ETAPA 78: public.work_schedules [DIRECT]
+-- ETAPA 82: public.work_schedules [DIRECT]
 -- ============================================================================
 SELECT 'PRE_work_schedules' AS etapa, count(*) AS registros_alvo 
 FROM public."work_schedules" 
@@ -1449,7 +1505,7 @@ FROM public."work_schedules"
 WHERE company_id IN ('b496582a-fe27-4131-a6fc-bc540f470100', 'fcdfc7aa-f768-4547-82eb-a8bf583ff756');
 
 -- ============================================================================
--- ETAPA 79: public.ponto_configuracoes [DIRECT]
+-- ETAPA 83: public.ponto_configuracoes [DIRECT]
 -- ============================================================================
 SELECT 'PRE_ponto_configuracoes' AS etapa, count(*) AS registros_alvo 
 FROM public."ponto_configuracoes" 
@@ -1463,7 +1519,7 @@ FROM public."ponto_configuracoes"
 WHERE company_id IN ('b496582a-fe27-4131-a6fc-bc540f470100', 'fcdfc7aa-f768-4547-82eb-a8bf583ff756');
 
 -- ============================================================================
--- ETAPA 80: public.ponto_tipos_abono [DIRECT]
+-- ETAPA 84: public.ponto_tipos_abono [DIRECT]
 -- ============================================================================
 SELECT 'PRE_ponto_tipos_abono' AS etapa, count(*) AS registros_alvo 
 FROM public."ponto_tipos_abono" 
@@ -1477,7 +1533,7 @@ FROM public."ponto_tipos_abono"
 WHERE company_id IN ('b496582a-fe27-4131-a6fc-bc540f470100', 'fcdfc7aa-f768-4547-82eb-a8bf583ff756');
 
 -- ============================================================================
--- ETAPA 81: public.module_visibility [DIRECT]
+-- ETAPA 85: public.module_visibility [DIRECT]
 -- ============================================================================
 SELECT 'PRE_module_visibility' AS etapa, count(*) AS registros_alvo 
 FROM public."module_visibility" 
@@ -1491,7 +1547,7 @@ FROM public."module_visibility"
 WHERE company_id IN ('b496582a-fe27-4131-a6fc-bc540f470100', 'fcdfc7aa-f768-4547-82eb-a8bf583ff756');
 
 -- ============================================================================
--- ETAPA 82: public.niveis_maturidade [DIRECT]
+-- ETAPA 86: public.niveis_maturidade [DIRECT]
 -- ============================================================================
 SELECT 'PRE_niveis_maturidade' AS etapa, count(*) AS registros_alvo 
 FROM public."niveis_maturidade" 
@@ -1505,7 +1561,7 @@ FROM public."niveis_maturidade"
 WHERE company_id IN ('b496582a-fe27-4131-a6fc-bc540f470100', 'fcdfc7aa-f768-4547-82eb-a8bf583ff756');
 
 -- ============================================================================
--- ETAPA 83: public.feriados [HYBRID]
+-- ETAPA 87: public.feriados [HYBRID]
 -- ============================================================================
 SELECT 'PRE_feriados' AS etapa, count(*) AS registros_alvo 
 FROM public."feriados" 
@@ -1519,7 +1575,7 @@ FROM public."feriados"
 WHERE company_id IN ('b496582a-fe27-4131-a6fc-bc540f470100', 'fcdfc7aa-f768-4547-82eb-a8bf583ff756') AND company_id IS NOT NULL;
 
 -- ============================================================================
--- ETAPA 84: public.descricao_modelos [DIRECT]
+-- ETAPA 88: public.descricao_modelos [DIRECT]
 -- ============================================================================
 SELECT 'PRE_descricao_modelos' AS etapa, count(*) AS registros_alvo 
 FROM public."descricao_modelos" 
@@ -1533,7 +1589,7 @@ FROM public."descricao_modelos"
 WHERE company_id IN ('b496582a-fe27-4131-a6fc-bc540f470100', 'fcdfc7aa-f768-4547-82eb-a8bf583ff756');
 
 -- ============================================================================
--- ETAPA 85: public.replication_logs [DIRECT_SPECIAL]
+-- ETAPA 89: public.replication_logs [DIRECT_SPECIAL]
 -- ============================================================================
 SELECT 'PRE_replication_logs' AS etapa, count(*) AS registros_alvo 
 FROM public."replication_logs" 
@@ -1547,7 +1603,7 @@ FROM public."replication_logs"
 WHERE source_company_id IN ('b496582a-fe27-4131-a6fc-bc540f470100', 'fcdfc7aa-f768-4547-82eb-a8bf583ff756') OR target_company_id IN ('b496582a-fe27-4131-a6fc-bc540f470100', 'fcdfc7aa-f768-4547-82eb-a8bf583ff756');
 
 -- ============================================================================
--- ETAPA 86: public.profiles [HYBRID]
+-- ETAPA 90: public.profiles [HYBRID]
 -- ============================================================================
 SELECT 'PRE_profiles' AS etapa, count(*) AS registros_alvo 
 FROM public."profiles" 
@@ -1561,7 +1617,7 @@ FROM public."profiles"
 WHERE company_id IN ('b496582a-fe27-4131-a6fc-bc540f470100', 'fcdfc7aa-f768-4547-82eb-a8bf583ff756') AND company_id IS NOT NULL;
 
 -- ============================================================================
--- ETAPA 87: public.companies [ROOT]
+-- ETAPA 91: public.companies [ROOT]
 -- ============================================================================
 SELECT 'PRE_companies' AS etapa, count(*) AS registros_alvo 
 FROM public."companies" 
@@ -1575,7 +1631,7 @@ FROM public."companies"
 WHERE id IN ('b496582a-fe27-4131-a6fc-bc540f470100', 'fcdfc7aa-f768-4547-82eb-a8bf583ff756');
 
 -- ============================================================================
--- ETAPA 88: REMOÇÃO DAS 25 CONTAS LEGADAS EM auth.users
+-- ETAPA 92: REMOÇÃO DAS 25 CONTAS LEGADAS EM auth.users
 -- Executado após remoção de todos os vínculos em public (profiles, roles, etc.)
 -- ============================================================================
 SELECT 'PRE_auth_users' AS etapa, count(*) AS contas_legadas 
@@ -1668,7 +1724,7 @@ WHERE id IN (
 );
 
 -- ============================================================================
--- ETAPA 89: AUDITORIA E PROVA FINAL DE INTEGRIDADE PÓS-LIMPEZA
+-- ETAPA 93: AUDITORIA E PROVA FINAL DE INTEGRIDADE PÓS-LIMPEZA
 -- ============================================================================
 
 -- 1. Provar que as empresas legadas foram completamente zeradas
@@ -1735,6 +1791,11 @@ FROM public.nr1_proart_perguntas;
 SELECT 'CHECK_CHECKLIST_TEMPLATES_GLOBAIS' AS auditoria, count(*) AS templates_globais 
 FROM public.checklist_templates 
 WHERE company_id IS NULL;
+
+-- 6. Provar que o módulo psicossocial permaneceu consistente (zero órfãos)
+SELECT 'CHECK_PSICO_ATRIBUICOES' AS auditoria, count(*) AS total FROM public.psico_atribuicoes;
+SELECT 'CHECK_PSICO_AVALIACAO_GHES' AS auditoria, count(*) AS total FROM public.psico_avaliacao_ghes;
+SELECT 'CHECK_PSICO_RESPOSTAS' AS auditoria, count(*) AS total FROM public.psico_respostas;
 
 -- Se todas as provas de integridade forem satisfatórias:
 COMMIT;
