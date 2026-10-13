@@ -34,7 +34,7 @@ const STATUS_CONFIG = {
   erro: { label: "Erro", icon: AlertCircle, spin: false, color: "bg-red-100 text-red-800" },
 };
 
-const FASES_EM_MS = { ENVIANDO: 3000, LENDO: 8000, EXTRAINDO: 40000 };
+const FASES_EM_MS = { ENVIANDO: 3000, LENDO: 10000, EXTRAINDO: 60000 };
 const FASES_PROGRESSO = [
   { id: 0, label: "Enviando documento", duration: FASES_EM_MS.ENVIANDO },
   { id: 1, label: "Lendo PDF", duration: FASES_EM_MS.LENDO },
@@ -116,8 +116,8 @@ function UploadZone({ onFile, isPending }: { onFile: (file: File) => void; isPen
         </p>
         <p className="text-sm text-muted-foreground mt-1">
           {isPending
-            ? "Processando documento..."
-            : "PDF de até 10MB — pode ser escaneado, a IA fará o OCR"}
+            ? "Processando documento (arquivos com muitas páginas ou escaneados podem levar até 2 minutos)..."
+            : "PDF de até 10MB — digital ou escaneado (a IA fará OCR). Caso o documento tenha muitas páginas, tente importar o trecho com o inventário de riscos/plano de ação."}
         </p>
         {isPending && (
           <div className="mt-4 w-64 mx-auto space-y-2 text-left bg-background/50 p-4 rounded-xl border border-border">
@@ -601,12 +601,26 @@ export function ImportarPgrTab() {
             Importar PGR Existente
           </CardTitle>
           <CardDescription>
-            Envie o PDF do PGR elaborado por outro profissional. A plataforma usa IA (GPT-4o) para extrair
+            Envie o PDF do PGR (digital ou escaneado). A plataforma usa IA multimodal para extrair
             os riscos e o plano de ação — você revisa e confirma antes de salvar.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <UploadZone onFile={handleFile} isPending={iniciar.isPending} />
+
+          {/* Alerta de erro da importação com orientação acionável */}
+          {iniciar.isError && (
+            <Alert variant="destructive" className="border-red-300 bg-red-50 text-red-900 shadow-sm">
+              <AlertCircle className="h-5 w-5 text-red-600 mt-0.5" />
+              <AlertDescription className="flex flex-col gap-1">
+                <span className="font-semibold">Erro no processamento do documento</span>
+                <span>{(iniciar.error as any)?.message ?? "Ocorreu uma falha ao analisar o PGR."}</span>
+                <span className="text-xs text-red-800/80 mt-1">
+                  Orientação: Se o documento for muito extenso ou escaneado com muitas páginas, experimente dividir o arquivo e enviar apenas as seções do Inventário de Riscos e do Plano de Ação.
+                </span>
+              </AlertDescription>
+            </Alert>
+          )}
 
           {/* Aviso de revisão pendente */}
           {(aguardandoRevisao && !importacaoEmRevisao) && (

@@ -7,13 +7,28 @@ import { describe, it, expect } from "vitest";
 const PRODUCTION_ORIGINS = [
   "https://nr1pronto.com.br",
   "https://www.nr1pronto.com.br",
+  "https://nr-1pronto.com.br",
+  "https://www.nr-1pronto.com.br",
+  "https://nr1comprova.com.br",
+  "https://www.nr1comprova.com.br",
+  "https://nr-1comprova.com.br",
+  "https://www.nr-1comprova.com.br",
 ];
 const LOCALHOST_REGEX = /^https?:\/\/localhost(:\d+)?$/;
 
 function isAllowedOrigin(origin: string): boolean {
   if (!origin) return true;
   if (LOCALHOST_REGEX.test(origin)) return true;
-  return PRODUCTION_ORIGINS.includes(origin);
+  if (PRODUCTION_ORIGINS.includes(origin)) return true;
+  try {
+    const url = new URL(origin);
+    if (url.hostname.endsWith(".vercel.app") && (url.protocol === "https:" || url.protocol === "http:")) {
+      return true;
+    }
+  } catch {
+    return false;
+  }
+  return false;
 }
 
 function buildCorsHeaders(origin: string): Record<string, string> {
@@ -111,6 +126,19 @@ describe("pgr-importar: CORS Preflight", () => {
   it("deve permitir www.nr1pronto.com.br", () => {
     const h = buildCorsHeaders("https://www.nr1pronto.com.br");
     expect(h["Access-Control-Allow-Origin"]).toBe("https://www.nr1pronto.com.br");
+  });
+
+  it("deve permitir www.nr-1comprova.com.br e nr-1comprova.com.br", () => {
+    const h1 = buildCorsHeaders("https://www.nr-1comprova.com.br");
+    expect(h1["Access-Control-Allow-Origin"]).toBe("https://www.nr-1comprova.com.br");
+
+    const h2 = buildCorsHeaders("https://nr-1comprova.com.br");
+    expect(h2["Access-Control-Allow-Origin"]).toBe("https://nr-1comprova.com.br");
+  });
+
+  it("deve permitir subdomínios da vercel (*.vercel.app)", () => {
+    const h = buildCorsHeaders("https://sistema-nr-1-comprova.vercel.app");
+    expect(h["Access-Control-Allow-Origin"]).toBe("https://sistema-nr-1-comprova.vercel.app");
   });
 
   it("deve bloquear origem não permitida (ex.: domínio malicioso)", () => {

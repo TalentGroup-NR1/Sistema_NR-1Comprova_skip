@@ -118,8 +118,8 @@ export function usePgrImportacoes() {
 // o resultado da Edge Function com polling (até 60s).
 // ──────────────────────────────────────────────────────────────
 
-/** Faz polling no status da importação até sair de 'processando'. */
-async function aguardarResultado(importacaoId: string, timeoutMs = 60_000): Promise<PgrImportacao> {
+/** Faz polling no status da importação até sair de 'processando' (até 120s para documentos volumosos). */
+async function aguardarResultado(importacaoId: string, timeoutMs = 120_000): Promise<PgrImportacao> {
   const POLL_INTERVAL = 2_000;
   const deadline = Date.now() + timeoutMs;
 
@@ -195,9 +195,14 @@ export function useIniciarImportacaoPgr() {
           const actualError = fnErr || (data && data.error ? new Error(data.error) : null);
           if (actualError) {
             console.warn("[usePgrImportacao] Edge Function error (background):", actualError);
+            const msg = actualError.message ?? "";
+            const isCorsOrFetch = msg.includes("Failed to send a request") || msg.includes("NetworkError") || msg.includes("fetch");
+            const userFriendlyMsg = isCorsOrFetch
+              ? "Falha de conexão com o serviço de análise (CORS ou rede). Verifique sua conexão e tente novamente."
+              : `Erro na execução da análise: ${msg}`;
             await (supabase as any)
               .from("pgr_importacoes")
-              .update({ status: "erro", erro_mensagem: `Erro na execução da análise: ${actualError.message ?? JSON.stringify(actualError)}` })
+              .update({ status: "erro", erro_mensagem: userFriendlyMsg })
               .eq("id", importacao.id);
           }
         })
@@ -205,12 +210,23 @@ export function useIniciarImportacaoPgr() {
           console.warn("[usePgrImportacao] Edge Function Network error (background):", netErr);
           await (supabase as any)
             .from("pgr_importacoes")
-            .update({ status: "erro", erro_mensagem: `Erro de rede/CORS: ${netErr.message ?? String(netErr)}` })
+            .update({
+              status: "erro",
+              erro_mensagem: "Falha de conexão com o serviço de análise. Verifique sua conexão e tente novamente.",
+            })
             .eq("id", importacao.id);
         });
 
-      // Polling: aguarda o status sair de 'processando' (max 60s)
-      const resultado = await aguardarResultado(importacao.id, 60_000);
+      // Polling: aguarda o status sair de 'processando' (estendido para 120s para documentos volumosos)
+      const resultado = await aguardarResultado(importacao.id, 120_000);
+      if (resultado.status === "processando") {
+        throw new Error(
+          "O documento é extenso e ainda está sendo processado pela IA. A análise continuará em segundo plano — caso demore, tente dividir o arquivo ou importar apenas o inventário de riscos."
+        );
+      }
+      if (resultado.status === "erro") {
+        throw new Error(resultado.erro_mensagem || "Falha ao processar o documento do PGR.");
+      }
       return resultado;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["pgr-importacoes"] }),

@@ -45,7 +45,7 @@ function extractTextFromPDFBytes(bytes: Uint8Array): string {
 }
 
 /**
- * Extrai dados do PGR (PDF) usando Gemini 2.5 Flash Multimodal.
+ * Extrai dados do PGR (PDF) usando Gemini 2.0 Flash Multimodal.
  * O PDF é enviado inteiramente como base64, dispensando OCR local ou extração manual.
  */
 async function analisarPgrComGemini(bytes: Uint8Array, apiKey: string): Promise<Record<string, unknown>> {
@@ -132,7 +132,7 @@ Nunca armazene ou extraia nomes de trabalhadores identificados (dado de saúde s
       }
 
       try {
-        response = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent", {
+        response = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent", {
           method: "POST",
           headers: {
             "x-goog-api-key": apiKey.trim(),
