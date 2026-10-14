@@ -339,8 +339,12 @@ export async function gerarRelatorioColaboradorPDF(
   const hashConteudo = await sha256Hex(hashPayload);
   const hashCurto = hashConteudo.slice(0, 16).toUpperCase();
 
-  // Tenta carregar logotipo institucional
-  const talentLogo = await loadImage("/images/nr-1comprova-logo.png");
+  // Tenta carregar logotipo da empresa (com fallback institucional)
+  const logoUrl = empresa.logo_url || "/images/nr-1comprova-logo.png";
+  let talentLogo = await loadImage(logoUrl);
+  if (!talentLogo && logoUrl !== "/images/nr-1comprova-logo.png") {
+    talentLogo = await loadImage("/images/nr-1comprova-logo.png");
+  }
 
   // QR Code de verificação probatória
   const baseUrl = verificacaoUrlBase || getShareBaseUrl();

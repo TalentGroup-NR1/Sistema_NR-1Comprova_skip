@@ -67,3 +67,56 @@ export function getForegroundHslFromHex(hex: string): string {
     return "0 0% 100%";
   }
 }
+
+export function adjustHslLightness(hsl: string, amount: number): string {
+  const parts = hsl.trim().split(/\s+/);
+  if (parts.length < 3) return hsl;
+  const h = parts[0];
+  const s = parts[1];
+  const l = parseInt(parts[2], 10);
+  const newL = Math.max(0, Math.min(100, l + amount));
+  return `${h} ${s} ${newL}%`;
+}
+
+/**
+ * Aplica todas as variáveis CSS derivadas da cor primária da marca no elemento raiz :root.
+ * Unifica a aplicação em um único ponto com suporte a reatividade multiempresa e login.
+ */
+export function applyThemeToRoot(primaryHex?: string | null): void {
+  if (typeof document === 'undefined') return;
+
+  const validHex = primaryHex && /^#([0-9A-Fa-f]{3}){1,2}$/.test(primaryHex)
+    ? primaryHex
+    : '#C8102E';
+
+  const primaryHSL = hexToHslString(validHex);
+  const foregroundHSL = getForegroundHslFromHex(validHex);
+  const root = document.documentElement;
+
+  // Cores primárias
+  root.style.setProperty('--primary', primaryHSL);
+  root.style.setProperty('--primary-hover', adjustHslLightness(primaryHSL, -6));
+  root.style.setProperty('--primary-pressed', adjustHslLightness(primaryHSL, -10));
+  root.style.setProperty('--primary-muted', adjustHslLightness(primaryHSL, 45));
+  root.style.setProperty('--primary-foreground', foregroundHSL);
+
+  // Foco e anéis
+  root.style.setProperty('--ring', primaryHSL);
+  root.style.setProperty('--focus-ring', primaryHSL);
+
+  // Cores da Sidebar
+  root.style.setProperty('--sidebar-primary', primaryHSL);
+  root.style.setProperty('--sidebar-ring', primaryHSL);
+  root.style.setProperty('--sidebar-active', adjustHslLightness(primaryHSL, 48));
+  root.style.setProperty('--sidebar-active-text', adjustHslLightness(primaryHSL, -6));
+
+  // Accent & Info
+  root.style.setProperty('--accent', primaryHSL);
+  root.style.setProperty('--info', primaryHSL);
+
+  // Gradiente
+  root.style.setProperty(
+    '--gradient-primary',
+    `linear-gradient(135deg, hsl(${primaryHSL}) 0%, hsl(${adjustHslLightness(primaryHSL, -8)}) 100%)`
+  );
+}

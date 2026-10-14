@@ -186,4 +186,49 @@ describe('useBranding e useEffectiveCompanyId', () => {
     expect(result.current.faviconUrl).toBe("");
     expect(result.current.primaryColor).toBe("transparent");
   });
+
+  it('10. Cenário Multiempresa: empresa efetiva selecionada no contexto determina o tema', () => {
+    (useCompanies as any).mockReturnValue({ data: [mockCompanyX, mockCompanyY], isLoading: false });
+    // Usuário regular multiempresa (não é admin_master)
+    (useAuth as any).mockReturnValue({ isAdminMaster: false, companyId: 'empresa-X' });
+    (useMyColaborador as any).mockReturnValue({ data: null });
+    // Usuário trocou para Empresa Y no seletor
+    (useCompanyContext as any).mockReturnValue({ selectedCompanyId: 'empresa-Y' });
+
+    const { result } = renderHook(() => useBranding());
+    
+    // O tema deve seguir a empresa efetivamente selecionada (Empresa Y)
+    expect(result.current.brandName).toBe('Empresa Y');
+    expect(result.current.primaryColor).toBe('#0000FF');
+    expect(result.current.logoUrl).toBe('https://logo.y');
+  });
+
+  it('11. Fallback seguro para empresa sem identidade: nunca exibe artefato quebrado', () => {
+    const mockEmpresaSemBranding = {
+      id: 'empresa-nova',
+      name: 'Empresa Piloto Nova',
+      brand_name: null,
+      brand_logo_url: null,
+      logo_url: null,
+      brand_primary_color: null,
+      primary_color: null,
+      brand_favicon_url: null,
+    };
+
+    (useCompanies as any).mockReturnValue({ data: [mockEmpresaSemBranding], isLoading: false });
+    (useAuth as any).mockReturnValue({ isAdminMaster: false, companyId: 'empresa-nova' });
+    (useMyColaborador as any).mockReturnValue({ data: null });
+    (useCompanyContext as any).mockReturnValue({ selectedCompanyId: null });
+
+    const { result } = renderHook(() => useBranding());
+    
+    // Nome cai no name da empresa
+    expect(result.current.brandName).toBe('Empresa Piloto Nova');
+    // Logo cai no logo oficial da plataforma
+    expect(result.current.logoUrl).toBe(DEFAULT_BRANDING.logoUrl);
+    // Cor cai na cor primária oficial da plataforma
+    expect(result.current.primaryColor).toBe(DEFAULT_BRANDING.primaryColor);
+    // Favicon cai no favicon oficial da plataforma
+    expect(result.current.faviconUrl).toBe(DEFAULT_BRANDING.faviconUrl);
+  });
 });

@@ -54,7 +54,7 @@ export function useBranding(): Branding {
   }
 
   return {
-    brandName: company?.brand_name || DEFAULT_BRANDING.brandName,
+    brandName: company?.brand_name || company?.name || DEFAULT_BRANDING.brandName,
     logoUrl:
       company?.brand_logo_url || company?.logo_url || DEFAULT_BRANDING.logoUrl,
     primaryColor:

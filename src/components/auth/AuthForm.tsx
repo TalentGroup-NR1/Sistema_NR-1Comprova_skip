@@ -35,7 +35,11 @@ const authSchema = z.object({
 
 type AuthFormValues = z.infer<typeof authSchema>;
 
-export function AuthForm() {
+export interface AuthFormProps {
+  onEmailBlur?: (email: string) => void;
+}
+
+export function AuthForm({ onEmailBlur }: AuthFormProps = {}) {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showForgotDialog, setShowForgotDialog] = useState(false);
@@ -181,8 +185,12 @@ export function AuthForm() {
                       <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input
                           placeholder="seu@email.com"
-                          className="pl-10 border-0 border-b-2 border-slate-200 rounded-none bg-transparent focus-visible:ring-0 focus-visible:border-[hsl(216_64%_48%)] shadow-none h-12"
+                          className="pl-10 border-0 border-b-2 border-slate-200 rounded-none bg-transparent focus-visible:ring-0 focus-visible:border-primary shadow-none h-12"
                           {...field}
+                          onBlur={(e) => {
+                            field.onBlur();
+                            onEmailBlur?.(e.target.value);
+                          }}
                         />
                     </div>
                   </FormControl>
@@ -203,7 +211,7 @@ export function AuthForm() {
                         <Input
                           type={showPassword ? 'text' : 'password'}
                           placeholder="••••••"
-                          className="pl-10 pr-10 border-0 border-b-2 border-slate-200 rounded-none bg-transparent focus-visible:ring-0 focus-visible:border-[hsl(216_64%_48%)] shadow-none h-12"
+                          className="pl-10 pr-10 border-0 border-b-2 border-slate-200 rounded-none bg-transparent focus-visible:ring-0 focus-visible:border-primary shadow-none h-12"
                           {...field}
                         />
                       <button
@@ -231,7 +239,7 @@ export function AuthForm() {
               </button>
             </div>
 
-            <Button type="submit" className="w-full h-12 text-[16px] font-semibold bg-gradient-to-r from-[hsl(216_64%_28%)] to-[hsl(216_64%_40%)] hover:opacity-90 shadow-lg rounded-xl transition-all mt-4" disabled={isLoading}>
+            <Button type="submit" className="w-full h-12 text-[16px] font-semibold gradient-primary text-primary-foreground hover:opacity-90 shadow-lg rounded-xl transition-all mt-4" disabled={isLoading}>
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Entrar
             </Button>

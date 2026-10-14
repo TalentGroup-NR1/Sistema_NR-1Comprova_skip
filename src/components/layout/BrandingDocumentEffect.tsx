@@ -28,7 +28,7 @@ export function BrandingDocumentEffect() {
         link.href = faviconUrl;
       }
     }
-    if (primaryColor) {
+    if (primaryColor && primaryColor !== "transparent") {
       // Auto-invalidação do cache local (se houver usuário e já carregou da API)
       if (user?.id && !isLoading) {
         const cacheKey = `nr1_branding_${user.id}`;
@@ -37,16 +37,7 @@ export function BrandingDocumentEffect() {
         }
       }
 
-      const hslColor = hexToHslString(primaryColor);
-      const hslForeground = getForegroundHslFromHex(primaryColor);
-      
-      document.documentElement.style.setProperty('--primary', hslColor);
-      document.documentElement.style.setProperty('--primary-foreground', hslForeground);
-      document.documentElement.style.setProperty('--ring', hslColor);
-      document.documentElement.style.setProperty('--sidebar-primary', hslColor);
-      document.documentElement.style.setProperty('--focus-ring', hslColor);
-      document.documentElement.style.setProperty('--sidebar-ring', hslColor);
-      document.documentElement.style.setProperty('--accent', hslColor);
+      applyThemeToRoot(primaryColor);
     }
   }, [brandName, faviconUrl, primaryColor, user?.id, isLoading]);
 

@@ -243,7 +243,11 @@ export async function gerarRelatorioEvidenciaPDF(params: GerarRelatorioParams) {
   )}`;
   const hashCurto = hashConteudo.slice(0, 16).toUpperCase();
 
-  const talentLogo = await loadImage("/images/nr-1comprova-logo.png");
+  const logoUrl = empresa.logo_url || "/images/nr-1comprova-logo.png";
+  let talentLogo = await loadImage(logoUrl);
+  if (!talentLogo && logoUrl !== "/images/nr-1comprova-logo.png") {
+    talentLogo = await loadImage("/images/nr-1comprova-logo.png");
+  }
 
   // QR Code de verificação (renderizado no rodapé da ÚLTIMA página)
   const baseUrl = params.verificacaoUrlBase || getShareBaseUrl();

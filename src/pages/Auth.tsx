@@ -2,12 +2,12 @@ import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { AuthForm } from '@/components/auth/AuthForm';
-import { useBranding } from '@/hooks/useBranding';
+import { useLoginBranding } from '@/hooks/useLoginBranding';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function Auth() {
   const { isAuthenticated, loading } = useAuth();
-  const branding = useBranding();
+  const { branding, resolveEmail } = useLoginBranding();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -49,17 +49,17 @@ export default function Auth() {
           
           <h1 className="text-xl sm:text-2xl lg:text-3xl font-extrabold tracking-tight leading-[1.3] mb-6 drop-shadow-lg max-w-xl mx-auto uppercase">
             <span className="text-gray-400">Proteção para </span>
-            <span className="text-[#E30613]">Pessoas.</span>
+            <span style={{ color: branding.primaryColor }}>Pessoas.</span>
             <br className="hidden sm:block" />
             <span className="text-gray-400"> Conformidade para </span>
-            <span className="text-[#E30613]">Empresas.</span>
+            <span style={{ color: branding.primaryColor }}>Empresas.</span>
           </h1>
           
           {/* Badges moved to directly below the title */}
           <div className="flex flex-wrap justify-center items-center gap-3 mb-6">
             {['Gestão Viva', 'Trabalho Real', 'PGR Inteligente'].map((label) => (
               <div key={label} className="flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-xl border border-white/10 shadow-sm transition-colors hover:bg-white/20">
-                <div className="w-2 h-2 rounded-full" style={{ background: 'hsl(216 64% 48%)' }} />
+                <div className="w-2 h-2 rounded-full" style={{ background: branding.primaryColor }} />
                 <span className="text-sm font-semibold text-white/95 tracking-wide">{label}</span>
               </div>
             ))}
@@ -99,7 +99,7 @@ export default function Auth() {
             </p>
           </div>
 
-          <AuthForm />
+          <AuthForm onEmailBlur={resolveEmail} />
 
 
           <p className="text-xs text-muted-foreground text-center mt-8">
