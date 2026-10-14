@@ -8,7 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
  * Renders nothing. Hardened with try/catch so branding issues never crash the app.
  */
 export function BrandingDocumentEffect() {
-  const { brandName, faviconUrl, primaryColor, isLoading } = useBranding();
+  const { brandName, faviconUrl, primaryColor, isCustom, isLoading } = useBranding();
   const { user } = useAuth();
 
   useEffect(() => {
@@ -47,8 +47,12 @@ export function BrandingDocumentEffect() {
         if (user?.id && !isLoading) {
           try {
             const cacheKey = `nr1_branding_${user.id}`;
-            if (localStorage.getItem(cacheKey) !== primaryColor) {
-              localStorage.setItem(cacheKey, primaryColor);
+            const existing = localStorage.getItem(cacheKey);
+            // Evita envenenar o cache com vermelho se for fallback temporário
+            if (isCustom || !existing || primaryColor !== '#C8102E') {
+              if (existing !== primaryColor) {
+                localStorage.setItem(cacheKey, primaryColor);
+              }
             }
           } catch {
             // Ignora falhas de localStorage (ex: modo anônimo ou storage desabilitado)

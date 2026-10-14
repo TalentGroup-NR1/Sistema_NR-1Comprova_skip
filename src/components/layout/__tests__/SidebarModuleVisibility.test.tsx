@@ -25,7 +25,13 @@ vi.mock('@/hooks/useCompanies', () => ({
 }));
 
 vi.mock('@/hooks/useBranding', () => ({
-  useBranding: () => ({ brand_name: 'NR1Comprova', logo_url: null, primary_color: null }),
+  DEFAULT_BRANDING: {
+    brandName: 'NR-1Comprova',
+    logoUrl: '/images/nr-1comprova-logo.png?v=2',
+    primaryColor: '#C8102E',
+    faviconUrl: '/favicon.png',
+  },
+  useBranding: () => ({ brandName: 'NR1Comprova', logoUrl: null, primaryColor: null }),
 }));
 
 vi.mock('@/hooks/useNotifications', () => ({

@@ -10,6 +10,9 @@ vi.mock('@/contexts/CompanyContext');
 vi.mock('@/hooks/useCompanies');
 vi.mock('@/hooks/useAuth');
 vi.mock('@/hooks/useMyFeedbackCycles');
+vi.mock('@/hooks/useCompanyBranding', () => ({
+  useCompanyBranding: () => ({ data: null, isLoading: false, isError: false }),
+}));
 
 describe('useBranding e useEffectiveCompanyId', () => {
   beforeEach(() => {

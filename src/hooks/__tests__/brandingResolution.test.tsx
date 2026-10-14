@@ -22,7 +22,10 @@ const h = vi.hoisted(() => ({
     userCompanies: [] as any[],
     companiesGate: null as null | Promise<void>,
     roleGate: null as null | Promise<void>,
+    brandingGate: null as null | Promise<void>,
     companiesCalls: 0,
+    directBrandingCalls: 0,
+    rpcError: null as any,
     authCb: null as null | ((event: string, session: any) => void),
   },
 }));
@@ -61,12 +64,36 @@ vi.mock('@/integrations/supabase/client', () => {
   return {
     supabase: {
       from: (table: string) => makeBuilder(table),
-      rpc: async (fn: string) => {
+      rpc: async (fn: string, params?: any) => {
         if (fn === 'get_my_role') {
           if (s.roleGate) await s.roleGate;
           return { data: s.role, error: null };
         }
         if (fn === 'get_my_company_id') return { data: s.profile?.company_id ?? null, error: null };
+        if (fn === 'get_my_company_branding') {
+          s.directBrandingCalls++;
+          if (s.brandingGate) await s.brandingGate;
+          if (s.companiesGate) await s.companiesGate;
+          if (s.rpcError) return { data: null, error: s.rpcError };
+          const targetId = params?.p_company_id;
+          const found =
+            s.companies.find((c) => c.id === targetId) ||
+            ((s as any).directOnlyCompany?.id === targetId ? (s as any).directOnlyCompany : null);
+          if (found) {
+            return {
+              data: {
+                found: true,
+                brand_name: found.brand_name || found.name,
+                primary_color: found.brand_primary_color || found.primary_color,
+                logo_url: found.brand_logo_url || found.logo_url,
+                favicon_url: found.brand_favicon_url,
+                is_internal: found.is_internal || false,
+              },
+              error: null,
+            };
+          }
+          return { data: { found: false }, error: null };
+        }
         return { data: null, error: null };
       },
       auth: {
@@ -144,7 +171,10 @@ describe('Branding da empresa efetiva no ambiente logado (providers reais)', () 
     s.userCompanies = [];
     s.companiesGate = null;
     s.roleGate = null;
+    s.brandingGate = null;
     s.companiesCalls = 0;
+    s.directBrandingCalls = 0;
+    s.rpcError = null;
     s.authCb = null;
     localStorage.clear();
     document.documentElement.removeAttribute('style');
@@ -268,6 +298,47 @@ describe('Branding da empresa efetiva no ambiente logado (providers reais)', () 
     h.state.roles = ['super_admin', 'admin_master'];
     h.state.companies = [horizonte, outraSemBranding];
     localStorage.setItem(STORAGE_KEY, HORIZONTE_ID);
+    setup();
+
+    await waitFor(() => expect(rootPrimary()).toBe(hexToHslString(HORIZONTE_HEX)));
+    expect(document.title).toBe('Horizonte Contabilidade — NR-1Comprova');
+  });
+
+  it('9. Resolução DIRETA quando a lista companies está VAZIA (ex: RLS restrito na tabela): aplica branding da Horizonte', async () => {
+    // Tabela companies vazia para a query
+    h.state.companies = [];
+    // Mas a RPC direta conhece a Horizonte
+    (h.state as any).directOnlyCompany = horizonte;
+
+    setup();
+
+    // A RPC direta é chamada e a Horizonte resolvida mesmo com lista companies vazia
+    await waitFor(() => expect(h.state.directBrandingCalls).toBeGreaterThan(0));
+    await waitFor(() => expect(rootPrimary()).toBe(hexToHslString(HORIZONTE_HEX)));
+    expect(document.title).toBe('Horizonte Contabilidade — NR-1Comprova');
+  });
+
+  it('10. CONDICIONAL 2 — Janela de deploy: RPC inexistente (PGRST202) + lista companies vazia PRESERVA cache e NUNCA vira vermelho', async () => {
+    // Simula que o usuário logou e gravou cache azul no login
+    localStorage.setItem('nr1_branding_u1', HORIZONTE_HEX);
+
+    // Simula banco sem a migração da RPC (código PGRST202) e tabela companies vazia
+    h.state.rpcError = { code: 'PGRST202', message: 'Could not find the function get_my_company_branding' };
+    h.state.companies = [];
+
+    setup();
+
+    // Espera o efeito rodar
+    await waitFor(() => expect(rootPrimary()).toBe(hexToHslString(HORIZONTE_HEX)));
+    // O cache NUNCA deve ter sido envenenado com vermelho
+    expect(localStorage.getItem('nr1_branding_u1')).toBe(HORIZONTE_HEX);
+    expect(rootPrimary()).not.toBe(hexToHslString(DEFAULT_HEX));
+  });
+
+  it('11. Fallback para lista de companies se RPC falhar mas a lista possuir a empresa', async () => {
+    h.state.rpcError = { code: 'PGRST202', message: 'Function not found' };
+    h.state.companies = [horizonte];
+
     setup();
 
     await waitFor(() => expect(rootPrimary()).toBe(hexToHslString(HORIZONTE_HEX)));

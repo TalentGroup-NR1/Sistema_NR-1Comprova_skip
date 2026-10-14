@@ -10,6 +10,7 @@ import { GlobalBlockerModal } from "@/components/comunicados/GlobalBlockerModal"
 import { PulseBlockerModal } from "@/components/cuidar-mais/pulso/PulseBlockerModal";
 import { PontoAssinaturaBlockerModal } from "@/components/ponto/PontoAssinaturaBlockerModal";
 import { useBranding } from "@/hooks/useBranding";
+import { BrandLogo } from "@/components/layout/BrandLogo";
 import { WelcomeWizard } from "@/components/onboarding/WelcomeWizard";
 import { GestorAlertBanner } from "./GestorAlertBanner";
 
@@ -119,9 +120,9 @@ export function MainLayout({ children }: MainLayoutProps) {
               </div>
             </SheetContent>
           </Sheet>
-          <img
-            src={branding.logoUrl}
-            alt={branding.brandName}
+          <BrandLogo
+            logoUrl={branding.logoUrl}
+            brandName={branding.brandName}
             className="h-9 w-auto object-contain"
           />
         </div>

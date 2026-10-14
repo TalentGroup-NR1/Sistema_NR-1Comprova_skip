@@ -4,6 +4,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { AuthForm } from '@/components/auth/AuthForm';
 import { useLoginBranding } from '@/hooks/useLoginBranding';
 import { Skeleton } from '@/components/ui/skeleton';
+import { BrandLogo } from '@/components/layout/BrandLogo';
 
 export default function Auth() {
   const { isAuthenticated, loading } = useAuth();
@@ -39,9 +40,9 @@ export default function Auth() {
             {branding.isLoading ? (
               <Skeleton className="w-full h-32 rounded-lg bg-white/20" />
             ) : (
-              <img
-                src={branding.logoUrl}
-                alt={branding.brandName}
+              <BrandLogo
+                logoUrl={branding.logoUrl}
+                brandName={branding.brandName}
                 className="w-full h-auto drop-shadow-[0_10px_20px_rgba(0,0,0,0.5)] object-contain animate-spin-3d"
               />
             )}
@@ -80,10 +81,10 @@ export default function Auth() {
             {branding.isLoading ? (
                <Skeleton className="h-16 w-16 mx-auto mb-4 rounded-full bg-slate-200" />
             ) : (
-              <img
-                src={branding.logoUrl}
-                alt={branding.brandName}
-                className="h-16 mx-auto mb-4"
+              <BrandLogo
+                logoUrl={branding.logoUrl}
+                brandName={branding.brandName}
+                className="h-16 mx-auto mb-4 object-contain"
               />
             )}
             <h2 className="text-2xl font-bold text-foreground">

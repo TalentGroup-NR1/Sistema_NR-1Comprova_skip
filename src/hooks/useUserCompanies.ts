@@ -42,7 +42,7 @@ export function useUserCompanies() {
         .eq('user_id', user.id);
 
       if (error) {
-        console.error('[useUserCompanies] Erro ao buscar vínculos:', error);
+        console.warn('[useUserCompanies] Vínculos multiempresa indisponíveis:', error.message || error);
         return [];
       }
 
@@ -61,6 +61,7 @@ export function useUserCompanies() {
     },
     enabled: !!user?.id && !!isAuthenticated,
     staleTime: 60 * 1000,
+    retry: 1,
   });
 
   const userCompanies = query.data ?? [];

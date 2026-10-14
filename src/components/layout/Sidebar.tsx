@@ -27,6 +27,7 @@ import { useDenunciasMonitor } from "@/hooks/useDenuncias";
 import { useToast } from "@/hooks/use-toast";
 import { useMyPulseStatus } from "@/hooks/usePulseSurvey";
 import { useBranding } from "@/hooks/useBranding";
+import { BrandLogo } from "@/components/layout/BrandLogo";
 import { useVisibleModules, useIsModuleVisible } from "@/hooks/useVisibleModules";
 import { resolverModuloPai, isModuloBase, obterModuloPorRota } from "@/lib/modulosContrataveis";
 
@@ -331,9 +332,9 @@ export function Sidebar() {
       {/* Brand */}
       <div className="px-5 pt-5 pb-5">
         <Link to="/" className="flex items-center justify-center">
-          <img
-            src={branding.logoUrl}
-            alt={branding.brandName}
+          <BrandLogo
+            logoUrl={branding.logoUrl}
+            brandName={branding.brandName}
             className={collapsed ? "h-9 w-9 object-contain" : "h-12 w-auto max-w-full object-contain"}
           />
         </Link>
