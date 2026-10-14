@@ -105,13 +105,28 @@ export default function CadastroEmpresa() {
           { duration: 6000 }
         );
         navigate("/dashboard");
-      } else {
-        toast.success(
-          `Empresa cadastrada! Um convite foi enviado para ${data.admin_email} para definir a senha.`,
-          { duration: 6000 }
-        );
-        navigate("/empresas");
+        return;
       }
+
+      // Fluxo de convite (nova empresa cliente)
+      const hasInviteError =
+        result?.invite_sent === false || Boolean((result as { email_convite_erro?: string })?.email_convite_erro);
+
+      if (hasInviteError) {
+        const errorDetail = (result as { email_convite_erro?: string })?.email_convite_erro;
+        toast.error(
+          errorDetail
+            ? `Empresa cadastrada, mas houve falha ao enviar o convite para ${data.admin_email}: ${errorDetail}`
+            : `Empresa cadastrada, mas não foi possível enviar o convite para ${data.admin_email}. Verifique a configuração ou reenvie o acesso posteriormente.`
+        );
+        return;
+      }
+
+      toast.success(
+        `Empresa cadastrada com sucesso! O convite de acesso foi gerado e enviado para ${data.admin_email}. Se não chegar em alguns minutos, verifique a caixa de spam ou lixo eletrônico.`,
+        { duration: 8000 }
+      );
+      navigate("/empresas");
     } catch (e) {
       toast.error((e as Error).message || "Erro inesperado no cadastro.");
     } finally {

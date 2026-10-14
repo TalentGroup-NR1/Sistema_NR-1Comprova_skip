@@ -3,6 +3,7 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import CadastroEmpresa from "../CadastroEmpresa";
 import { BrowserRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { toast } from "sonner";
 
 const mockNavigate = vi.fn();
 vi.mock("react-router-dom", async () => {
@@ -223,6 +224,109 @@ describe("CadastroEmpresa — Fluxo Simplificado (4 Campos) e Filial", () => {
       screen.getByText(/📧 Convite por e-mail e perfil posterior/i)
     ).toBeInTheDocument();
     expect(screen.queryByText(/🏢 Vínculo direto à sua conta/i)).toBeNull();
+  });
+
+  it("quando invite_sent=true exibe mensagem de sucesso com e-mail do destinatário e orientação de spam", async () => {
+    mockUseAuth.mockReturnValue({
+      user: null,
+      isAuthenticated: false,
+      isAdminEmpresa: false,
+      isAdminMaster: false,
+    });
+
+    mockInvoke.mockResolvedValueOnce({
+      data: { success: true, company_id: "comp-456", invite_sent: true, is_branch: false },
+      error: null,
+    });
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <BrowserRouter>
+          <CadastroEmpresa />
+        </BrowserRouter>
+      </QueryClientProvider>
+    );
+
+    fireEvent.change(screen.getByLabelText(/Razão social/i), {
+      target: { value: "Empresa Cliente Boa Ltda" },
+    });
+    fireEvent.change(screen.getByLabelText(/CNPJ/i), {
+      target: { value: "11.222.333/0001-44" },
+    });
+    fireEvent.change(screen.getByLabelText(/Nome completo do administrador/i), {
+      target: { value: "Diretor Comercial" },
+    });
+    fireEvent.change(screen.getByLabelText(/E-mail do administrador/i), {
+      target: { value: "diretor@empresacliente.com.br" },
+    });
+    fireEvent.click(screen.getByRole("checkbox"));
+
+    fireEvent.click(screen.getByRole("button", { name: /Cadastrar Empresa/i }));
+
+    await waitFor(() => {
+      expect(toast.success).toHaveBeenCalledTimes(1);
+    });
+
+    const successMessage = (toast.success as any).mock.calls[0][0];
+    expect(successMessage).toContain("diretor@empresacliente.com.br");
+    expect(successMessage).toMatch(/spam/i);
+    expect(successMessage).not.toContain("entregue na caixa de entrada");
+    expect(toast.error).not.toHaveBeenCalled();
+    expect(mockNavigate).toHaveBeenCalledWith("/empresas");
+  });
+
+  it("quando invite_sent=false ou email_convite_erro presente exibe alerta de erro claro e nunca mensagem de sucesso", async () => {
+    mockUseAuth.mockReturnValue({
+      user: null,
+      isAuthenticated: false,
+      isAdminEmpresa: false,
+      isAdminMaster: false,
+    });
+
+    mockInvoke.mockResolvedValueOnce({
+      data: {
+        success: true,
+        company_id: "comp-789",
+        invite_sent: false,
+        email_convite_erro: "Serviço de e-mail indisponível",
+        is_branch: false,
+      },
+      error: null,
+    });
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <BrowserRouter>
+          <CadastroEmpresa />
+        </BrowserRouter>
+      </QueryClientProvider>
+    );
+
+    fireEvent.change(screen.getByLabelText(/Razão social/i), {
+      target: { value: "Empresa Com Falha Ltda" },
+    });
+    fireEvent.change(screen.getByLabelText(/CNPJ/i), {
+      target: { value: "22.333.444/0001-55" },
+    });
+    fireEvent.change(screen.getByLabelText(/Nome completo do administrador/i), {
+      target: { value: "Gerente TI" },
+    });
+    fireEvent.change(screen.getByLabelText(/E-mail do administrador/i), {
+      target: { value: "gerente@empresafalha.com.br" },
+    });
+    fireEvent.click(screen.getByRole("checkbox"));
+
+    fireEvent.click(screen.getByRole("button", { name: /Cadastrar Empresa/i }));
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledTimes(1);
+    });
+
+    const errorMessage = (toast.error as any).mock.calls[0][0];
+    expect(errorMessage).toContain("gerente@empresafalha.com.br");
+    expect(errorMessage).toMatch(/falha|não foi possível/i);
+    expect(toast.success).not.toHaveBeenCalled();
+    expect(mockNavigate).not.toHaveBeenCalled();
   });
 });
 
