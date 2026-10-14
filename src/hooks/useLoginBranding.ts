@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { DEFAULT_BRANDING } from '@/hooks/useBranding';
+import { DEFAULT_BRANDING, setCachedBranding } from '@/hooks/useBranding';
 import { applyThemeToRoot } from '@/lib/colorUtils';
 
 export interface LoginBranding {
@@ -66,6 +66,12 @@ export function useLoginBranding() {
             });
             applyThemeToRoot(resolvedColor);
             document.title = `${res.brand_name || 'NR-1Comprova'} — NR-1Comprova`;
+            setCachedBranding({
+              brandName: res.brand_name,
+              logoUrl: res.logo_url,
+              primaryColor: resolvedColor,
+              faviconUrl: res.favicon_url,
+            });
           } else {
             setBranding((prev) => ({ ...prev, isLoading: false }));
           }
@@ -144,6 +150,12 @@ export function useLoginBranding() {
         });
         applyThemeToRoot(resolvedColor);
         document.title = `${res.brand_name || 'NR-1Comprova'} — NR-1Comprova`;
+        setCachedBranding({
+          brandName: res.brand_name,
+          logoUrl: res.logo_url,
+          primaryColor: resolvedColor,
+          faviconUrl: res.favicon_url,
+        });
       } else {
         // E-mail não encontrado ou sem tenant personalizado → Fallback seguro
         setBranding({

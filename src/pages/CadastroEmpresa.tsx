@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
+import { useAuth } from "@/hooks/useAuth";
 import { Loader2, ArrowLeft, ArrowRight, CheckCircle2, Building2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -122,6 +123,9 @@ export default function CadastroEmpresa() {
     },
   });
 
+  const { user, isAuthenticated, isAdminEmpresa, isAdminMaster } = useAuth();
+  const isLoggedAdmin = isAuthenticated && (isAdminEmpresa || isAdminMaster);
+
   const {
     register,
     setValue,
@@ -133,6 +137,20 @@ export default function CadastroEmpresa() {
     handleSubmit,
   } = form;
   const values = watch();
+
+  // Se o usuário logado for admin, pré-preenche seus dados para facilitar o cadastro da filial
+  useEffect(() => {
+    if (isLoggedAdmin && user) {
+      const nome = (user.user_metadata?.full_name as string) || "";
+      const email = user.email || "";
+      if (nome && !form.getValues("admin_nome")) {
+        form.setValue("admin_nome", nome, { shouldValidate: true });
+      }
+      if (email && !form.getValues("admin_email")) {
+        form.setValue("admin_email", email, { shouldValidate: true });
+      }
+    }
+  }, [isLoggedAdmin, user, form]);
 
   const goNext = async () => {
     const ok = await trigger(STEP_FIELDS[step]);
@@ -216,12 +234,19 @@ export default function CadastroEmpresa() {
         return;
       }
 
-      // Convite enviado por email — não fazemos login automático
-      toast.success(
-        `Empresa cadastrada! Um convite foi enviado para ${data.admin_email} para definir a senha.`,
-        { duration: 6000 }
-      );
-      navigate("/empresas");
+      if (result?.is_branch) {
+        toast.success(
+          `Filial ${data.brand_name || data.razao_social} cadastrada e vinculada à sua conta com sucesso!`,
+          { duration: 6000 }
+        );
+        navigate("/dashboard");
+      } else {
+        toast.success(
+          `Empresa cadastrada! Um convite foi enviado para ${data.admin_email} para definir a senha.`,
+          { duration: 6000 }
+        );
+        navigate("/empresas");
+      }
     } catch (e) {
       toast.error((e as Error).message || "Erro inesperado no cadastro.");
     } finally {
@@ -236,9 +261,13 @@ export default function CadastroEmpresa() {
           <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-primary/10 text-primary mb-3">
             <Building2 className="w-6 h-6" />
           </div>
-          <h1 className="text-2xl font-bold text-foreground">Cadastrar nova empresa</h1>
+          <h1 className="text-2xl font-bold text-foreground">
+            {isLoggedAdmin ? "Adicionar filial / nova empresa" : "Cadastrar nova empresa"}
+          </h1>
           <p className="text-muted-foreground text-sm mt-1">
-            Preencha os dados abaixo. Um convite será enviado ao administrador por email.
+            {isLoggedAdmin
+              ? `Cadastre uma nova empresa vinculada à sua conta atual de administrador (${user?.email}).`
+              : "Preencha os dados abaixo. Um convite será enviado ao administrador por email."}
           </p>
         </header>
 
@@ -461,15 +490,24 @@ export default function CadastroEmpresa() {
                     )}
                   </div>
 
-                  {/* Aviso de convite — sem campo de senha */}
-                  <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
-                    <p className="font-semibold mb-1">📧 Convite por email</p>
-                    <p>
-                      Uma senha aleatória interna será gerada automaticamente. O administrador receberá
-                      um email com um link de uso único para <strong>definir a própria senha</strong>{" "}
-                      (expira em 24 horas).
-                    </p>
-                  </div>
+                  {/* Aviso de convite ou vínculo de filial */}
+                  {isLoggedAdmin ? (
+                    <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
+                      <p className="font-semibold mb-1">🏢 Vínculo direto à sua conta</p>
+                      <p>
+                        Esta filial será vinculada imediatamente à sua conta (<strong>{user?.email}</strong>) com o papel de <strong>Administrador da Empresa</strong>. Você poderá alternar entre suas empresas a qualquer momento pelo seletor no cabeçalho.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
+                      <p className="font-semibold mb-1">📧 Convite por email</p>
+                      <p>
+                        Uma senha aleatória interna será gerada automaticamente. O administrador receberá
+                        um email com um link de uso único para <strong>definir a própria senha</strong>{" "}
+                        (expira em 24 horas).
+                      </p>
+                    </div>
+                  )}
                 </>
               )}
 
