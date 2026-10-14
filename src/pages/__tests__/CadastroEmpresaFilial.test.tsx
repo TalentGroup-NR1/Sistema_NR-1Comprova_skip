@@ -177,4 +177,52 @@ describe("CadastroEmpresa — Fluxo Simplificado (4 Campos) e Filial", () => {
       screen.getByText(/Cadastre uma nova empresa vinculada à sua conta atual de administrador/i)
     ).toBeInTheDocument();
   });
+
+  it("renderiza modo empresa (fora do fluxo de filial) com campos vazios e box azul quando usuário é super admin / admin_master", () => {
+    mockUseAuth.mockReturnValue({
+      user: {
+        id: "super-admin-user",
+        email: "josenildo.santos@talentgroup.com.br",
+        user_metadata: { full_name: "Josenildo Santos" },
+      },
+      isAuthenticated: true,
+      isAdminEmpresa: false,
+      isAdminMaster: true,
+      isSuperAdmin: true,
+    });
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <BrowserRouter>
+          <CadastroEmpresa />
+        </BrowserRouter>
+      </QueryClientProvider>
+    );
+
+    // Título e subtítulo normais de empresa (não filial)
+    expect(screen.getByText("Cadastrar nova empresa")).toBeInTheDocument();
+    expect(screen.queryByText("Adicionar filial / nova empresa")).toBeNull();
+    expect(
+      screen.getByText("Preencha os dados essenciais abaixo para enviar o convite ao administrador.")
+    ).toBeInTheDocument();
+
+    // Botão de envio padrão
+    expect(
+      screen.getByRole("button", { name: /Cadastrar Empresa e Enviar Convite/i })
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Cadastrar Filial/i })).toBeNull();
+
+    // Campos de admin_nome e admin_email devem permanecer VAZIOS (não auto-popula com dados do super admin)
+    const nomeInput = screen.getByLabelText(/Nome completo do administrador/i) as HTMLInputElement;
+    const emailInput = screen.getByLabelText(/E-mail do administrador/i) as HTMLInputElement;
+    expect(nomeInput.value).toBe("");
+    expect(emailInput.value).toBe("");
+
+    // Box azul de convite presente, box verde de filial ausente
+    expect(
+      screen.getByText(/📧 Convite por e-mail e perfil posterior/i)
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/🏢 Vínculo direto à sua conta/i)).toBeNull();
+  });
 });
+

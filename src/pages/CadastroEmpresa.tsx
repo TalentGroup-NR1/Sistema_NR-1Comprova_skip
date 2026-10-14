@@ -49,8 +49,9 @@ export default function CadastroEmpresa() {
     },
   });
 
-  const { user, isAuthenticated, isAdminEmpresa, isAdminMaster } = useAuth();
-  const isLoggedAdmin = isAuthenticated && (isAdminEmpresa || isAdminMaster);
+  const { user, isAuthenticated, isAdminEmpresa, isAdminMaster, isSuperAdmin } = useAuth();
+  const isSuperAdminUser = isAdminMaster || isSuperAdmin;
+  const isFilialFlow = isAuthenticated && isAdminEmpresa && !isSuperAdminUser;
 
   const {
     register,
@@ -61,9 +62,9 @@ export default function CadastroEmpresa() {
   } = form;
   const values = watch();
 
-  // Se o usuário logado for admin, pré-preenche seus dados para facilitar o cadastro da filial
+  // Se o usuário logado for admin de empresa (fluxo filial), pré-preenche seus dados para facilitar o cadastro da filial
   useEffect(() => {
-    if (isLoggedAdmin && user) {
+    if (isFilialFlow && user) {
       const nome = (user.user_metadata?.full_name as string) || "";
       const email = user.email || "";
       if (nome && !form.getValues("admin_nome")) {
@@ -73,7 +74,7 @@ export default function CadastroEmpresa() {
         form.setValue("admin_email", email, { shouldValidate: true });
       }
     }
-  }, [isLoggedAdmin, user, form]);
+  }, [isFilialFlow, user, form]);
 
   const onSubmit = async (data: FormValues) => {
     setSubmitting(true);
@@ -126,10 +127,10 @@ export default function CadastroEmpresa() {
             <Building2 className="w-6 h-6" />
           </div>
           <h1 className="text-2xl font-bold text-foreground">
-            {isLoggedAdmin ? "Adicionar filial / nova empresa" : "Cadastrar nova empresa"}
+            {isFilialFlow ? "Adicionar filial / nova empresa" : "Cadastrar nova empresa"}
           </h1>
           <p className="text-muted-foreground text-sm mt-1">
-            {isLoggedAdmin
+            {isFilialFlow
               ? `Cadastre uma nova empresa vinculada à sua conta atual de administrador (${user?.email}).`
               : "Preencha os dados essenciais abaixo para enviar o convite ao administrador."}
           </p>
@@ -204,7 +205,7 @@ export default function CadastroEmpresa() {
               </div>
 
               {/* Aviso explicativo */}
-              {isLoggedAdmin ? (
+              {isFilialFlow ? (
                 <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3.5 text-xs text-emerald-800">
                   <p className="font-semibold mb-0.5">🏢 Vínculo direto à sua conta</p>
                   <p>
@@ -271,7 +272,7 @@ export default function CadastroEmpresa() {
                 ) : (
                   <>
                     <Send className="mr-2 h-4 w-4" />
-                    {isLoggedAdmin ? "Cadastrar Filial" : "Cadastrar Empresa e Enviar Convite"}
+                    {isFilialFlow ? "Cadastrar Filial" : "Cadastrar Empresa e Enviar Convite"}
                   </>
                 )}
               </Button>
