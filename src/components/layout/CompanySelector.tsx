@@ -53,48 +53,17 @@ export function CompanySelector() {
     setSelectedCompanyId(value === "__all__" ? null : value);
   };
 
-  // Se for admin global, pode listar todas as empresas cadastradas
+  // Se for admin global (super_admin / admin_master), exibe desabilitado como Plataforma
   if (isGlobalAdmin) {
     return (
-      <Select
-        value={selectedCompanyId ?? "__all__"}
-        onValueChange={handleValueChange}
+      <div 
+        className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border bg-secondary/40 text-xs text-muted-foreground font-medium select-none cursor-not-allowed opacity-90"
+        title="Super Admin opera no Modo Plataforma (sem empresa)"
+        aria-disabled="true"
       >
-        <SelectTrigger className="w-[220px] bg-secondary/50 border-border">
-          <div className="flex items-center gap-2">
-            {selectedCompanyId ? (
-              <Building2 className="h-4 w-4 text-primary" />
-            ) : (
-              <Globe className="h-4 w-4 text-muted-foreground" />
-            )}
-            <SelectValue placeholder="Selecione empresa" />
-          </div>
-        </SelectTrigger>
-        <SelectContent className="bg-card border-border">
-          <SelectItem value="__all__">
-            <span>Todas as Empresas</span>
-          </SelectItem>
-          {isLoadingAll ? (
-            <SelectItem value="__loading__" disabled>
-              Carregando...
-            </SelectItem>
-          ) : (
-            allCompanies?.map((company) => (
-              <SelectItem key={company.id} value={company.id}>
-                <div className="flex items-center justify-between gap-3 w-full">
-                  <span className="truncate max-w-[140px]">{company.name}</span>
-                  <Badge 
-                    variant={company.status === 'active' ? 'default' : 'secondary'}
-                    className="text-xs ml-2"
-                  >
-                    {company.status === 'active' ? 'Ativa' : 'Inativa'}
-                  </Badge>
-                </div>
-              </SelectItem>
-            ))
-          )}
-        </SelectContent>
-      </Select>
+        <Globe className="h-3.5 w-3.5 text-primary" />
+        <span>Plataforma</span>
+      </div>
     );
   }
 

@@ -12,17 +12,24 @@ const corsHeaders = {
 
 const cnpjRegex = /^\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}$/;
 
-// Schema sem admin_senha / confirmar_senha — senha gerada internamente
+// Schema com campos essenciais obrigatórios e complementares opcionais
 const BodySchema = z.object({
   razao_social: z.string().trim().min(2).max(255),
   cnpj: z.string().trim().regex(cnpjRegex, "CNPJ inválido"),
-  brand_name: z.string().trim().min(2).max(120),
+  admin_nome: z.string().trim().min(2).max(200),
+  admin_email: z.string().trim().email().max(255),
+  aceite_termos: z.literal(true),
+  terms_version: z.string().trim().min(1).max(20).default("1.0"),
+  privacy_version: z.string().trim().min(1).max(20).default("1.0"),
+  brand_name: z.string().trim().min(1).max(120).optional().nullable(),
   brand_primary_color: z
     .string()
     .trim()
     .regex(/^#[0-9A-Fa-f]{6}$/)
+    .optional()
+    .nullable()
     .default("#C8102E"),
-  telefone: z.string().trim().min(8).max(30),
+  telefone: z.string().trim().max(30).optional().nullable(),
   segmento: z.enum([
     "Agronegócio",
     "Tecnologia",
@@ -31,19 +38,14 @@ const BodySchema = z.object({
     "Energias",
     "Saúde",
     "Outros",
-  ]),
-  cep: z.string().trim().regex(/^\d{5}-\d{3}$/, "CEP inválido"),
-  logradouro: z.string().trim().min(2).max(255),
-  numero: z.string().trim().min(1).max(20),
-  complemento: z.string().trim().max(120).optional().or(z.literal("")),
-  bairro: z.string().trim().min(2).max(120),
-  cidade: z.string().trim().min(2).max(120),
-  estado: z.string().trim().regex(/^[A-Za-z]{2}$/, "UF inválida"),
-  admin_nome: z.string().trim().min(2).max(200),
-  admin_email: z.string().trim().email().max(255),
-  aceite_termos: z.literal(true),
-  terms_version: z.string().trim().min(1).max(20).default("1.0"),
-  privacy_version: z.string().trim().min(1).max(20).default("1.0"),
+  ]).optional().nullable(),
+  cep: z.string().trim().regex(/^\d{5}-\d{3}$/).optional().nullable(),
+  logradouro: z.string().trim().max(255).optional().nullable(),
+  numero: z.string().trim().max(20).optional().nullable(),
+  complemento: z.string().trim().max(120).optional().nullable().or(z.literal("")),
+  bairro: z.string().trim().max(120).optional().nullable(),
+  cidade: z.string().trim().max(120).optional().nullable(),
+  estado: z.string().trim().regex(/^[A-Za-z]{2}$/).optional().nullable(),
   logo: z
     .object({
       filename: z.string().min(1).max(200),
@@ -229,6 +231,9 @@ Deno.serve(async (req) => {
     }
 
     // 1. Empresa
+    const resolvedBrandName = data.brand_name?.trim() || data.razao_social;
+    const resolvedBrandPrimaryColor = data.brand_primary_color || "#C8102E";
+
     const { data: company, error: companyError } = await admin
       .from("companies")
       .insert({
@@ -237,17 +242,17 @@ Deno.serve(async (req) => {
         email,
         contact_person: data.admin_nome,
         status: "active",
-        brand_name: data.brand_name,
-        brand_primary_color: data.brand_primary_color,
-        telefone: data.telefone,
-        segmento: data.segmento,
-        cep: data.cep,
-        logradouro: data.logradouro,
-        numero: data.numero,
+        brand_name: resolvedBrandName,
+        brand_primary_color: resolvedBrandPrimaryColor,
+        telefone: data.telefone || null,
+        segmento: data.segmento || null,
+        cep: data.cep || null,
+        logradouro: data.logradouro || null,
+        numero: data.numero || null,
         complemento: data.complemento || null,
-        bairro: data.bairro,
-        cidade: data.cidade,
-        estado: data.estado.toUpperCase(),
+        bairro: data.bairro || null,
+        cidade: data.cidade || null,
+        estado: data.estado ? data.estado.toUpperCase() : null,
         is_internal: false,
         terms_accepted_at: new Date().toISOString(),
         terms_accepted_ip: ip,

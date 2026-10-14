@@ -158,7 +158,7 @@ export function useBranding(): Branding {
   const isPlatformAdmin = Boolean(isAdminMaster || isSuperAdmin);
   const candidateIds = [
     effectiveCompanyId,
-    selectedCompanyId,
+    isPlatformAdmin ? null : selectedCompanyId,
     isPlatformAdmin ? null : authCompanyId,
   ];
   const targetCompanyId = candidateIds.find((id): id is string => Boolean(id)) ?? null;
@@ -181,8 +181,8 @@ export function useBranding(): Branding {
   );
   const isLoading = isAuthLoading || isProfileResolving || isDirectLoading || isFallbackLoading;
 
-  // Anti-FOUC: lê branding síncrono em cache no frame 0
-  const cached = getCachedBranding(user?.id, targetCompanyId);
+  // Anti-FOUC: lê branding síncrono em cache no frame 0 (super admin sem empresa sempre usa padrão)
+  const cached = isPlatformAdmin && !targetCompanyId ? null : getCachedBranding(user?.id, targetCompanyId);
 
   if (isLoading) {
     if (cached) {

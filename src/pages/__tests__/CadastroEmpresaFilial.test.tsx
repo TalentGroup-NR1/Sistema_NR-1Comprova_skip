@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import CadastroEmpresa from "../CadastroEmpresa";
 import { BrowserRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -37,7 +37,7 @@ vi.mock("sonner", () => ({
   },
 }));
 
-describe("CadastroEmpresa — Fluxo de Filial", () => {
+describe("CadastroEmpresa — Fluxo Simplificado (4 Campos) e Filial", () => {
   let queryClient: QueryClient;
 
   beforeEach(() => {
@@ -45,6 +45,111 @@ describe("CadastroEmpresa — Fluxo de Filial", () => {
       defaultOptions: { queries: { retry: false } },
     });
     vi.clearAllMocks();
+
+    global.ResizeObserver = class ResizeObserver {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    };
+  });
+
+  it("renderiza exatamente os 4 campos essenciais + checkbox de termos (sem stepper nem campos de endereço/logo)", () => {
+    mockUseAuth.mockReturnValue({
+      user: null,
+      isAuthenticated: false,
+      isAdminEmpresa: false,
+      isAdminMaster: false,
+    });
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <BrowserRouter>
+          <CadastroEmpresa />
+        </BrowserRouter>
+      </QueryClientProvider>
+    );
+
+    // 4 Campos essenciais
+    expect(screen.getByLabelText(/Razão social/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/CNPJ/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Nome completo do administrador/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/E-mail do administrador/i)).toBeInTheDocument();
+
+    // Checkbox de termos
+    expect(screen.getByLabelText(/Termos de Uso/i)).toBeInTheDocument();
+
+    // Validação que campos removidos NÃO existem
+    expect(screen.queryByLabelText(/CEP/i)).toBeNull();
+    expect(screen.queryByLabelText(/Logradouro/i)).toBeNull();
+    expect(screen.queryByLabelText(/Bairro/i)).toBeNull();
+    expect(screen.queryByLabelText(/Telefone/i)).toBeNull();
+    expect(screen.queryByLabelText(/Segmento/i)).toBeNull();
+    expect(screen.queryByLabelText(/Logo da marca/i)).toBeNull();
+    expect(screen.queryByLabelText(/Cor da marca/i)).toBeNull();
+
+    // Exatamente 4 inputs de texto/email + 1 checkbox
+    const inputs = screen.getAllByRole("textbox");
+    expect(inputs).toHaveLength(4);
+    expect(screen.getByRole("checkbox")).toBeInTheDocument();
+  });
+
+  it("envia payload reduzido com apenas os 4 campos essenciais e termos para register-company", async () => {
+    mockUseAuth.mockReturnValue({
+      user: null,
+      isAuthenticated: false,
+      isAdminEmpresa: false,
+      isAdminMaster: false,
+    });
+
+    mockInvoke.mockResolvedValueOnce({
+      data: { success: true, company_id: "comp-123" },
+      error: null,
+    });
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <BrowserRouter>
+          <CadastroEmpresa />
+        </BrowserRouter>
+      </QueryClientProvider>
+    );
+
+    fireEvent.change(screen.getByLabelText(/Razão social/i), {
+      target: { value: "Empresa Piloto Ltda" },
+    });
+    fireEvent.change(screen.getByLabelText(/CNPJ/i), {
+      target: { value: "12.345.678/0001-95" },
+    });
+    fireEvent.change(screen.getByLabelText(/Nome completo do administrador/i), {
+      target: { value: "Administrador Piloto" },
+    });
+    fireEvent.change(screen.getByLabelText(/E-mail do administrador/i), {
+      target: { value: "admin@piloto.com.br" },
+    });
+    fireEvent.click(screen.getByRole("checkbox"));
+
+    fireEvent.click(screen.getByRole("button", { name: /Cadastrar Empresa/i }));
+
+    await waitFor(() => {
+      expect(mockInvoke).toHaveBeenCalledTimes(1);
+      expect(mockInvoke).toHaveBeenCalledWith("register-company", {
+        body: expect.objectContaining({
+          razao_social: "Empresa Piloto Ltda",
+          cnpj: "12.345.678/0001-95",
+          admin_nome: "Administrador Piloto",
+          admin_email: "admin@piloto.com.br",
+          aceite_termos: true,
+        }),
+      });
+    });
+
+    // Confirma que não foram enviados campos de logo, cor ou endereço
+    const sentBody = mockInvoke.mock.calls[0][1].body;
+    expect(sentBody).not.toHaveProperty("logo");
+    expect(sentBody).not.toHaveProperty("cep");
+    expect(sentBody).not.toHaveProperty("logradouro");
+    expect(sentBody).not.toHaveProperty("telefone");
+    expect(sentBody).not.toHaveProperty("segmento");
   });
 
   it("renderiza modo filial e auto-popula dados quando usuário logado é admin_empresa", () => {
@@ -70,28 +175,6 @@ describe("CadastroEmpresa — Fluxo de Filial", () => {
     expect(screen.getByText("Adicionar filial / nova empresa")).toBeInTheDocument();
     expect(
       screen.getByText(/Cadastre uma nova empresa vinculada à sua conta atual de administrador/i)
-    ).toBeInTheDocument();
-  });
-
-  it("renderiza modo convencional de cadastro para visitante não autenticado", () => {
-    mockUseAuth.mockReturnValue({
-      user: null,
-      isAuthenticated: false,
-      isAdminEmpresa: false,
-      isAdminMaster: false,
-    });
-
-    render(
-      <QueryClientProvider client={queryClient}>
-        <BrowserRouter>
-          <CadastroEmpresa />
-        </BrowserRouter>
-      </QueryClientProvider>
-    );
-
-    expect(screen.getByText("Cadastrar nova empresa")).toBeInTheDocument();
-    expect(
-      screen.getByText(/Um convite será enviado ao administrador por email/i)
     ).toBeInTheDocument();
   });
 });

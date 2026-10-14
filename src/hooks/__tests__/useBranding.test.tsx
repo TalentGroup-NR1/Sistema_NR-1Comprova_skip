@@ -17,6 +17,7 @@ vi.mock('@/hooks/useCompanyBranding', () => ({
 describe('useBranding e useEffectiveCompanyId', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    localStorage.clear();
   });
 
   const mockCompanyX = {
@@ -40,7 +41,7 @@ describe('useBranding e useEffectiveCompanyId', () => {
     brand_logo_url: null,
   };
 
-  it('1. Cenário Admin Master: troca de empresa no seletor recebe o branding da nova empresa (intacto)', () => {
+  it('1. Cenário Admin Master: isolamento da plataforma mantém branding padrão (NR-1Comprova)', () => {
     (useCompanies as any).mockReturnValue({ data: [mockCompanyX, mockCompanyY], isLoading: false });
     (useAuth as any).mockReturnValue({ isAdminMaster: true, companyId: null });
     (useMyColaborador as any).mockReturnValue({ data: null });
@@ -48,9 +49,9 @@ describe('useBranding e useEffectiveCompanyId', () => {
 
     const { result } = renderHook(() => useBranding());
     
-    expect(result.current.brandName).toBe('Empresa Y');
-    expect(result.current.primaryColor).toBe('#0000FF');
-    expect(result.current.logoUrl).toBe('https://logo.y');
+    expect(result.current.brandName).toBe(DEFAULT_BRANDING.brandName);
+    expect(result.current.primaryColor).toBe(DEFAULT_BRANDING.primaryColor);
+    expect(result.current.logoUrl).toBe(DEFAULT_BRANDING.logoUrl);
   });
 
   it('2. Cenário Profile.company_id preenchido: retorna intacto', () => {
@@ -188,6 +189,32 @@ describe('useBranding e useEffectiveCompanyId', () => {
     expect(result.current.logoUrl).toBe("");
     expect(result.current.faviconUrl).toBe("");
     expect(result.current.primaryColor).toBe("transparent");
+  });
+
+  it('9b. Cenário isLoading=true com cache prévio (anti-FOUC): retorna imediatamente o branding em cache', () => {
+    localStorage.setItem(
+      'nr1_branding_data_u1',
+      JSON.stringify({
+        brandName: 'Horizonte Contabilidade',
+        logoUrl: 'https://cdn.exemplo.com/horizonte.png',
+        primaryColor: '#0D13C5',
+        faviconUrl: 'https://cdn.exemplo.com/favicon.png',
+        isCustom: true,
+      })
+    );
+
+    (useCompanies as any).mockReturnValue({ data: undefined, isLoading: true });
+    (useAuth as any).mockReturnValue({ user: { id: 'u1' }, loading: true, isAdminMaster: false, companyId: null });
+    (useMyColaborador as any).mockReturnValue({ data: null, isLoading: true });
+    (useCompanyContext as any).mockReturnValue({ selectedCompanyId: null });
+
+    const { result } = renderHook(() => useBranding());
+    
+    expect(result.current.isLoading).toBe(true);
+    expect(result.current.brandName).toBe('Horizonte Contabilidade');
+    expect(result.current.logoUrl).toBe('https://cdn.exemplo.com/horizonte.png');
+    expect(result.current.primaryColor).toBe('#0D13C5');
+    expect(result.current.isCustom).toBe(true);
   });
 
   it('10. Cenário Multiempresa: empresa efetiva selecionada no contexto determina o tema', () => {

@@ -83,7 +83,7 @@ describe('CompanySelector Component', () => {
     expect(screen.getByRole('combobox')).toBeInTheDocument();
   });
 
-  it('renderiza com opção global se for Super Admin / Admin Master', () => {
+  it('renderiza indicador desabilitado de Plataforma se for Super Admin / Admin Master', () => {
     vi.mocked(AuthContext.useAuth).mockReturnValue({
       isAdminMaster: true,
       isSuperAdmin: true,
@@ -108,6 +108,6 @@ describe('CompanySelector Component', () => {
     } as any);
 
     render(<CompanySelector />);
-    expect(screen.getByRole('combobox')).toBeInTheDocument();
+    expect(screen.getByText('Plataforma')).toBeInTheDocument();
   });
 });

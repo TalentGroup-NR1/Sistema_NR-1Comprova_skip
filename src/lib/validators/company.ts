@@ -44,7 +44,20 @@ export const companySchema = z.object({
     .regex(/^[A-Za-z]{2}$/, "UF deve ter 2 letras")
     .optional()
     .or(z.literal("")),
+  telefone: z.string().trim().max(30).optional().or(z.literal("")),
+  segmento: z.string().trim().max(100).optional().or(z.literal("")),
 });
+
+export const SEGMENTOS = [
+  "Agronegócio",
+  "Tecnologia",
+  "Construção Civil",
+  "Serviços Financeiros",
+  "Energias",
+  "Saúde",
+  "Outros",
+] as const;
+
 
 export type CompanyFormData = z.infer<typeof companySchema>;
 
@@ -59,6 +72,8 @@ export interface Company extends CompanyFormData {
   brand_logo_url?: string | null;
   brand_primary_color?: string | null;
   brand_favicon_url?: string | null;
+  telefone?: string | null;
+  segmento?: string | null;
   is_internal?: boolean | null;
   created_at: string;
   updated_at: string;
@@ -111,3 +126,17 @@ export function isValidCNPJ(value: string): boolean {
   return true;
 }
 
+// Helper function to format Brazilian phone numbers as user types: (XX) XXXXX-XXXX ou (XX) XXXX-XXXX
+export function formatPhone(value: string): string {
+  let digits = value.replace(/\D/g, "");
+  if (digits.startsWith("55") && digits.length > 11) {
+    digits = digits.slice(2);
+  }
+  digits = digits.slice(0, 11);
+  if (digits.length <= 2) return digits;
+  if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+  if (digits.length <= 10) {
+    return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+  }
+  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+}

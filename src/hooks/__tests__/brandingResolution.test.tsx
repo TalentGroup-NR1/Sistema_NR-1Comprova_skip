@@ -293,15 +293,15 @@ describe('Branding da empresa efetiva no ambiente logado (providers reais)', () 
     expect(document.title).toBe('NR-1Comprova');
   });
 
-  it('8. Super Admin COM a Horizonte selecionada: branding da Horizonte', async () => {
+  it('8. Super Admin COM a Horizonte no localStorage: regra de negócio garante isolamento e mantém branding da Plataforma', async () => {
     h.state.role = 'admin_master';
     h.state.roles = ['super_admin', 'admin_master'];
     h.state.companies = [horizonte, outraSemBranding];
     localStorage.setItem(STORAGE_KEY, HORIZONTE_ID);
     setup();
 
-    await waitFor(() => expect(rootPrimary()).toBe(hexToHslString(HORIZONTE_HEX)));
-    expect(document.title).toBe('Horizonte Contabilidade — NR-1Comprova');
+    await waitFor(() => expect(rootPrimary()).toBe(hexToHslString(DEFAULT_HEX)));
+    expect(document.title).toBe('NR-1Comprova');
   });
 
   it('9. Resolução DIRETA quando a lista companies está VAZIA (ex: RLS restrito na tabela): aplica branding da Horizonte', async () => {
@@ -343,5 +343,45 @@ describe('Branding da empresa efetiva no ambiente logado (providers reais)', () 
 
     await waitFor(() => expect(rootPrimary()).toBe(hexToHslString(HORIZONTE_HEX)));
     expect(document.title).toBe('Horizonte Contabilidade — NR-1Comprova');
+  });
+
+  it('12. Anti-FOUC (ETAPA 1): Primeiro ciclo de render com cache síncrono monta IMEDIATAMENTE as cores da Horizonte sem passar pelo estado genérico/vermelho', async () => {
+    // Bloqueia as requisições assíncronas de rede para simular latência de rede/banco
+    let unlockCompanies!: () => void;
+    h.state.companiesGate = new Promise<void>((resolve) => {
+      unlockCompanies = resolve;
+    });
+    let unlockBranding!: () => void;
+    h.state.brandingGate = new Promise<void>((resolve) => {
+      unlockBranding = resolve;
+    });
+
+    // Pré-popula cache síncrono como deixado pela sessão anterior
+    localStorage.setItem(
+      'nr1_branding_data_u1',
+      JSON.stringify({
+        brandName: 'Horizonte Contabilidade',
+        logoUrl: 'https://cdn.exemplo.com/logos/horizonte.png',
+        primaryColor: HORIZONTE_HEX,
+        isCustom: true,
+      })
+    );
+    localStorage.setItem(STORAGE_KEY, HORIZONTE_ID);
+
+    // Monta a árvore completa de providers e efeitos
+    setup();
+
+    // NO PRIMEIRO FRAME (antes mesmo de qualquer resposta de rede):
+    // As variáveis CSS já devem estar no tom azul da Horizonte!
+    await waitFor(() => expect(rootPrimary()).toBe(hexToHslString(HORIZONTE_HEX)));
+    expect(rootPrimary()).not.toBe(hexToHslString(DEFAULT_HEX));
+    expect(document.title).toBe('Horizonte Contabilidade — NR-1Comprova');
+
+    // Desbloqueia as requisições de rede
+    unlockCompanies();
+    unlockBranding();
+
+    // Permanece azul de forma estável
+    await waitFor(() => expect(rootPrimary()).toBe(hexToHslString(HORIZONTE_HEX)));
   });
 });

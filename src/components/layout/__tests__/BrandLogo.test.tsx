@@ -38,4 +38,17 @@ describe('BrandLogo component', () => {
     fireEvent.error(img);
     expect(img).toHaveAttribute('src', DEFAULT_BRANDING.logoUrl);
   });
+
+  it('renders cached logo immediately when logoUrl is empty but cache exists in localStorage', () => {
+    localStorage.setItem(
+      'nr1_branding_data_last',
+      JSON.stringify({ logoUrl: 'https://cdn.exemplo.com/cached-logo.png' })
+    );
+
+    render(<BrandLogo logoUrl="" brandName="Empresa com Cache" />);
+    const img = screen.getByRole('img');
+    expect(img).toHaveAttribute('src', 'https://cdn.exemplo.com/cached-logo.png');
+
+    localStorage.removeItem('nr1_branding_data_last');
+  });
 });
