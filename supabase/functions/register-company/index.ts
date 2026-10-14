@@ -134,12 +134,19 @@ Deno.serve(async (req) => {
       if (user) {
         callerUserId = user.id;
         callerEmail = user.email?.toLowerCase() ?? null;
-        const { data: roleRow } = await admin
+        const { data: rolesRows, error: rolesError } = await admin
           .from("user_roles")
           .select("role")
-          .eq("user_id", user.id)
-          .maybeSingle();
-        callerRole = roleRow?.role ?? (user.app_metadata?.role as string) ?? null;
+          .eq("user_id", user.id);
+        if (rolesError) {
+          console.warn("falha ao consultar user_roles", rolesError.message);
+        }
+        const callerRoles = (rolesRows ?? []).map((r) => r.role);
+        callerRole = callerRoles.includes("admin_master")
+          ? "admin_master"
+          : callerRoles.includes("super_admin")
+          ? "super_admin"
+          : callerRoles[0] ?? (user.app_metadata?.role as string) ?? null;
       }
     } catch {
       // Ignorar — audit log com caller null é aceitável
