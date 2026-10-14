@@ -163,4 +163,47 @@ describe('useUserCompanies hook', () => {
 
     expect(switchSuccess).toBe(false);
   });
+
+  it('4. Em caso de erro de RLS/banco (ex.: 403), limita retry a no máximo 1 repetição (2 chamadas no total) e expõe isError', async () => {
+    vi.mocked(AuthContext.useAuth).mockReturnValue({
+      user: { id: 'user-403' },
+      isAuthenticated: true,
+      isSuperAdmin: false,
+      refreshUserData: vi.fn(),
+    } as any);
+
+    let callCount = 0;
+    const mockSelect = vi.fn().mockImplementation(() => {
+      callCount++;
+      return {
+        eq: vi.fn().mockResolvedValue({
+          data: null,
+          error: { code: '42501', message: 'permission denied for table user_companies' },
+        }),
+      };
+    });
+
+    vi.mocked(supabase.from).mockReturnValue({ select: mockSelect } as any);
+
+    // Cria client permitindo que o retry: 1 do hook seja respeitado (retryDelay 0 para teste rápido)
+    const retryQueryClient = new QueryClient({
+      defaultOptions: {
+        queries: { retryDelay: 1 },
+      },
+    });
+
+    const { result } = renderHook(() => useUserCompanies(), {
+      wrapper: ({ children }) => (
+        <QueryClientProvider client={retryQueryClient}>{children}</QueryClientProvider>
+      ),
+    });
+
+    await waitFor(() => expect(result.current.isError).toBe(true), { timeout: 3000 });
+
+    expect(result.current.isError).toBe(true);
+    expect(result.current.error).toBeDefined();
+    expect(result.current.userCompanies).toEqual([]);
+    // Exatamente 2 tentativas (1 original + 1 retry)
+    expect(callCount).toBe(2);
+  });
 });

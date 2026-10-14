@@ -43,7 +43,7 @@ export function useUserCompanies() {
 
       if (error) {
         console.warn('[useUserCompanies] Vínculos multiempresa indisponíveis:', error.message || error);
-        return [];
+        throw error;
       }
 
       if (!data) return [];
@@ -62,6 +62,8 @@ export function useUserCompanies() {
     enabled: !!user?.id && !!isAuthenticated,
     staleTime: 60 * 1000,
     retry: 1,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   });
 
   const userCompanies = query.data ?? [];
@@ -101,6 +103,7 @@ export function useUserCompanies() {
     hasMultipleCompanies,
     isLoading: query.isLoading,
     isError: query.isError,
+    error: query.error,
     refetch: query.refetch,
     switchCompany,
   };

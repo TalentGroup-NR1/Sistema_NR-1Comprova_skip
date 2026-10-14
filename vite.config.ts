@@ -11,7 +11,7 @@ const CSP_PROD = [
   // White-label: logomarcas de clientes vêm de URLs externas arbitrárias.
   // https: permite qualquer imagem HTTPS sem relaxar script-src/connect-src.
   "img-src 'self' data: blob: https:",
-  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://nr1pronto.com.br https://www.nr1pronto.com.br",
+  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://nr1pronto.com.br https://www.nr1pronto.com.br https://viacep.com.br",
   "media-src 'self' blob: https://*.supabase.co",
   "frame-src 'self' blob: https://*.supabase.co https://www.youtube.com https://player.vimeo.com",
   "object-src 'none'",
@@ -27,7 +27,7 @@ const CSP_DEV = [
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' data: https://fonts.gstatic.com",
   "img-src 'self' data: blob: https:",
-  "connect-src 'self' https://*.supabase.co wss://*.supabase.co http://localhost:5173 http://localhost:8080 ws: wss:",
+  "connect-src 'self' https://*.supabase.co wss://*.supabase.co http://localhost:5173 http://localhost:8080 ws: wss: https://viacep.com.br",
   "media-src 'self' blob: https://*.supabase.co",
   "frame-src 'self' blob: https://*.supabase.co https://www.youtube.com https://player.vimeo.com",
   "object-src 'none'",

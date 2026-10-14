@@ -118,7 +118,21 @@ export function useLoginBranding() {
         favicon_url?: string;
       } | null;
 
-      if (!error && res?.found) {
+      if (error) {
+        console.debug('[useLoginBranding] RPC get_company_branding_by_email erro:', error.message || error);
+        setBranding({
+          brandName: DEFAULT_BRANDING.brandName,
+          logoUrl: DEFAULT_BRANDING.logoUrl,
+          primaryColor: DEFAULT_BRANDING.primaryColor,
+          faviconUrl: DEFAULT_BRANDING.faviconUrl,
+          isCustom: false,
+          isLoading: false,
+        });
+        applyThemeToRoot(DEFAULT_BRANDING.primaryColor);
+        return;
+      }
+
+      if (res?.found) {
         const resolvedColor = res.primary_color || DEFAULT_BRANDING.primaryColor;
         setBranding({
           brandName: res.brand_name || DEFAULT_BRANDING.brandName,
@@ -143,8 +157,17 @@ export function useLoginBranding() {
         applyThemeToRoot(DEFAULT_BRANDING.primaryColor);
         document.title = 'NR-1Comprova';
       }
-    } catch {
-      setBranding((prev) => ({ ...prev, isLoading: false }));
+    } catch (err: any) {
+      console.debug('[useLoginBranding] Exceção na busca de branding por e-mail:', err?.message || err);
+      setBranding({
+        brandName: DEFAULT_BRANDING.brandName,
+        logoUrl: DEFAULT_BRANDING.logoUrl,
+        primaryColor: DEFAULT_BRANDING.primaryColor,
+        faviconUrl: DEFAULT_BRANDING.faviconUrl,
+        isCustom: false,
+        isLoading: false,
+      });
+      applyThemeToRoot(DEFAULT_BRANDING.primaryColor);
     }
   }, []);
 

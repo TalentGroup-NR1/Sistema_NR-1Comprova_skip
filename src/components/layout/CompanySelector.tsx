@@ -24,11 +24,24 @@ const ROLE_LABELS: Record<string, string> = {
 export function CompanySelector() {
   const { isAdminMaster, isSuperAdmin } = useAuth();
   const { data: allCompanies, isLoading: isLoadingAll } = useCompanies();
-  const { userCompanies, isLoading: isLoadingUser } = useUserCompanies();
+  const { userCompanies, isLoading: isLoadingUser, isError: isUserError } = useUserCompanies();
   const { selectedCompanyId, setSelectedCompanyId } = useCompanyContext();
 
   const isGlobalAdmin = isAdminMaster || isSuperAdmin;
   const hasMultiple = userCompanies.length > 1;
+
+  if (isUserError && !isGlobalAdmin) {
+    return (
+      <div 
+        className="flex items-center gap-1.5 px-2.5 py-1 text-xs text-amber-600 bg-amber-500/10 border border-amber-500/20 rounded-md" 
+        title="Não foi possível carregar empresas vinculadas"
+        role="status"
+      >
+        <Building2 className="h-3.5 w-3.5" />
+        <span className="hidden sm:inline">Vínculos indisponíveis</span>
+      </div>
+    );
+  }
 
   // Se não for admin global e não possuir múltiplos vínculos (ex.: 1 único vínculo),
   // não renderiza o seletor. Zero mudança na experiência para usuários comuns.

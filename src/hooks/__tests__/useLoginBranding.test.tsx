@@ -136,4 +136,23 @@ describe('useLoginBranding - Resolução dinâmica no login e White-label', () =
     const primaryFallback = document.documentElement.style.getPropertyValue('--primary');
     expect(primaryFallback).not.toBe('');
   });
+
+  it('6. Fail-safe: quando a RPC get_company_branding_by_email retorna erro (ex.: 400 ou network), aplica fallback padrão graciosamente', async () => {
+    (supabase.rpc as any).mockResolvedValueOnce({
+      data: null,
+      error: { code: 'PGRST100', message: 'HTTP 400 Bad Request' },
+    });
+
+    const { result } = renderHook(() => useLoginBranding());
+
+    await act(async () => {
+      await result.current.resolveEmail('qualquer@empresa.com.br');
+    });
+
+    expect(result.current.branding.isCustom).toBe(false);
+    expect(result.current.branding.brandName).toBe(DEFAULT_BRANDING.brandName);
+    expect(result.current.branding.primaryColor).toBe(DEFAULT_BRANDING.primaryColor);
+    expect(result.current.branding.isLoading).toBe(false);
+    expect(document.title).toBe('NR-1Comprova');
+  });
 });
