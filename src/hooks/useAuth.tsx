@@ -12,6 +12,8 @@ type AuthContextValue = {
   user: User | null;
   session: Session | null;
   loading: boolean;
+  /** true quando role/profile/companyId do usuário autenticado já foram resolvidos (ou a tentativa terminou) */
+  profileLoaded: boolean;
   role: AppRole | null;
   roles: AppRoleAny[];
   companyId: string | null;
@@ -35,6 +37,7 @@ function useProvideAuth(): AuthContextValue {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [profileLoaded, setProfileLoaded] = useState(false);
   const [role, setRole] = useState<AppRole | null>(null);
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [mustChangePassword, setMustChangePassword] = useState(false);
@@ -141,6 +144,7 @@ function useProvideAuth(): AuthContextValue {
       lastFetchedUserIdRef.current = userId;
     } finally {
       isFetchingRef.current = false;
+      setProfileLoaded(true);
     }
   }, []);
 
@@ -166,6 +170,7 @@ function useProvideAuth(): AuthContextValue {
           setMustChangePassword(false);
           setIsBlocked(false);
           setBlockReason(null);
+          setProfileLoaded(false);
           lastFetchedUserIdRef.current = null;
           return;
         }
@@ -181,6 +186,7 @@ function useProvideAuth(): AuthContextValue {
 
           setSession(session);
           setUser(session.user);
+          setProfileLoaded(false);
 
           // Defer fetching with setTimeout to avoid deadlocks
           setTimeout(() => {
@@ -237,6 +243,7 @@ function useProvideAuth(): AuthContextValue {
     user,
     session,
     loading,
+    profileLoaded,
     role,
     roles,
     companyId,

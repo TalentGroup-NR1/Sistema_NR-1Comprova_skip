@@ -65,6 +65,19 @@ export function CompanyProvider({ children }: CompanyProviderProps) {
           }
         }
       }
+      return;
+    }
+
+    // Sem vínculos em user_companies: o conjunto acessível é o das empresas visíveis ao usuário
+    // (lista já filtrada por RLS) somado à empresa do profile. Uma seleção persistida fora desse
+    // conjunto (ex.: empresa excluída/recadastrada) é obsoleta: descarta e limpa o localStorage.
+    if (selectedCompanyId && allCompanies && allCompanies.length > 0) {
+      const accessible =
+        allCompanies.some(c => c.id === selectedCompanyId) || selectedCompanyId === authCompanyId;
+      if (!accessible) {
+        setSelectedCompanyIdState(null);
+        localStorage.removeItem(STORAGE_KEY);
+      }
     }
   }, [selectedCompanyId, allCompanies, userCompanies, isAdminMaster, isSuperAdmin, authCompanyId]);
 

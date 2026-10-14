@@ -1,11 +1,17 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import { Company, CompanyFormData } from "@/lib/validators/company";
 import { toast } from "sonner";
 
 export function useCompanies() {
+  const { user, isAuthenticated } = useAuth();
+
   return useQuery({
-    queryKey: ["companies"],
+    // Escopado por usuário: evita reaproveitar o resultado vazio obtido como anon antes do login.
+    // Invalidações por prefixo (["companies"]) continuam funcionando.
+    queryKey: ["companies", user?.id ?? null],
+    enabled: !!user?.id && !!isAuthenticated,
     queryFn: async (): Promise<Company[]> => {
       const { data, error } = await supabase
         .from("companies")

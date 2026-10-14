@@ -27,20 +27,45 @@ export interface Branding {
  */
 export function useBranding(): Branding {
   const { data: companies, isLoading: isCompaniesLoading } = useCompanies();
-  const { loading: isAuthLoading } = useAuth();
+  const {
+    loading: isAuthLoading,
+    profileLoaded,
+    isAuthenticated,
+    isAdminMaster,
+    isSuperAdmin,
+    companyId: authCompanyId,
+  } = useAuth();
   const { isLoading: isColaboradorLoading } = useMyColaborador();
   
   const effectiveCompanyId = useEffectiveCompanyId();
   const { selectedCompanyId } = useCompanyContext();
 
-  const companyId = effectiveCompanyId ?? selectedCompanyId;
-  const company = companyId
-    ? (companies?.find((c) => c.id === companyId) as any)
-    : undefined;
+  // Candidatos em ordem de prioridade. A empresa do profile (auth) só é usada como rede de
+  // segurança para usuários de empresa: Super/Master sem seleção devem ficar no padrão da plataforma.
+  const isPlatformAdmin = Boolean(isAdminMaster || isSuperAdmin);
+  const candidateIds = [
+    effectiveCompanyId,
+    selectedCompanyId,
+    isPlatformAdmin ? null : authCompanyId,
+  ];
+  let company: any = undefined;
+  for (const id of candidateIds) {
+    if (!id) continue;
+    const found = companies?.find((c) => c.id === id);
+    if (found) {
+      company = found;
+      break;
+    }
+  }
+
+  // Autenticado, mas role/companyId ainda sendo resolvidos: não é "sem empresa", é "carregando".
+  // (profileLoaded === false explícito para não afetar consumidores/mocks que não o informam.)
+  const isProfileResolving = isAuthenticated === true && profileLoaded === false;
 
   // Unifica a cascata para o Loading Gate: o branding está carregando enquanto 
   // os profiles (auth), o vínculo (colaborador) OU os temas (companies) estiverem rodando
-  const isLoading = isAuthLoading || isColaboradorLoading || isCompaniesLoading;
+  const isLoading =
+    isAuthLoading || isProfileResolving || isColaboradorLoading || isCompaniesLoading;
 
   if (isLoading) {
     return {
