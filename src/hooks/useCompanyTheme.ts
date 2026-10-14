@@ -6,8 +6,14 @@ export function useCompanyTheme() {
   const branding = useBranding();
 
   useEffect(() => {
-    if (branding.primaryColor && branding.primaryColor !== "transparent") {
-      applyThemeToRoot(branding.primaryColor);
+    try {
+      if (branding.primaryColor && branding.primaryColor !== "transparent") {
+        if (typeof applyThemeToRoot === "function") {
+          applyThemeToRoot(branding.primaryColor);
+        }
+      }
+    } catch (err) {
+      console.warn("[useCompanyTheme] Falha ao aplicar tema:", err);
     }
   }, [branding.primaryColor]);
 }
