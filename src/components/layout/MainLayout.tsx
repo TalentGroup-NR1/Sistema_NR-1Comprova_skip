@@ -12,7 +12,9 @@ import { PontoAssinaturaBlockerModal } from "@/components/ponto/PontoAssinaturaB
 import { useBranding } from "@/hooks/useBranding";
 import { BrandLogo } from "@/components/layout/BrandLogo";
 import { WelcomeWizard } from "@/components/onboarding/WelcomeWizard";
+import { TermsReacceptanceModal } from "@/components/auth/TermsReacceptanceModal";
 import { GestorAlertBanner } from "./GestorAlertBanner";
+
 
 
 interface MainLayoutProps {
@@ -145,6 +147,10 @@ export function MainLayout({ children }: MainLayoutProps) {
       <LayoutModalErrorBoundary>
         <WelcomeWizard />
       </LayoutModalErrorBoundary>
+      <LayoutModalErrorBoundary>
+        <TermsReacceptanceModal />
+      </LayoutModalErrorBoundary>
+
 
     </div>
   );

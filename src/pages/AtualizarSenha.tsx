@@ -16,6 +16,9 @@ import {
 } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
 import { Lock, Loader2, Eye, EyeOff, Mail, RefreshCw } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
+import { TERMS_VERSION, PRIVACY_VERSION, getClientIp } from '@/lib/legal';
 import {
   Dialog,
   DialogContent,
@@ -25,13 +28,22 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 
-const schema = z.object({
-  password: z.string().min(6, 'Senha deve ter pelo menos 6 caracteres').max(100),
-  confirmPassword: z.string(),
-}).refine((d) => d.password === d.confirmPassword, {
-  message: 'As senhas não coincidem',
-  path: ['confirmPassword'],
-});
+
+const schema = z
+  .object({
+    password: z.string().min(6, 'Senha deve ter pelo menos 6 caracteres').max(100),
+    confirmPassword: z.string(),
+    aceiteTermos: z.boolean().refine((val) => val === true, {
+      message: 'É obrigatório aceitar os Termos de Uso',
+    }),
+    aceitePrivacidade: z.boolean().refine((val) => val === true, {
+      message: 'É obrigatório aceitar a Política de Privacidade',
+    }),
+  })
+  .refine((d) => d.password === d.confirmPassword, {
+    message: 'As senhas não coincidem',
+    path: ['confirmPassword'],
+  });
 
 type FormValues = z.infer<typeof schema>;
 
@@ -50,8 +62,17 @@ export default function AtualizarSenha() {
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { password: '', confirmPassword: '' },
+    mode: 'onChange',
+    defaultValues: {
+      password: '',
+      confirmPassword: '',
+      aceiteTermos: false,
+      aceitePrivacidade: false,
+    },
   });
+
+  const [aceiteTermos, aceitePrivacidade] = form.watch(['aceiteTermos', 'aceitePrivacidade']);
+  const canSubmit = Boolean(aceiteTermos && aceitePrivacidade);
 
   useEffect(() => {
     let recoveryDetected = false;
@@ -153,11 +174,38 @@ export default function AtualizarSenha() {
 
     setIsLoading(true);
     try {
-      const { error } = await supabase.auth.updateUser({ password: values.password });
-      if (error) {
-        toast({ variant: 'destructive', title: 'Erro', description: error.message });
+      // 1. Atualizar a senha no Supabase Auth
+      const { error: pwdError } = await supabase.auth.updateUser({ password: values.password });
+      if (pwdError) {
+        toast({ variant: 'destructive', title: 'Erro', description: pwdError.message });
         return;
       }
+
+      // 2. Gravar o aceite legítimo via RPC accept_company_terms com os dados do cliente
+      try {
+        const clientIp = await getClientIp();
+        const userAgent = typeof navigator !== 'undefined' ? navigator.userAgent : null;
+        const { error: rpcError } = await supabase.rpc('accept_company_terms', {
+          p_terms_version: TERMS_VERSION,
+          p_privacy_version: PRIVACY_VERSION,
+          p_ip_address: clientIp,
+          p_user_agent: userAgent,
+        });
+
+        if (rpcError) {
+          console.error('[AtualizarSenha] Falha ao registrar aceite de termos via RPC:', rpcError);
+          toast({
+            variant: 'destructive',
+            title: 'Aviso sobre registro de termos',
+            description:
+              'Sua senha foi definida com sucesso, mas houve uma instabilidade momentânea ao registrar o aceite dos termos. Por favor, confirme o aceite no painel posteriormente.',
+          });
+        }
+      } catch (termsErr) {
+        console.error('[AtualizarSenha] Erro inesperado ao registrar termos:', termsErr);
+      }
+
+      // 3. Concluir processo e redirecionar
       await supabase.auth.signOut();
       toast({ title: 'Senha atualizada com sucesso', description: 'Faça login com sua nova senha.' });
       navigate('/auth');
@@ -309,9 +357,86 @@ export default function AtualizarSenha() {
                 )}
               />
 
-              <Button type="submit" className="w-full" disabled={isLoading}>
+              {/* Checkboxes de consentimento LGPD granular */}
+              <div className="pt-2 border-t border-border/50 space-y-3">
+                <FormField
+                  control={form.control}
+                  name="aceiteTermos"
+                  render={({ field }) => (
+                    <FormItem className="flex items-start gap-2.5 space-y-0">
+                      <FormControl>
+                        <Checkbox
+                          id="aceiteTermos"
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                      <div className="space-y-1 leading-none">
+                        <Label
+                          htmlFor="aceiteTermos"
+                          className="text-xs font-normal leading-relaxed text-muted-foreground cursor-pointer"
+                        >
+                          Li e aceito os{' '}
+                          <a
+                            href="/termos"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="font-medium text-foreground underline underline-offset-2"
+                          >
+                            Termos de Uso
+                          </a>
+                          .
+                        </Label>
+                        <FormMessage />
+                      </div>
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="aceitePrivacidade"
+                  render={({ field }) => (
+                    <FormItem className="flex items-start gap-2.5 space-y-0">
+                      <FormControl>
+                        <Checkbox
+                          id="aceitePrivacidade"
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                      <div className="space-y-1 leading-none">
+                        <Label
+                          htmlFor="aceitePrivacidade"
+                          className="text-xs font-normal leading-relaxed text-muted-foreground cursor-pointer"
+                        >
+                          Li e aceito a{' '}
+                          <a
+                            href="/privacidade"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="font-medium text-foreground underline underline-offset-2"
+                          >
+                            Política de Privacidade (LGPD)
+                          </a>
+                          .
+                        </Label>
+                        <FormMessage />
+                      </div>
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              {!canSubmit && (
+                <p className="text-xs text-muted-foreground text-center">
+                  É necessário aceitar os Termos de Uso e a Política de Privacidade para prosseguir.
+                </p>
+              )}
+
+              <Button type="submit" className="w-full" disabled={isLoading || !canSubmit}>
                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Atualizar Senha
+                Definir Senha e Acessar
               </Button>
             </form>
           </Form>
