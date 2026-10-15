@@ -32,17 +32,17 @@ export const template = {
   displayName: 'Convite Admin Empresa',
   previewData: {
     siteName: 'NR-1Comprova',
-    siteUrl: 'https://nr1pronto.com.br',
+    siteUrl: 'https://www.nr-1comprova.com.br',
     adminName: 'João Silva',
     companyName: 'Empresa XYZ',
-    confirmationUrl: 'https://nr1pronto.com.br/atualizar-senha#token=exemplo',
+    confirmationUrl: 'https://www.nr-1comprova.com.br/atualizar-senha#token=exemplo',
     expirationHours: 24,
   },
 }
 
 function ConviteAdminEmpresaEmail({
   siteName = 'NR-1Comprova',
-  siteUrl = 'https://nr1pronto.com.br',
+  siteUrl = 'https://www.nr-1comprova.com.br',
   adminName = 'Administrador',
   companyName = 'sua empresa',
   logoUrl,

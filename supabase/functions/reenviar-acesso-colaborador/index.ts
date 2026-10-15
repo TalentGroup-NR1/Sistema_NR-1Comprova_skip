@@ -167,7 +167,7 @@ serve(async (req) => {
     const companyName = (colaborador.companies as { name?: string; logo_url?: string } | null)?.name;
     const logoUrl = (colaborador.companies as { name?: string; logo_url?: string } | null)?.logo_url;    // Generate new recovery link (invalidates previous ones for this user)
     const reqOrigin = req.headers.get('origin');
-    const appOrigin = Deno.env.get('APP_ORIGIN') || reqOrigin || 'https://nr1pronto.com.br';
+    const appOrigin = Deno.env.get('APP_ORIGIN') || reqOrigin || 'https://www.nr-1comprova.com.br';
     const redirectTo = `${appOrigin}/atualizar-senha`;
     const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
       type: 'recovery',

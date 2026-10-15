@@ -1,10 +1,10 @@
 project_id = "eocoderzvnycieaesjsv"
 
 [auth]
-site_url = "https://nr1pronto.com.br"
+site_url = "https://www.nr-1comprova.com.br"
 
 [auth.email]
-site_name = "Talent Group - NR1-Pronto"
+site_name = "NR-1Comprova"
 
 # Funções administrativas: exigem JWT no gateway.
 # A validação manual interna permanece como defesa em profundidade.

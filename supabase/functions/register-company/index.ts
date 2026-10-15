@@ -399,7 +399,7 @@ Deno.serve(async (req) => {
 
     // 6. Link de acesso / definição de senha
     let recoveryUrl: string | null = null;
-    const siteUrl = Deno.env.get("APP_ORIGIN") || "https://nr1pronto.com.br";
+    const siteUrl = Deno.env.get("APP_ORIGIN") || "https://www.nr-1comprova.com.br";
 
     if (!isBranchCreation) {
       // Novo usuário: link de recovery para definição de senha no primeiro acesso
