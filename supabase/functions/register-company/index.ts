@@ -18,9 +18,9 @@ const BodySchema = z.object({
   cnpj: z.string().trim().regex(cnpjRegex, "CNPJ inválido"),
   admin_nome: z.string().trim().min(2).max(200),
   admin_email: z.string().trim().email().max(255),
-  aceite_termos: z.literal(true),
-  terms_version: z.string().trim().min(1).max(20).default("1.0"),
-  privacy_version: z.string().trim().min(1).max(20).default("1.0"),
+  aceite_termos: z.boolean().optional(),
+  terms_version: z.string().trim().min(1).max(20).optional().default("1.0"),
+  privacy_version: z.string().trim().min(1).max(20).optional().default("1.0"),
   brand_name: z.string().trim().min(1).max(120).optional().nullable(),
   brand_primary_color: z
     .string()
@@ -261,8 +261,8 @@ Deno.serve(async (req) => {
         cidade: data.cidade || null,
         estado: data.estado ? data.estado.toUpperCase() : null,
         is_internal: false,
-        terms_accepted_at: new Date().toISOString(),
-        terms_accepted_ip: ip,
+        terms_accepted_at: isBranchCreation ? new Date().toISOString() : null,
+        terms_accepted_ip: isBranchCreation ? ip : null,
       })
       .select("id")
       .single();
@@ -356,18 +356,22 @@ Deno.serve(async (req) => {
       }
     }
 
-    // 4.2 Aceite de termos (exigência legal — falha derruba o cadastro)
-    const { error: termsError } = await admin.from("terms_acceptance").insert({
-      company_id: companyId,
-      user_id: userId,
-      acceptor_name: data.admin_nome,
-      acceptor_email: email,
-      terms_version: data.terms_version,
-      privacy_version: data.privacy_version,
-      ip_address: ip,
-      user_agent: req.headers.get("user-agent")?.slice(0, 500) ?? null,
-    });
-    if (termsError) throw new Error(`Falha ao registrar aceite: ${termsError.message}`);
+    // 4.2 Aceite de termos: no cadastro de nova empresa cliente (is_branch=false), o aceite NÃO é gravado aqui
+    // (deve ser dado pelo próprio administrador da empresa cliente no primeiro acesso em /atualizar-senha).
+    // Apenas no fluxo de filial (is_branch=true), grava o aceite do próprio administrador/caller com seus dados reais.
+    if (isBranchCreation) {
+      const { error: termsError } = await admin.from("terms_acceptance").insert({
+        company_id: companyId,
+        user_id: userId,
+        acceptor_name: existingProfile?.full_name || data.admin_nome,
+        acceptor_email: callerEmail || email,
+        terms_version: data.terms_version,
+        privacy_version: data.privacy_version,
+        ip_address: ip,
+        user_agent: req.headers.get("user-agent")?.slice(0, 500) ?? null,
+      });
+      if (termsError) throw new Error(`Falha ao registrar aceite da filial: ${termsError.message}`);
+    }
 
     // 5. Logo (opcional — falha não invalida o cadastro)
     let logoUrl: string | null = null;

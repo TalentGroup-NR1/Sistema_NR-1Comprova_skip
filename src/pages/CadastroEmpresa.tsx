@@ -10,26 +10,18 @@ import { Loader2, Building2, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
-import { TERMS_VERSION, PRIVACY_VERSION } from "@/lib/legal";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { formatCNPJ } from "@/lib/validators/company";
 import { supabase } from "@/integrations/supabase/client";
 
 const cnpjRegex = /^\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}$/;
 
-const schema = z
-  .object({
-    razao_social: z.string().trim().min(2, "Informe a razão social").max(255),
-    cnpj: z.string().trim().regex(cnpjRegex, "CNPJ no formato XX.XXX.XXX/XXXX-XX"),
-    admin_nome: z.string().trim().min(2, "Informe o nome completo").max(200),
-    admin_email: z.string().trim().email("E-mail inválido").max(255),
-    aceite_termos: z.boolean(),
-  })
-  .refine((d) => d.aceite_termos, {
-    path: ["aceite_termos"],
-    message: "É necessário aceitar os termos",
-  });
+const schema = z.object({
+  razao_social: z.string().trim().min(2, "Informe a razão social").max(255),
+  cnpj: z.string().trim().regex(cnpjRegex, "CNPJ no formato XX.XXX.XXX/XXXX-XX"),
+  admin_nome: z.string().trim().min(2, "Informe o nome completo").max(200),
+  admin_email: z.string().trim().email("E-mail inválido").max(255),
+});
 
 type FormValues = z.infer<typeof schema>;
 
@@ -45,7 +37,6 @@ export default function CadastroEmpresa() {
       cnpj: "",
       admin_nome: "",
       admin_email: "",
-      aceite_termos: false,
     },
   });
 
@@ -85,9 +76,8 @@ export default function CadastroEmpresa() {
           cnpj: data.cnpj,
           admin_nome: data.admin_nome,
           admin_email: data.admin_email,
+          // TODO Etapa 2: remover após ajuste da Edge Function
           aceite_termos: true,
-          terms_version: TERMS_VERSION,
-          privacy_version: PRIVACY_VERSION,
         },
       });
 
@@ -236,42 +226,7 @@ export default function CadastroEmpresa() {
                 </div>
               )}
 
-              {/* Termos de uso */}
-              <div className="pt-2 border-t border-border/50">
-                <div className="flex items-start gap-2.5">
-                  <Checkbox
-                    id="aceite_termos"
-                    checked={values.aceite_termos}
-                    onCheckedChange={(c) =>
-                      setValue("aceite_termos", c === true, { shouldValidate: true })
-                    }
-                  />
-                  <Label htmlFor="aceite_termos" className="text-xs font-normal leading-relaxed text-muted-foreground">
-                    Aceito os{" "}
-                    <a
-                      href="/termos"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="font-medium text-foreground underline underline-offset-2"
-                    >
-                      Termos de Uso
-                    </a>{" "}
-                    e a{" "}
-                    <a
-                      href="/privacidade"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="font-medium text-foreground underline underline-offset-2"
-                    >
-                      Política de Privacidade
-                    </a>{" "}
-                    (LGPD).
-                  </Label>
-                </div>
-                {errors.aceite_termos && (
-                  <p className="text-xs text-destructive mt-1">{errors.aceite_termos.message}</p>
-                )}
-              </div>
+
 
               {/* Botão de Envio */}
               <Button

@@ -54,7 +54,7 @@ describe("CadastroEmpresa — Fluxo Simplificado (4 Campos) e Filial", () => {
     };
   });
 
-  it("renderiza exatamente os 4 campos essenciais + checkbox de termos (sem stepper nem campos de endereço/logo)", () => {
+  it("renderiza exatamente os 4 campos essenciais (sem stepper, sem campos de endereço/logo e sem checkbox de termos)", () => {
     mockUseAuth.mockReturnValue({
       user: null,
       isAuthenticated: false,
@@ -76,8 +76,9 @@ describe("CadastroEmpresa — Fluxo Simplificado (4 Campos) e Filial", () => {
     expect(screen.getByLabelText(/Nome completo do administrador/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/E-mail do administrador/i)).toBeInTheDocument();
 
-    // Checkbox de termos
-    expect(screen.getByLabelText(/Termos de Uso/i)).toBeInTheDocument();
+    // Checkbox de termos removido (não deve existir)
+    expect(screen.queryByLabelText(/Termos de Uso/i)).toBeNull();
+    expect(screen.queryByRole("checkbox")).toBeNull();
 
     // Validação que campos removidos NÃO existem
     expect(screen.queryByLabelText(/CEP/i)).toBeNull();
@@ -88,10 +89,9 @@ describe("CadastroEmpresa — Fluxo Simplificado (4 Campos) e Filial", () => {
     expect(screen.queryByLabelText(/Logo da marca/i)).toBeNull();
     expect(screen.queryByLabelText(/Cor da marca/i)).toBeNull();
 
-    // Exatamente 4 inputs de texto/email + 1 checkbox
+    // Exatamente 4 inputs de texto/email e nenhum checkbox
     const inputs = screen.getAllByRole("textbox");
     expect(inputs).toHaveLength(4);
-    expect(screen.getByRole("checkbox")).toBeInTheDocument();
   });
 
   it("envia payload reduzido com apenas os 4 campos essenciais e termos para register-company", async () => {
@@ -127,7 +127,6 @@ describe("CadastroEmpresa — Fluxo Simplificado (4 Campos) e Filial", () => {
     fireEvent.change(screen.getByLabelText(/E-mail do administrador/i), {
       target: { value: "admin@piloto.com.br" },
     });
-    fireEvent.click(screen.getByRole("checkbox"));
 
     fireEvent.click(screen.getByRole("button", { name: /Cadastrar Empresa/i }));
 
@@ -259,7 +258,6 @@ describe("CadastroEmpresa — Fluxo Simplificado (4 Campos) e Filial", () => {
     fireEvent.change(screen.getByLabelText(/E-mail do administrador/i), {
       target: { value: "diretor@empresacliente.com.br" },
     });
-    fireEvent.click(screen.getByRole("checkbox"));
 
     fireEvent.click(screen.getByRole("button", { name: /Cadastrar Empresa/i }));
 
@@ -314,7 +312,6 @@ describe("CadastroEmpresa — Fluxo Simplificado (4 Campos) e Filial", () => {
     fireEvent.change(screen.getByLabelText(/E-mail do administrador/i), {
       target: { value: "gerente@empresafalha.com.br" },
     });
-    fireEvent.click(screen.getByRole("checkbox"));
 
     fireEvent.click(screen.getByRole("button", { name: /Cadastrar Empresa/i }));
 
