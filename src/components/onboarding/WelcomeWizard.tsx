@@ -31,6 +31,11 @@ function cleanLocalFlags() {
   }
 }
 
+// Helper para obter chave de descarte por sessão
+export function getWizardSessionDismissedKey(companyId?: string | null): string {
+  return companyId ? `tgmais_wizard_dismissed_session_${companyId}` : 'tgmais_wizard_dismissed_session';
+}
+
 export function WelcomeWizard() {
   const { companyId, role, loading: authLoading } = useAuth();
   const branding = useBranding();
@@ -53,11 +58,37 @@ export function WelcomeWizard() {
 
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [sessionDismissed, setSessionDismissed] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    try {
+      const key = getWizardSessionDismissedKey(companyId);
+      return (
+        sessionStorage.getItem(key) === 'true' ||
+        sessionStorage.getItem('tgmais_wizard_dismissed_session') === 'true'
+      );
+    } catch {
+      return false;
+    }
+  });
+
+  // Se a empresa mudar ou carregar, verifica se já foi descartada nesta sessão
+  useEffect(() => {
+    if (typeof window !== 'undefined' && companyId) {
+      try {
+        if (sessionStorage.getItem(getWizardSessionDismissedKey(companyId)) === 'true') {
+          setSessionDismissed(true);
+        }
+      } catch {
+        // Ignora restrições de sandbox/armazenamento
+      }
+    }
+  }, [companyId]);
 
   // Branding
   const [brandName, setBrandName] = useState('');
   const [primaryColor, setPrimaryColor] = useState('#C8102E');
   const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [removeLogo, setRemoveLogo] = useState(false);
 
   // Extrai campos reais do progresso do banco
   const completedAt = progress?.completed_at ?? null;
@@ -73,6 +104,14 @@ export function WelcomeWizard() {
     )
   );
 
+  // Flag de descarte nesta sessão (prevalece sobre condições de re-render até reload)
+  const isSessionDismissed = sessionDismissed || Boolean(
+    typeof window !== 'undefined' && (
+      (companyId && sessionStorage.getItem(getWizardSessionDismissedKey(companyId)) === 'true') ||
+      sessionStorage.getItem('tgmais_wizard_dismissed_session') === 'true'
+    )
+  );
+
   // Condição estrita e padronizada:
   // 1. Aguarda sessão pronta, companyId carregado, branding carregado e fetch do progresso finalizado (sem race condition)
   const isReady =
@@ -83,9 +122,9 @@ export function WelcomeWizard() {
     progressFetched &&
     !progressFetching;
 
-  // 2. Se completed_at estiver preenchido OU dismissed = true -> NUNCA abrir, independente de qualquer outra flag.
+  // 2. Se completed_at estiver preenchido, dismissed = true OU descartado na sessão atual -> NUNCA abrir.
   // 3. SÓ abre quando não existir registro de onboarding_progress (progress === null) OU (completed_at IS NULL AND dismissed IS FALSE).
-  const isCompletedOrDismissed = Boolean(completedAt || dismissed);
+  const isCompletedOrDismissed = Boolean(completedAt || dismissed || isSessionDismissed);
   const shouldOpen =
     isReady &&
     !isCompletedOrDismissed &&
@@ -99,10 +138,11 @@ export function WelcomeWizard() {
         progress,
         completedAt,
         dismissed,
+        isSessionDismissed,
         hasLocalFlag,
       });
     }
-  }, [companyId, progress, completedAt, dismissed, hasLocalFlag, authLoading, isEligible]);
+  }, [companyId, progress, completedAt, dismissed, isSessionDismissed, hasLocalFlag, authLoading, isEligible]);
 
   // Se o banco indicar que já foi concluído ou dispensado, remove qualquer flag local residual
   useEffect(() => {
@@ -111,10 +151,14 @@ export function WelcomeWizard() {
     }
   }, [isCompletedOrDismissed]);
 
-  // Sincroniza o estado de abertura garantindo que, enquanto carrega ou se já concluído, open permaneça false
+  // Sincroniza o estado de abertura garantindo que, enquanto carrega, se já concluído ou descartado na sessão, open permaneça false
   useEffect(() => {
+    if (isSessionDismissed) {
+      setOpen(false);
+      return;
+    }
     setOpen(shouldOpen);
-  }, [shouldOpen]);
+  }, [shouldOpen, isSessionDismissed]);
 
   useEffect(() => {
     if (branding.brandName) setBrandName((prev) => prev || branding.brandName);
@@ -123,26 +167,48 @@ export function WelcomeWizard() {
 
   if (!isEligible) return null;
 
-  const handleDismiss = async () => {
-    cleanLocalFlags();
+  const handleDismiss = () => {
+    // 1. Fechar o modal PRIMEIRO (imediato/síncrono) e registrar descarte na sessão
     setOpen(false);
+    setSessionDismissed(true);
+    cleanLocalFlags();
+
     try {
-      if (companyId) {
-        await supabase
-          .from('onboarding_progress' as never)
-          .upsert(
-            {
-              company_id: companyId,
-              dismissed: true,
-              current_step: 0,
-              completed_steps: progress?.completed_steps ?? ['branding'],
-            } as never,
-            { onConflict: 'company_id' } as never
-          );
-        qc.invalidateQueries({ queryKey: ['onboarding-progress'] });
+      if (typeof window !== 'undefined') {
+        if (companyId) {
+          sessionStorage.setItem(getWizardSessionDismissedKey(companyId), 'true');
+        }
+        sessionStorage.setItem('tgmais_wizard_dismissed_session', 'true');
       }
     } catch {
-      /* silencioso */
+      // Ignora restrições de sandbox/armazenamento
+    }
+
+    // 2. Disparar a persistência no banco de forma assíncrona — sem bloquear o fechamento
+    if (companyId) {
+      supabase
+        .from('onboarding_progress' as never)
+        .upsert(
+          {
+            company_id: companyId,
+            dismissed: true,
+            current_step: 0,
+            completed_steps: progress?.completed_steps ?? ['branding'],
+          } as never,
+          { onConflict: 'company_id' } as never
+        )
+        .then(({ error }) => {
+          if (error) {
+            // Modal permanece fechado nesta sessão (isSessionDismissed=true).
+            // Registra erro seguro (sem PII). O modal poderá reaparecer no próximo login se o banco não gravou.
+            console.error('[WelcomeWizard] Falha ao persistir descarte no banco:', error.message);
+          } else {
+            qc.invalidateQueries({ queryKey: ['onboarding-progress'] });
+          }
+        })
+        .catch((err) => {
+          console.error('[WelcomeWizard] Falha de comunicação ao descartar onboarding:', (err as Error)?.message || 'Erro de rede');
+        });
     }
   };
 
@@ -157,15 +223,27 @@ export function WelcomeWizard() {
       }
 
       let logoUrl: string | null = null;
-      if (logoFile && effectiveCompanyId) {
+      if (!removeLogo && logoFile && effectiveCompanyId) {
         logoUrl = await uploadCompanyLogo(effectiveCompanyId, logoFile);
       }
 
-      const { data: updatedCompanyId, error } = await supabase.rpc('atualizar_branding_empresa' as never, {
+      const rpcPayload: Record<string, unknown> = {
         _brand_name: brandName.trim() || null,
         _brand_primary_color: primaryColor,
-        _brand_logo_url: logoUrl,
-      } as never);
+      };
+
+      if (removeLogo) {
+        rpcPayload._brand_logo_url = null;
+        rpcPayload._remove_logo = true;
+      } else if (logoUrl) {
+        rpcPayload._brand_logo_url = logoUrl;
+        rpcPayload._remove_logo = false;
+      }
+
+      const { data: updatedCompanyId, error } = await supabase.rpc(
+        'atualizar_branding_empresa' as never,
+        rpcPayload as never
+      );
       if (error) throw error;
 
       const finalCompanyId = (updatedCompanyId as unknown as string) || effectiveCompanyId;
@@ -192,6 +270,7 @@ export function WelcomeWizard() {
         qc.invalidateQueries({ queryKey: ['branding'] }),
       ]);
 
+      setSessionDismissed(true);
       setOpen(false);
       toast.success('Identidade visual configurada com sucesso!');
     } catch (e) {
@@ -224,8 +303,13 @@ export function WelcomeWizard() {
             primaryColor={primaryColor}
             onPrimaryColorChange={setPrimaryColor}
             logoFile={logoFile}
-            onLogoFileChange={setLogoFile}
+            onLogoFileChange={(file) => {
+              setLogoFile(file);
+              if (file) setRemoveLogo(false);
+            }}
             currentLogoUrl={branding.logoUrl !== '/images/nr-1comprova-logo.png' ? branding.logoUrl : null}
+            removeLogo={removeLogo}
+            onRemoveLogoChange={setRemoveLogo}
             disabled={saving}
           />
         </div>

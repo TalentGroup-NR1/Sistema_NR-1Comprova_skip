@@ -71,10 +71,12 @@ export function BrandingForm({
   const handleRemoveLogo = () => {
     if (logoFile) {
       onLogoFileChange(null);
-      if (fileInputRef.current) fileInputRef.current.value = '';
-    } else if (currentLogoUrl && onRemoveLogoChange) {
+    }
+    if (currentLogoUrl && onRemoveLogoChange) {
       onRemoveLogoChange(true);
-      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
     }
   };
 
