@@ -3,7 +3,11 @@ import { useCompanies } from '@/hooks/useCompanies';
 import { useUserCompanies } from '@/hooks/useUserCompanies';
 import { useAuth } from '@/hooks/useAuth';
 
-const STORAGE_KEY = 'tgmais_selected_company';
+export const LEGACY_STORAGE_KEY = 'tgmais_selected_company';
+
+export function getCompanyStorageKey(userId: string | null | undefined): string | null {
+  return userId ? `tgmais_selected_company_${userId}` : null;
+}
 
 interface CompanyContextType {
   selectedCompanyId: string | null; // null = "Todas as Empresas" (para Super Admin / Admin Master)
@@ -19,23 +23,51 @@ interface CompanyProviderProps {
 }
 
 export function CompanyProvider({ children }: CompanyProviderProps) {
-  const { isAdminMaster, isSuperAdmin, companyId: authCompanyId } = useAuth();
+  const { user, isAdminMaster, isSuperAdmin, companyId: authCompanyId } = useAuth();
+  const userId = user?.id || null;
+  const storageKey = getCompanyStorageKey(userId);
+
+  // Limpeza segura e proativa da chave legada compartilhada entre usuários
+  useEffect(() => {
+    try {
+      if (typeof window !== 'undefined' && localStorage.getItem(LEGACY_STORAGE_KEY)) {
+        localStorage.removeItem(LEGACY_STORAGE_KEY);
+      }
+    } catch {
+      // Ignora erro de acesso a storage (ex: sandbox)
+    }
+  }, []);
+
   const [selectedCompanyId, setSelectedCompanyIdState] = useState<string | null>(() => {
-    return localStorage.getItem(STORAGE_KEY) || null;
+    if (typeof window === 'undefined') return null;
+    return storageKey ? localStorage.getItem(storageKey) || null : null;
   });
+
+  // Quando o usuário muda (login/logout/troca de conta), sincroniza o estado
+  useEffect(() => {
+    if (!userId) {
+      setSelectedCompanyIdState(null);
+      return;
+    }
+    const currentKey = getCompanyStorageKey(userId);
+    const persisted = currentKey ? localStorage.getItem(currentKey) : null;
+    setSelectedCompanyIdState(persisted || null);
+  }, [userId]);
 
   const { data: allCompanies } = useCompanies();
   const { userCompanies, hasMultipleCompanies, switchCompany } = useUserCompanies();
 
   // Validação e inicialização de empresa ativa
   useEffect(() => {
+    if (!userId || !storageKey) return;
+
     // Se for Super Admin / Admin Master, valida contra lista global de empresas
     if (isAdminMaster || isSuperAdmin) {
       if (selectedCompanyId && allCompanies && allCompanies.length > 0) {
         const exists = allCompanies.some(c => c.id === selectedCompanyId);
         if (!exists) {
           setSelectedCompanyIdState(null);
-          localStorage.removeItem(STORAGE_KEY);
+          localStorage.removeItem(storageKey);
         }
       }
       return;
@@ -49,7 +81,7 @@ export function CompanyProvider({ children }: CompanyProviderProps) {
         const initialId = defaultLink?.companyId || authCompanyId || null;
         if (initialId) {
           setSelectedCompanyIdState(initialId);
-          localStorage.setItem(STORAGE_KEY, initialId);
+          localStorage.setItem(storageKey, initialId);
         }
       } else {
         // Se há empresa selecionada, valida se o usuário ainda possui vínculo com ela
@@ -59,9 +91,9 @@ export function CompanyProvider({ children }: CompanyProviderProps) {
           const fallbackId = fallbackLink?.companyId || null;
           setSelectedCompanyIdState(fallbackId);
           if (fallbackId) {
-            localStorage.setItem(STORAGE_KEY, fallbackId);
+            localStorage.setItem(storageKey, fallbackId);
           } else {
-            localStorage.removeItem(STORAGE_KEY);
+            localStorage.removeItem(storageKey);
           }
         }
       }
@@ -76,10 +108,10 @@ export function CompanyProvider({ children }: CompanyProviderProps) {
         allCompanies.some(c => c.id === selectedCompanyId) || selectedCompanyId === authCompanyId;
       if (!accessible) {
         setSelectedCompanyIdState(null);
-        localStorage.removeItem(STORAGE_KEY);
+        localStorage.removeItem(storageKey);
       }
     }
-  }, [selectedCompanyId, allCompanies, userCompanies, isAdminMaster, isSuperAdmin, authCompanyId]);
+  }, [selectedCompanyId, allCompanies, userCompanies, isAdminMaster, isSuperAdmin, authCompanyId, userId, storageKey]);
 
   const setSelectedCompanyId = async (id: string | null) => {
     if (id && id !== selectedCompanyId) {
@@ -91,10 +123,12 @@ export function CompanyProvider({ children }: CompanyProviderProps) {
     }
 
     setSelectedCompanyIdState(id);
+    if (!storageKey) return;
+
     if (id) {
-      localStorage.setItem(STORAGE_KEY, id);
+      localStorage.setItem(storageKey, id);
     } else {
-      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(storageKey);
     }
   };
 
