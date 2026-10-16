@@ -251,6 +251,18 @@ export function useCreateColaborador() {
         throw new Error('Datas inválidas');
       }
 
+      // Guard: verificar se o e-mail pessoal já pertence a uma conta ativa na plataforma
+      if (colaboradorData.email_pessoal) {
+        const emailTrimmed = colaboradorData.email_pessoal.trim();
+        const { data: emailExists, error: checkError } = await supabase.rpc('check_email_exists', {
+          p_email: emailTrimmed,
+        });
+
+        if (!checkError && emailExists) {
+          throw new Error('Este e-mail já possui acesso à plataforma. Use outro e-mail ou contate o suporte.');
+        }
+      }
+
       const { data: newColaborador, error: colaboradorError } = await supabase
         .from('colaboradores')
         .insert({
@@ -348,7 +360,9 @@ export function useCreateColaborador() {
     },
     onError: (error: Error) => {
       console.error('Error creating colaborador:', error);
-      if (error.message.includes('colaboradores_cpf_company_unique')) {
+      if (error.message.includes('Este e-mail já possui acesso à plataforma')) {
+        toast.error('Este e-mail já possui acesso à plataforma. Use outro e-mail ou contate o suporte.');
+      } else if (error.message.includes('colaboradores_cpf_company_unique')) {
         toast.error('CPF já cadastrado nesta empresa');
       } else if (error.message.includes('colaboradores_email_company_unique')) {
         toast.error('E-mail corporativo já cadastrado nesta empresa');

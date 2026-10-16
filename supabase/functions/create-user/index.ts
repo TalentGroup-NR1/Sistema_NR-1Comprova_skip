@@ -161,6 +161,20 @@ serve(async (req) => {
     // Determine company_id for new user
     const targetCompanyId = callerRole === 'admin_empresa' ? callerCompanyId : company_id;
 
+    // Guard: verificar se o e-mail já pertence a uma conta ATIVA na plataforma
+    const { data: emailExists } = await supabaseAdmin.rpc('check_email_exists', {
+      p_email: email.trim(),
+    });
+
+    if (emailExists) {
+      return new Response(JSON.stringify({
+        error: 'Este e-mail já possui acesso à plataforma. Use outro e-mail ou contate o suporte.'
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     // Create user with admin API
     const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
       email,
@@ -171,7 +185,13 @@ serve(async (req) => {
 
     if (createError) {
       console.error('Error creating user:', createError);
-      return new Response(JSON.stringify({ error: createError.message }), {
+      const isDuplicate = createError.message?.toLowerCase().includes('already') ||
+                          createError.message?.toLowerCase().includes('exists');
+      return new Response(JSON.stringify({
+        error: isDuplicate
+          ? 'Este e-mail já possui acesso à plataforma. Use outro e-mail ou contate o suporte.'
+          : createError.message
+      }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });

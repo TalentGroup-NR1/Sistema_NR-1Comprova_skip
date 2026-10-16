@@ -189,54 +189,68 @@ serve(async (req) => {
     const logoUrl = (colaborador.companies as { name?: string; logo_url?: string } | null)?.logo_url;
 
     let userId: string;
-    let isExistingUser = false;
     const randomPassword = generateRandomPassword(64);
+    const emailPessoal = colaborador.email_pessoal.trim();
 
-    // Check if a user with this email already exists in profiles
-    const { data: existingProfile } = await supabaseAdmin
-      .from('profiles')
-      .select('user_id')
-      .ilike('email', colaborador.email_pessoal.trim())
-      .maybeSingle();
+    // Guard: verificar se o e-mail já pertence a uma conta ATIVA na plataforma
+    const { data: emailExists, error: checkError } = await supabaseAdmin.rpc('check_email_exists', {
+      p_email: emailPessoal,
+    });
 
-    if (existingProfile?.user_id) {
-      userId = existingProfile.user_id;
-      isExistingUser = true;
-      console.log('User already exists with email:', maskEmail(colaborador.email_pessoal), '-> ID:', userId);
+    if (checkError) {
+      console.error('Error checking existing email via RPC:', checkError);
+      // Fallback de segurança se RPC falhar: checar profiles diretamente
+      const { data: existingProfile } = await supabaseAdmin
+        .from('profiles')
+        .select('user_id, is_active')
+        .ilike('email', emailPessoal)
+        .maybeSingle();
 
-      // Update the user's password to a random internal password
-      const { error: updatePasswordError } = await supabaseAdmin.auth.admin.updateUserById(
-        userId,
-        { password: randomPassword }
-      );
-
-      if (updatePasswordError) {
-        console.error('Error updating password for existing user:', updatePasswordError);
-        return new Response(JSON.stringify({ error: 'Falha ao atualizar senha do usuário existente' }), {
+      if (existingProfile && existingProfile.is_active !== false) {
+        return new Response(JSON.stringify({
+          error: 'Este e-mail já possui acesso à plataforma. Use outro e-mail ou contate o suporte.'
+        }), {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
-    } else {
-      // Create the auth user using the personal email with a random internal password
-      const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
-        email: colaborador.email_pessoal.trim(),
-        password: randomPassword,
-        email_confirm: true,
-        user_metadata: { full_name: colaborador.full_name },
+    } else if (emailExists) {
+      console.log('Guard blocked invite: email already has active account:', maskEmail(emailPessoal));
+      return new Response(JSON.stringify({
+        error: 'Este e-mail já possui acesso à plataforma. Use outro e-mail ou contate o suporte.'
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
-
-      if (createError) {
-        console.error('Error creating user:', createError);
-        return new Response(JSON.stringify({ error: createError.message }), {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-
-      userId = newUser.user!.id;
-      console.log('User created:', userId);
     }
+
+    // Conta existente ativa é sempre bloqueada pelo guard acima. Portanto, novos fluxos são sempre de novo usuário.
+    const isExistingUser = false;
+
+    // Criar o usuário auth com e-mail e senha aleatória interna
+    const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
+      email: emailPessoal,
+      password: randomPassword,
+      email_confirm: true,
+      user_metadata: { full_name: colaborador.full_name },
+    });
+
+    if (createError) {
+      console.error('Error creating user:', createError);
+      const isDuplicate = createError.message?.toLowerCase().includes('already') ||
+                          createError.message?.toLowerCase().includes('exists');
+      return new Response(JSON.stringify({
+        error: isDuplicate
+          ? 'Este e-mail já possui acesso à plataforma. Use outro e-mail ou contate o suporte.'
+          : createError.message
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    userId = newUser.user!.id;
+    console.log('User created:', userId);
 
     // Generate recovery link for password definition
     const reqOrigin = req.headers.get('origin');
