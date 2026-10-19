@@ -12,6 +12,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { FormularioIndisponivelScreen } from '@/components/auth/FormularioIndisponivelScreen';
 import { verificarModuloTokenAtivo, isErroModuloDesativado } from '@/lib/validarModuloToken';
+import { CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 
 interface Question {
   id: string;

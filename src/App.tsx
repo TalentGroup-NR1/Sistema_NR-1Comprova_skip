@@ -56,6 +56,7 @@ import NotFound from "./pages/NotFound";
 import LaudoAepPage from "./pages/LaudoAepPage";
 import ConfiguracoesEmpresa from "./pages/ConfiguracoesEmpresa";
 import Evidencias from "./pages/Evidencias";
+import { ErrorBoundary } from "@/components/layout/ErrorBoundary";
 
 const queryClient = new QueryClient();
 
@@ -71,8 +72,9 @@ const App = () => (
           <Toaster />
           <Sonner />
           <BrowserRouter>
-            <Routes>
-              <Route path="/auth" element={<Auth />} />
+            <ErrorBoundary fallbackMessage="Ocorreu um erro ao carregar a página. Por favor, tente recarregar.">
+              <Routes>
+                <Route path="/auth" element={<Auth />} />
               <Route path="/cadastro-empresa" element={
                 <ProtectedRoute requireSuperAdmin unauthenticatedRedirect="/">
                   <CadastroEmpresa />
@@ -212,7 +214,8 @@ const App = () => (
               <Route path="/evidencias" element={<ProtectedRoute moduleKey="/mapa-riscos-nr1"><Evidencias /></ProtectedRoute>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
-          </BrowserRouter>
+          </ErrorBoundary>
+        </BrowserRouter>
         </TooltipProvider>
       </CompanyProvider>
     </AuthProvider>
