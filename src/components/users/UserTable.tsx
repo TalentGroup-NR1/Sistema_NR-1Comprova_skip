@@ -24,11 +24,13 @@ import {
   CheckCircle2,
   XCircle,
   Mail,
+  ShieldCheck,
 } from 'lucide-react';
 import { UserProfile } from '@/hooks/useUsers';
 import { useUserMutations } from '@/hooks/useUserMutations';
 import { useAuth, AppRole } from '@/hooks/useAuth';
 import { UserForm } from './UserForm';
+import { ChangeUserRoleDialog } from './ChangeUserRoleDialog';
 import { useResendAcessoByUserId } from '@/hooks/useColaboradoresPendentes';
 
 const roleLabels: Record<AppRole, string> = {
@@ -57,6 +59,7 @@ export function UserTable({ users, isLoading }: UserTableProps) {
   const { toggleUserStatus } = useUserMutations();
   const resendAcesso = useResendAcessoByUserId();
   const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
+  const [changingRoleUser, setChangingRoleUser] = useState<UserProfile | null>(null);
 
   const getInitials = (name: string | null) => {
     if (!name) return '??';
@@ -169,6 +172,9 @@ export function UserTable({ users, isLoading }: UserTableProps) {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => setChangingRoleUser(user)}>
+                        <ShieldCheck className="h-4 w-4 mr-2 text-primary" /> Alterar Perfil
+                      </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => setEditingUser(user)}>
                         <Edit className="h-4 w-4 mr-2" /> Editar
                       </DropdownMenuItem>
@@ -208,6 +214,12 @@ export function UserTable({ users, isLoading }: UserTableProps) {
         open={!!editingUser}
         onClose={() => setEditingUser(null)}
         user={editingUser}
+      />
+
+      <ChangeUserRoleDialog
+        open={!!changingRoleUser}
+        onClose={() => setChangingRoleUser(null)}
+        user={changingRoleUser}
       />
     </>
   );

@@ -68,13 +68,15 @@ export default function GerenciamentoAcessos() {
             </h1>
             <p className="text-muted-foreground">{pageSubtitle}</p>
           </div>
-          <Button 
-            className="gradient-primary text-primary-foreground shadow-md"
-            onClick={() => setIsFormOpen(true)}
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Novo Usuário
-          </Button>
+          {isAdminMaster && (
+            <Button 
+              className="gradient-primary text-primary-foreground shadow-md"
+              onClick={() => setIsFormOpen(true)}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Novo Usuário
+            </Button>
+          )}
         </div>
 
         {/* Stats */}

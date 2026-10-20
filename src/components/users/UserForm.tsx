@@ -1,6 +1,7 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -53,13 +54,8 @@ const createUserSchema = z.object({
 const editUserSchema = z.object({
   full_name: z.string().min(3, 'Nome deve ter pelo menos 3 caracteres'),
   email: z.string().email('Email inválido'),
-  password: z.string().min(6, 'Senha deve ter pelo menos 6 caracteres').optional().or(z.literal('')),
-  confirmPassword: z.string().optional().or(z.literal('')),
   role: z.enum(['admin_master', 'admin_empresa', 'analista_rh', 'gestor_departamento', 'colaborador']),
   company_id: z.string().optional(),
-}).refine(data => !data.password || data.password === data.confirmPassword, {
-  message: 'Senhas não conferem',
-  path: ['confirmPassword'],
 });
 
 interface UserFormProps {
@@ -90,12 +86,25 @@ export function UserForm({ open, onClose, user }: UserFormProps) {
 
   const onSubmit = async (values: z.infer<typeof createUserSchema>) => {
     if (isEditing && user) {
+      if (values.role && values.role !== user.role) {
+        const targetCid = user.company_id || companyId;
+        if (targetCid) {
+          try {
+            await supabase.rpc('admin_update_user_role' as any, {
+              p_user_id: user.user_id,
+              p_company_id: targetCid,
+              p_new_role: values.role,
+            });
+          } catch (e) {
+            console.warn('Aviso ao sincronizar perfil via RPC admin_update_user_role:', e);
+          }
+        }
+      }
       await updateUser.mutateAsync({
         user_id: user.user_id,
         email: values.email,
         full_name: values.full_name,
         role: values.role as AppRole,
-        ...(values.password ? { password: values.password } : {}),
       });
     } else {
       await createUser.mutateAsync({
@@ -156,33 +165,37 @@ export function UserForm({ open, onClose, user }: UserFormProps) {
               )}
             />
 
-            <FormField
-              control={form.control}
-              name="password"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{isEditing ? 'Nova Senha (opcional)' : 'Senha'}</FormLabel>
-                  <FormControl>
-                    <Input type="password" placeholder="••••••" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            {!isEditing && (
+              <>
+                <FormField
+                  control={form.control}
+                  name="password"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Senha</FormLabel>
+                      <FormControl>
+                        <Input type="password" placeholder="••••••" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-            <FormField
-              control={form.control}
-              name="confirmPassword"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Confirmar Senha</FormLabel>
-                  <FormControl>
-                    <Input type="password" placeholder="••••••" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                <FormField
+                  control={form.control}
+                  name="confirmPassword"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Confirmar Senha</FormLabel>
+                      <FormControl>
+                        <Input type="password" placeholder="••••••" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </>
+            )}
 
             <FormField
               control={form.control}
