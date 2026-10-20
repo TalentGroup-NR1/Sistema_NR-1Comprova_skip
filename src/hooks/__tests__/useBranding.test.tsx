@@ -13,6 +13,9 @@ vi.mock('@/hooks/useMyFeedbackCycles');
 vi.mock('@/hooks/useCompanyBranding', () => ({
   useCompanyBranding: () => ({ data: null, isLoading: false, isError: false }),
 }));
+vi.mock('@/hooks/useUserPreferences', () => ({
+  useUserPreferences: () => ({ themeColor: null, isLoading: false }),
+}));
 
 describe('useBranding e useEffectiveCompanyId', () => {
   beforeEach(() => {

@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { useUserPreferences } from "@/hooks/useUserPreferences";
+import { useBranding } from "@/hooks/useBranding";
 import { RotateCcw } from "lucide-react";
 
 const THEME_COLORS = [
@@ -34,6 +35,9 @@ interface PreferenciasDialogProps {
 
 export function PreferenciasDialog({ open, onOpenChange }: PreferenciasDialogProps) {
   const { themeColor, updateThemeColor } = useUserPreferences();
+  const { companyPrimaryColor, primaryColor } = useBranding();
+  const effectiveCompanyColor = companyPrimaryColor || primaryColor || "#0D13C5";
+
   const [selectedColor, setSelectedColor] = useState<string | null>(null);
   const [customHex, setCustomHex] = useState("");
 
@@ -104,7 +108,7 @@ export function PreferenciasDialog({ open, onOpenChange }: PreferenciasDialogPro
           <div className="flex items-center gap-3 pt-2">
             <input
               type="color"
-              value={selectedColor || "#1E5A99"}
+              value={selectedColor || effectiveCompanyColor}
               onChange={(e) => {
                 setSelectedColor(e.target.value);
                 setCustomHex(e.target.value);
@@ -115,7 +119,7 @@ export function PreferenciasDialog({ open, onOpenChange }: PreferenciasDialogPro
             <Input
               value={customHex}
               onChange={(e) => handleCustomChange(e.target.value)}
-              placeholder="#000000"
+              placeholder={effectiveCompanyColor}
               maxLength={7}
               className="w-28 font-mono text-sm uppercase"
             />
@@ -128,9 +132,14 @@ export function PreferenciasDialog({ open, onOpenChange }: PreferenciasDialogPro
           </div>
 
           {/* Reset button */}
-          <Button variant="outline" size="sm" onClick={handleReset} className="gap-2">
+          <Button
+            variant={selectedColor === null ? "secondary" : "outline"}
+            size="sm"
+            onClick={handleReset}
+            className="gap-2"
+          >
             <RotateCcw className="h-3.5 w-3.5" />
-            Usar cor da empresa
+            Usar cor da empresa {effectiveCompanyColor ? `(${effectiveCompanyColor})` : ""}
           </Button>
         </div>
 

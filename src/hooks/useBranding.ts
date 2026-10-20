@@ -4,6 +4,7 @@ import { useEffectiveCompanyId } from "@/hooks/useEffectiveCompanyId";
 import { useAuth } from "@/hooks/useAuth";
 import { useMyColaborador } from "@/hooks/useMyFeedbackCycles";
 import { useCompanyBranding } from "@/hooks/useCompanyBranding";
+import { useUserPreferences } from "@/hooks/useUserPreferences";
 
 /** NR-1Comprova defaults — used when no company branding is available. */
 export const DEFAULT_BRANDING = {
@@ -17,6 +18,7 @@ export interface Branding {
   brandName: string;
   logoUrl: string;
   primaryColor: string;
+  companyPrimaryColor?: string;
   faviconUrl: string;
   isInternal: boolean;
   isCustom: boolean;
@@ -94,6 +96,7 @@ export function setCachedBranding(data: {
   brandName?: string | null;
   logoUrl?: string | null;
   primaryColor?: string | null;
+  companyPrimaryColor?: string | null;
   faviconUrl?: string | null;
   companyId?: string | null;
   userId?: string | null;
@@ -122,9 +125,20 @@ export function setCachedBranding(data: {
       }
     }
     if (data.companyId) {
+      const companyPayload = data.companyPrimaryColor
+        ? JSON.stringify({
+            ...JSON.parse(payload),
+            primaryColor: data.companyPrimaryColor,
+            isCustom: Boolean(
+              (data.companyPrimaryColor &&
+                data.companyPrimaryColor !== DEFAULT_BRANDING.primaryColor) ||
+                (data.logoUrl && data.logoUrl !== DEFAULT_BRANDING.logoUrl)
+            ),
+          })
+        : payload;
       localStorage.setItem(
         `nr1_branding_data_company_${data.companyId}`,
-        payload
+        companyPayload
       );
     }
   } catch {
@@ -155,6 +169,12 @@ export function useBranding(): Branding {
   const effectiveCompanyId = useEffectiveCompanyId();
   const { selectedCompanyId } = useCompanyContext();
 
+  // Preferência do usuário (precedência máxima: usuário > empresa > padrão)
+  const { themeColor: userThemeColor, isLoading: isPreferencesLoading } = useUserPreferences();
+  const validUserColor = userThemeColor && /^#([0-9A-Fa-f]{3}){1,2}$/.test(userThemeColor)
+    ? userThemeColor
+    : null;
+
   const isPlatformAdmin = Boolean(isAdminMaster || isSuperAdmin);
   const candidateIds = [
     effectiveCompanyId,
@@ -171,6 +191,9 @@ export function useBranding(): Branding {
     ? (companies?.find((c) => c.id === targetCompanyId) as any)
     : undefined;
 
+  // Anti-FOUC: lê branding síncrono em cache no frame 0 (super admin sem empresa sempre usa padrão)
+  const cached = isPlatformAdmin && !targetCompanyId ? null : getCachedBranding(user?.id, targetCompanyId);
+
   const isProfileResolving = isAuthenticated === true && profileLoaded === false;
   // Se temos um targetCompanyId, o loading do branding depende prioritariamente da consulta direta.
   // Se a consulta direta ainda não resolveu positivamente e a lista companies ainda está carregando,
@@ -179,10 +202,10 @@ export function useBranding(): Branding {
   const isFallbackLoading = Boolean(
     targetCompanyId && !directBranding.data?.found && isCompaniesLoading
   );
-  const isLoading = isAuthLoading || isProfileResolving || isDirectLoading || isFallbackLoading;
-
-  // Anti-FOUC: lê branding síncrono em cache no frame 0 (super admin sem empresa sempre usa padrão)
-  const cached = isPlatformAdmin && !targetCompanyId ? null : getCachedBranding(user?.id, targetCompanyId);
+  // Se o usuário está autenticado e as preferências ainda estão carregando sem cache local,
+  // mantemos loading para evitar flash do padrão da empresa sobrepondo a cor do usuário
+  const isPrefLoading = Boolean(user?.id && isPreferencesLoading && !cached);
+  const isLoading = isAuthLoading || isProfileResolving || isDirectLoading || isFallbackLoading || isPrefLoading;
 
   if (isLoading) {
     if (cached) {
@@ -211,13 +234,15 @@ export function useBranding(): Branding {
 
   // Se não há empresa selecionada nem perfil (ex: Super Admin em modo global ou deslogado)
   if (!targetCompanyId) {
+    const userColor = validUserColor;
     return {
       brandName: DEFAULT_BRANDING.brandName,
       logoUrl: DEFAULT_BRANDING.logoUrl,
-      primaryColor: DEFAULT_BRANDING.primaryColor,
+      primaryColor: userColor || DEFAULT_BRANDING.primaryColor,
+      companyPrimaryColor: DEFAULT_BRANDING.primaryColor,
       faviconUrl: DEFAULT_BRANDING.faviconUrl,
       isInternal: false,
-      isCustom: false,
+      isCustom: Boolean(userColor),
       isLoading: false,
     };
   }
@@ -225,9 +250,10 @@ export function useBranding(): Branding {
   // 1. Resolução com sucesso pela RPC direta
   if (directBranding.data?.found) {
     const d = directBranding.data;
-    const resolvedColor = d.primaryColor && /^#([0-9A-Fa-f]{3}){1,2}$/.test(d.primaryColor)
+    const companyColor = d.primaryColor && /^#([0-9A-Fa-f]{3}){1,2}$/.test(d.primaryColor)
       ? d.primaryColor
       : DEFAULT_BRANDING.primaryColor;
+    const resolvedColor = validUserColor || companyColor;
     const resolvedLogo = d.logoUrl && d.logoUrl.trim()
       ? d.logoUrl.trim()
       : DEFAULT_BRANDING.logoUrl;
@@ -236,9 +262,10 @@ export function useBranding(): Branding {
       brandName: d.brandName || DEFAULT_BRANDING.brandName,
       logoUrl: resolvedLogo,
       primaryColor: resolvedColor,
+      companyPrimaryColor: companyColor,
       faviconUrl: d.faviconUrl || resolvedLogo || DEFAULT_BRANDING.faviconUrl,
       isInternal: Boolean(d.isInternal),
-      isCustom: Boolean(d.primaryColor || d.logoUrl),
+      isCustom: Boolean(validUserColor || d.primaryColor || d.logoUrl),
       isLoading: false,
     };
 
@@ -246,6 +273,7 @@ export function useBranding(): Branding {
       brandName: result.brandName,
       logoUrl: result.logoUrl,
       primaryColor: result.primaryColor,
+      companyPrimaryColor: companyColor,
       faviconUrl: result.faviconUrl,
       companyId: targetCompanyId,
       userId: user?.id,
@@ -256,10 +284,11 @@ export function useBranding(): Branding {
 
   // 2. Fallback secundário: lista de empresas (se a RPC falhou/não encontrou, mas a lista possui os dados)
   if (companyFromList) {
-    const resolvedColor =
+    const companyColor =
       companyFromList.brand_primary_color ||
       companyFromList.primary_color ||
       DEFAULT_BRANDING.primaryColor;
+    const resolvedColor = validUserColor || companyColor;
     const resolvedLogo =
       companyFromList.brand_logo_url ||
       companyFromList.logo_url ||
@@ -269,13 +298,14 @@ export function useBranding(): Branding {
       brandName: companyFromList.brand_name || companyFromList.name || DEFAULT_BRANDING.brandName,
       logoUrl: resolvedLogo,
       primaryColor: resolvedColor,
+      companyPrimaryColor: companyColor,
       faviconUrl:
         companyFromList.brand_favicon_url ||
         companyFromList.brand_logo_url ||
         companyFromList.logo_url ||
         DEFAULT_BRANDING.faviconUrl,
       isInternal: Boolean(companyFromList.is_internal),
-      isCustom: Boolean(companyFromList.brand_primary_color || companyFromList.brand_logo_url),
+      isCustom: Boolean(validUserColor || companyFromList.brand_primary_color || companyFromList.brand_logo_url),
       isLoading: false,
     };
 
@@ -283,6 +313,7 @@ export function useBranding(): Branding {
       brandName: result.brandName,
       logoUrl: result.logoUrl,
       primaryColor: result.primaryColor,
+      companyPrimaryColor: companyColor,
       faviconUrl: result.faviconUrl,
       companyId: targetCompanyId,
       userId: user?.id,
@@ -298,22 +329,25 @@ export function useBranding(): Branding {
     return {
       brandName: cached.brandName || DEFAULT_BRANDING.brandName,
       logoUrl: cached.logoUrl || DEFAULT_BRANDING.logoUrl,
-      primaryColor: cached.primaryColor || DEFAULT_BRANDING.primaryColor,
+      primaryColor: validUserColor || cached.primaryColor || DEFAULT_BRANDING.primaryColor,
+      companyPrimaryColor: cached.primaryColor || DEFAULT_BRANDING.primaryColor,
       faviconUrl: cached.faviconUrl || DEFAULT_BRANDING.faviconUrl,
       isInternal: false,
-      isCustom: Boolean(cached.isCustom),
+      isCustom: Boolean(validUserColor || cached.isCustom),
       isLoading: false,
     };
   }
 
   // 4. Empresa genuinamente sem branding personalizado (found=false definitivo ou sem dados)
+  const fallbackColor = validUserColor || DEFAULT_BRANDING.primaryColor;
   return {
     brandName: DEFAULT_BRANDING.brandName,
     logoUrl: DEFAULT_BRANDING.logoUrl,
-    primaryColor: DEFAULT_BRANDING.primaryColor,
+    primaryColor: fallbackColor,
+    companyPrimaryColor: DEFAULT_BRANDING.primaryColor,
     faviconUrl: DEFAULT_BRANDING.faviconUrl,
     isInternal: false,
-    isCustom: false,
+    isCustom: Boolean(validUserColor),
     isLoading: false,
   };
 }

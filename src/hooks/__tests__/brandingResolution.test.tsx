@@ -20,6 +20,7 @@ const h = vi.hoisted(() => ({
     profile: null as any,
     companies: [] as any[],
     userCompanies: [] as any[],
+    userPreferences: null as any,
     companiesGate: null as null | Promise<void>,
     roleGate: null as null | Promise<void>,
     brandingGate: null as null | Promise<void>,
@@ -47,8 +48,11 @@ vi.mock('@/integrations/supabase/client', () => {
           return { data: [], error: null };
       }
     };
-    const single = async () =>
-      table === 'profiles' ? { data: s.profile, error: null } : { data: null, error: null };
+    const single = async () => {
+      if (table === 'profiles') return { data: s.profile, error: null };
+      if (table === 'user_preferences') return { data: s.userPreferences, error: null };
+      return { data: null, error: null };
+    };
     const b: any = {
       select: () => b,
       eq: () => b,
@@ -169,6 +173,7 @@ describe('Branding da empresa efetiva no ambiente logado (providers reais)', () 
     s.profile = { company_id: HORIZONTE_ID, must_change_password: false, is_active: true };
     s.companies = [horizonte];
     s.userCompanies = [];
+    s.userPreferences = null;
     s.companiesGate = null;
     s.roleGate = null;
     s.brandingGate = null;
@@ -383,5 +388,74 @@ describe('Branding da empresa efetiva no ambiente logado (providers reais)', () 
 
     // Permanece azul de forma estável
     await waitFor(() => expect(rootPrimary()).toBe(hexToHslString(HORIZONTE_HEX)));
+  });
+
+  it('13. Precedência de Tema: preferência do usuário (#10B981 Verde) sobrescreve o branding da empresa (#0D13C5 da Horizonte)', async () => {
+    const VERDE_USER = '#10B981';
+    h.state.userPreferences = {
+      id: 'pref-1',
+      user_id: 'u1',
+      theme_color: VERDE_USER,
+    };
+
+    setup();
+
+    // A cor primária deve resolver para a preferência do usuário (Verde), e NÃO para o azul da Horizonte
+    await waitFor(() => expect(rootPrimary()).toBe(hexToHslString(VERDE_USER)));
+    // Título e logo continuam sendo os da Horizonte
+    expect(document.title).toBe('Horizonte Contabilidade — NR-1Comprova');
+    // Cache de usuário armazena o verde
+    expect(localStorage.getItem('nr1_branding_u1')).toBe(VERDE_USER);
+  });
+
+  it('14. Usuário sem preferência salva (theme_color: null): aplica o branding da empresa (Horizonte #0D13C5)', async () => {
+    h.state.userPreferences = {
+      id: 'pref-1',
+      user_id: 'u1',
+      theme_color: null,
+    };
+
+    setup();
+
+    // Com theme_color nulo, deve cair na cor da empresa
+    await waitFor(() => expect(rootPrimary()).toBe(hexToHslString(HORIZONTE_HEX)));
+    expect(document.title).toBe('Horizonte Contabilidade — NR-1Comprova');
+    expect(localStorage.getItem('nr1_branding_u1')).toBe(HORIZONTE_HEX);
+  });
+
+  it('15. Reset para "Usar cor da empresa" (theme_color: null): reverte tema para a cor da empresa', async () => {
+    // Inicialmente com preferência verde salva
+    h.state.userPreferences = null; // banco retorna vazio / nulo
+
+    setup();
+
+    await waitFor(() => expect(rootPrimary()).toBe(hexToHslString(HORIZONTE_HEX)));
+    expect(rootPrimary()).toBe(hexToHslString(HORIZONTE_HEX));
+  });
+
+  it('16. Isolamento multi-tenant: usuário de outra empresa aplica a cor da empresa dele (sem vazamento da Horizonte)', async () => {
+    const TG_MAIS_ID = 'c-tgmais';
+    const TG_MAIS_HEX = '#F59E0B'; // Âmbar
+    const tgMaisCompany = {
+      id: TG_MAIS_ID,
+      name: 'TG MAIS',
+      brand_name: 'TG MAIS',
+      brand_primary_color: TG_MAIS_HEX,
+      brand_logo_url: 'https://cdn.exemplo.com/logos/tgmais.png',
+      brand_favicon_url: null,
+      primary_color: null,
+      created_at: '2026-10-01',
+    };
+
+    h.state.profile = { company_id: TG_MAIS_ID, must_change_password: false, is_active: true };
+    h.state.companies = [tgMaisCompany];
+    h.state.userPreferences = null; // sem preferência pessoal
+
+    setup();
+
+    // Deve aplicar Âmbar da TG MAIS, e NUNCA o azul da Horizonte
+    await waitFor(() => expect(rootPrimary()).toBe(hexToHslString(TG_MAIS_HEX)));
+    expect(document.title).toBe('TG MAIS — NR-1Comprova');
+    expect(rootPrimary()).not.toBe(hexToHslString(HORIZONTE_HEX));
   });
 });
