@@ -18,7 +18,6 @@ import {
 } from '@/components/ui/dropdown-menu';
 import {
   MoreVertical,
-  Edit,
   Lock,
   Unlock,
   CheckCircle2,
@@ -29,7 +28,6 @@ import {
 import { UserProfile } from '@/hooks/useUsers';
 import { useUserMutations } from '@/hooks/useUserMutations';
 import { useAuth, AppRole } from '@/hooks/useAuth';
-import { UserForm } from './UserForm';
 import { ChangeUserRoleDialog } from './ChangeUserRoleDialog';
 import { useResendAcessoByUserId } from '@/hooks/useColaboradoresPendentes';
 
@@ -58,7 +56,6 @@ export function UserTable({ users, isLoading }: UserTableProps) {
   const { isAdminMaster, role: callerRole, user: currentUser } = useAuth();
   const { toggleUserStatus } = useUserMutations();
   const resendAcesso = useResendAcessoByUserId();
-  const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
   const [changingRoleUser, setChangingRoleUser] = useState<UserProfile | null>(null);
 
   const getInitials = (name: string | null) => {
@@ -71,7 +68,7 @@ export function UserTable({ users, isLoading }: UserTableProps) {
       .slice(0, 2);
   };
 
-  const canEditUser = (targetUser: UserProfile) => {
+  const canManageUser = (targetUser: UserProfile) => {
     // Can't edit yourself through this interface
     if (targetUser.user_id === currentUser?.id) return false;
     
@@ -164,7 +161,7 @@ export function UserTable({ users, isLoading }: UserTableProps) {
                 )}
               </TableCell>
               <TableCell className="text-right">
-                {canEditUser(user) && (
+                {canManageUser(user) && (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" size="icon">
@@ -174,9 +171,6 @@ export function UserTable({ users, isLoading }: UserTableProps) {
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem onClick={() => setChangingRoleUser(user)}>
                         <ShieldCheck className="h-4 w-4 mr-2 text-primary" /> Alterar Perfil
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => setEditingUser(user)}>
-                        <Edit className="h-4 w-4 mr-2" /> Editar
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         disabled={resendAcesso.isPending}
@@ -209,12 +203,6 @@ export function UserTable({ users, isLoading }: UserTableProps) {
         </TableBody>
       </Table>
       </div>
-
-      <UserForm
-        open={!!editingUser}
-        onClose={() => setEditingUser(null)}
-        user={editingUser}
-      />
 
       <ChangeUserRoleDialog
         open={!!changingRoleUser}

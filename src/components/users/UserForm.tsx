@@ -1,7 +1,6 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -28,7 +27,6 @@ import {
 import { useAuth, AppRole } from '@/hooks/useAuth';
 import { useCompanies } from '@/hooks/useCompanies';
 import { useUserMutations } from '@/hooks/useUserMutations';
-import { UserProfile } from '@/hooks/useUsers';
 import { Loader2 } from 'lucide-react';
 
 const roleLabels: Record<AppRole, string> = {
@@ -51,70 +49,36 @@ const createUserSchema = z.object({
   path: ['confirmPassword'],
 });
 
-const editUserSchema = z.object({
-  full_name: z.string().min(3, 'Nome deve ter pelo menos 3 caracteres'),
-  email: z.string().email('Email inválido'),
-  role: z.enum(['admin_master', 'admin_empresa', 'analista_rh', 'gestor_departamento', 'colaborador']),
-  company_id: z.string().optional(),
-});
-
 interface UserFormProps {
   open: boolean;
   onClose: () => void;
-  user?: UserProfile | null;
 }
 
-export function UserForm({ open, onClose, user }: UserFormProps) {
+export function UserForm({ open, onClose }: UserFormProps) {
   const { isAdminMaster, companyId } = useAuth();
   const { data: companies } = useCompanies();
-  const { createUser, updateUser } = useUserMutations();
-
-  const isEditing = !!user;
-  const schema = isEditing ? editUserSchema : createUserSchema;
+  const { createUser } = useUserMutations();
 
   const form = useForm<z.infer<typeof createUserSchema>>({
-    resolver: zodResolver(schema),
+    resolver: zodResolver(createUserSchema),
     defaultValues: {
-      full_name: user?.full_name || '',
-      email: user?.email || '',
+      full_name: '',
+      email: '',
       password: '',
       confirmPassword: '',
-      role: user?.role || 'colaborador',
-      company_id: user?.company_id || companyId || undefined,
+      role: 'colaborador',
+      company_id: companyId || undefined,
     },
   });
 
   const onSubmit = async (values: z.infer<typeof createUserSchema>) => {
-    if (isEditing && user) {
-      if (values.role && values.role !== user.role) {
-        const targetCid = user.company_id || companyId;
-        if (targetCid) {
-          try {
-            await supabase.rpc('admin_update_user_role' as any, {
-              p_user_id: user.user_id,
-              p_company_id: targetCid,
-              p_new_role: values.role,
-            });
-          } catch (e) {
-            console.warn('Aviso ao sincronizar perfil via RPC admin_update_user_role:', e);
-          }
-        }
-      }
-      await updateUser.mutateAsync({
-        user_id: user.user_id,
-        email: values.email,
-        full_name: values.full_name,
-        role: values.role as AppRole,
-      });
-    } else {
-      await createUser.mutateAsync({
-        email: values.email,
-        password: values.password,
-        full_name: values.full_name,
-        role: values.role as AppRole,
-        company_id: isAdminMaster ? values.company_id : companyId || undefined,
-      });
-    }
+    await createUser.mutateAsync({
+      email: values.email,
+      password: values.password,
+      full_name: values.full_name,
+      role: values.role as AppRole,
+      company_id: isAdminMaster ? values.company_id : companyId || undefined,
+    });
     onClose();
     form.reset();
   };
@@ -124,15 +88,13 @@ export function UserForm({ open, onClose, user }: UserFormProps) {
     ? ['admin_master', 'admin_empresa', 'analista_rh', 'gestor_departamento', 'colaborador']
     : ['analista_rh', 'gestor_departamento', 'colaborador'];
 
-  const isLoading = createUser.isPending || updateUser.isPending;
+  const isLoading = createUser.isPending;
 
   return (
     <Dialog open={open} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>
-            {isEditing ? 'Editar Usuário' : 'Novo Usuário'}
-          </DialogTitle>
+          <DialogTitle>Novo Usuário</DialogTitle>
         </DialogHeader>
 
         <Form {...form}>
@@ -165,37 +127,33 @@ export function UserForm({ open, onClose, user }: UserFormProps) {
               )}
             />
 
-            {!isEditing && (
-              <>
-                <FormField
-                  control={form.control}
-                  name="password"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Senha</FormLabel>
-                      <FormControl>
-                        <Input type="password" placeholder="••••••" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+            <FormField
+              control={form.control}
+              name="password"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Senha</FormLabel>
+                  <FormControl>
+                    <Input type="password" placeholder="••••••" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-                <FormField
-                  control={form.control}
-                  name="confirmPassword"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Confirmar Senha</FormLabel>
-                      <FormControl>
-                        <Input type="password" placeholder="••••••" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </>
-            )}
+            <FormField
+              control={form.control}
+              name="confirmPassword"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Confirmar Senha</FormLabel>
+                  <FormControl>
+                    <Input type="password" placeholder="••••••" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             <FormField
               control={form.control}
@@ -256,7 +214,7 @@ export function UserForm({ open, onClose, user }: UserFormProps) {
               </Button>
               <Button type="submit" disabled={isLoading}>
                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {isEditing ? 'Salvar' : 'Criar'}
+                Criar
               </Button>
             </div>
           </form>
