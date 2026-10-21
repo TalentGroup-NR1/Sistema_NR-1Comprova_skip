@@ -11,9 +11,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, Plus, Filter } from "lucide-react";
+import { Search, Plus, Filter, Download, Upload } from "lucide-react";
 import { ColaboradorTable } from "@/components/colaboradores/ColaboradorTable";
 import { ColaboradorForm } from "@/components/colaboradores/ColaboradorForm";
+import { ImportarColaboradoresDialog } from "@/components/colaboradores/ImportarColaboradoresDialog";
+import { downloadTemplateColaboradores } from "@/lib/importacaoColaboradores";
 import {
   useColaboradores,
   useColaborador,
@@ -32,6 +34,7 @@ const Colaboradores = () => {
   const [departmentFilter, setDepartmentFilter] = useState<string>("todos");
   const [vinculoFilter, setVinculoFilter] = useState<string>("todos");
   const [formOpen, setFormOpen] = useState(false);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [selectedColaborador, setSelectedColaborador] = useState<Colaborador | null>(null);
   const [viewingColaboradorId, setViewingColaboradorId] = useState<string | null>(null);
 
@@ -157,13 +160,32 @@ const Colaboradores = () => {
                 </SelectContent>
               </Select>
               {canManage && (
-                <Button
-                  className="gradient-primary text-primary-foreground shadow-md hover:shadow-lg transition-shadow"
-                  onClick={() => handleOpenForm()}
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Novo Colaborador
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    className="border-border text-foreground hover:bg-muted/50 transition-colors"
+                    onClick={downloadTemplateColaboradores}
+                    title="Baixar modelo de planilha CSV para importação"
+                  >
+                    <Download className="h-4 w-4 mr-2 text-muted-foreground" />
+                    Baixar Modelo
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="border-primary/30 text-primary hover:bg-primary/5 transition-colors"
+                    onClick={() => setImportDialogOpen(true)}
+                  >
+                    <Upload className="h-4 w-4 mr-2" />
+                    Importar Planilha
+                  </Button>
+                  <Button
+                    className="gradient-primary text-primary-foreground shadow-md hover:shadow-lg transition-shadow"
+                    onClick={() => handleOpenForm()}
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Novo Colaborador
+                  </Button>
+                </div>
               )}
             </div>
           </div>
@@ -187,6 +209,11 @@ const Colaboradores = () => {
         colaborador={colaboradorForForm}
         onSubmit={handleSubmit}
         isSubmitting={createColaborador.isPending || updateColaborador.isPending}
+      />
+
+      <ImportarColaboradoresDialog
+        open={importDialogOpen}
+        onOpenChange={setImportDialogOpen}
       />
     </MainLayout>
   );
