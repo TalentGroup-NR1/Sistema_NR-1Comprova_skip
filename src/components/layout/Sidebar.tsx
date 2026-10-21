@@ -116,7 +116,60 @@ export function Sidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { role, isAuthenticated, user, signOut, isSuperAdmin } = useAuth();
+  const { role, activeRole, availableRoles = [], switchActiveRole, isAuthenticated, user, signOut, isSuperAdmin } = useAuth();
+  const effectiveRole = activeRole ?? role;
+
+  const MANAGEMENT_ROLES: AppRole[] = ['admin_master', 'admin_empresa', 'analista_rh', 'gestor_departamento'];
+  const primaryManagementRole = availableRoles.find(r => MANAGEMENT_ROLES.includes(r as AppRole));
+  const hasManagementRole = !!primaryManagementRole;
+  const hasColaboradorRole = availableRoles.includes('colaborador');
+  const isMultiPerfil = hasManagementRole && hasColaboradorRole;
+
+  const isMeuPerfil = effectiveRole === 'colaborador';
+  const isPerfilEmpresa = !isMeuPerfil;
+
+  const handleSwitchProfile = async (targetRole: AppRole) => {
+    if (targetRole === effectiveRole) return;
+    if (!switchActiveRole) return;
+    const { error } = await switchActiveRole(targetRole);
+    if (error) {
+      toast({
+        variant: "destructive",
+        title: "Erro ao alternar perfil",
+        description: error,
+      });
+      return;
+    }
+    toast({
+      title: "Perfil alternado",
+      description: targetRole === 'colaborador' 
+        ? "Visualização alterada para: Meu Perfil (Pessoal)" 
+        : "Visualização alterada para: Perfil da Empresa (Gestão)",
+    });
+
+    if (targetRole === 'colaborador') {
+      const adminExclusiveRoutes = [
+        '/colaboradores',
+        '/ferias',
+        '/demissoes',
+        '/acessos',
+        '/configuracoes-empresa',
+        '/empresas',
+        '/relatorios-executivos',
+        '/estrutura-organizacional',
+        '/denuncias',
+        '/comportamentos-ofensivos',
+      ];
+      if (adminExclusiveRoutes.some(route => location.pathname.startsWith(route))) {
+        navigate('/');
+      }
+    } else {
+      if (location.pathname === '/minhas-ferias') {
+        navigate('/');
+      }
+    }
+  };
+
   const { selectedCompanyId } = useCompanyContext();
   const { data: companies } = useCompanies();
 
@@ -138,10 +191,10 @@ export function Sidebar() {
   const filterByRole = (items: NavItem[]) => {
     if (!isAuthenticated) return [];
     
-    // First, filter by role (existing logic)
+    // First, filter by role (using effective active role)
     let roleFiltered = items;
-    if (role !== null) {
-      roleFiltered = items.filter(item => !item.roles || item.roles.includes(role));
+    if (effectiveRole !== null) {
+      roleFiltered = items.filter(item => !item.roles || item.roles.includes(effectiveRole));
     } else {
       roleFiltered = items.filter(item => !item.roles);
     }
@@ -200,10 +253,10 @@ export function Sidebar() {
 
   const addDynamicBadges = (items: NavItem[]): NavItem[] => {
     return items.map(item => {
-      if (item.href === '/cuidar-mais' && isFriday && role === 'colaborador' && pulseStatus && !pulseStatus.hasResponded) {
+      if (item.href === '/cuidar-mais' && isFriday && effectiveRole === 'colaborador' && pulseStatus && !pulseStatus.hasResponded) {
         return { ...item, badge: 1 };
       }
-      if (item.href === '/avaliacoes' && role === 'colaborador') {
+      if (item.href === '/avaliacoes' && effectiveRole === 'colaborador') {
         return { ...item, label: 'Avaliações e PDI' };
       }
       return item;
@@ -232,7 +285,7 @@ export function Sidebar() {
   });
 
   const userName = user?.email?.split("@")[0] ?? "usuário";
-  const roleLabel = role ? roleLabels[role] ?? "Usuário" : "Usuário";
+  const roleLabel = effectiveRole ? roleLabels[effectiveRole] ?? "Usuário" : "Usuário";
   const userInitial = userName.substring(0, 1).toUpperCase();
 
   const NavLinkItem = ({ item }: { item: NavItem }) => {
@@ -340,7 +393,211 @@ export function Sidebar() {
         </Link>
       </div>
 
+      {/* Seletor de Perfil Ativo (Estilo Flash) */}
+      {!collapsed ? (
+        <div className="px-3 pb-3">
+          {isMultiPerfil ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  data-testid="profile-switcher-trigger"
+                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg border border-sidebar-border bg-[hsl(var(--sidebar-accent))]/40 hover:bg-[hsl(var(--sidebar-accent))]/80 transition-all duration-200 text-left group focus:outline-none focus:ring-1 focus:ring-primary/40 shadow-xs cursor-pointer"
+                >
+                  <div
+                    className={cn(
+                      "w-7 h-7 rounded-md flex items-center justify-center text-xs font-semibold shrink-0 transition-colors",
+                      isPerfilEmpresa
+                        ? "bg-primary/10 text-primary border border-primary/20"
+                        : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
+                    )}
+                  >
+                    {isPerfilEmpresa ? <Building2 className="w-3.5 h-3.5" /> : <User className="w-3.5 h-3.5" />}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[13px] font-semibold text-sidebar-foreground truncate" data-testid="active-profile-title">
+                        {isPerfilEmpresa ? "Perfil da Empresa" : "Meu Perfil"}
+                      </span>
+                      <ChevronDown className="w-3.5 h-3.5 text-muted-foreground group-hover:text-sidebar-foreground transition-transform duration-200 shrink-0" />
+                    </div>
+                    <p className="text-[11px] text-muted-foreground truncate leading-tight">
+                      {isPerfilEmpresa ? "Painel administrativo" : "Painel pessoal"}
+                    </p>
+                  </div>
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-[230px] p-1.5 shadow-lg">
+                <DropdownMenuLabel className="text-[11px] font-medium text-muted-foreground px-2 py-1">
+                  Alternar Perfil
+                </DropdownMenuLabel>
+                <DropdownMenuItem
+                  data-testid="profile-option-empresa"
+                  onClick={() => handleSwitchProfile(primaryManagementRole || 'admin_empresa')}
+                  className={cn(
+                    "flex items-start gap-2.5 p-2 rounded-md cursor-pointer transition-colors",
+                    isPerfilEmpresa ? "bg-accent/80 font-medium" : "hover:bg-accent/50"
+                  )}
+                >
+                  <div className="w-7 h-7 rounded-md bg-primary/10 text-primary border border-primary/20 flex items-center justify-center shrink-0 mt-0.5">
+                    <Building2 className="w-3.5 h-3.5" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[13px] text-foreground">Perfil da Empresa</span>
+                      {isPerfilEmpresa && <ShieldCheck className="w-3.5 h-3.5 text-primary shrink-0" />}
+                    </div>
+                    <p className="text-[10px] text-muted-foreground leading-snug">
+                      Painel administrativo, gestão de equipe e relatórios
+                    </p>
+                  </div>
+                </DropdownMenuItem>
 
+                <DropdownMenuItem
+                  data-testid="profile-option-pessoal"
+                  onClick={() => handleSwitchProfile('colaborador')}
+                  className={cn(
+                    "flex items-start gap-2.5 p-2 rounded-md cursor-pointer transition-colors mt-1",
+                    isMeuPerfil ? "bg-accent/80 font-medium" : "hover:bg-accent/50"
+                  )}
+                >
+                  <div className="w-7 h-7 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 flex items-center justify-center shrink-0 mt-0.5">
+                    <User className="w-3.5 h-3.5" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[13px] text-foreground">Meu Perfil</span>
+                      {isMeuPerfil && <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />}
+                    </div>
+                    <p className="text-[10px] text-muted-foreground leading-snug">
+                      Minhas férias, minhas tarefas, avaliações
+                    </p>
+                  </div>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <div
+              data-testid="profile-fixed-badge"
+              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg border border-sidebar-border/40 bg-[hsl(var(--sidebar-accent))]/20 select-none"
+            >
+              <div
+                className={cn(
+                  "w-7 h-7 rounded-md flex items-center justify-center text-xs font-semibold shrink-0",
+                  isPerfilEmpresa
+                    ? "bg-primary/10 text-primary border border-primary/20"
+                    : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
+                )}
+              >
+                {isPerfilEmpresa ? <Building2 className="w-3.5 h-3.5" /> : <User className="w-3.5 h-3.5" />}
+              </div>
+              <div className="flex-1 min-w-0">
+                <span className="text-[13px] font-semibold text-sidebar-foreground truncate block">
+                  {isPerfilEmpresa ? "Perfil da Empresa" : "Meu Perfil"}
+                </span>
+                <p className="text-[11px] text-muted-foreground truncate leading-tight">
+                  {isPerfilEmpresa ? "Painel administrativo" : "Painel pessoal"}
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="px-2 pb-3 flex justify-center">
+          {isMultiPerfil ? (
+            <DropdownMenu>
+              <Tooltip delayDuration={0}>
+                <TooltipTrigger asChild>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      type="button"
+                      data-testid="profile-switcher-collapsed-trigger"
+                      className={cn(
+                        "w-9 h-9 rounded-lg flex items-center justify-center transition-colors border cursor-pointer",
+                        isPerfilEmpresa
+                          ? "bg-primary/10 text-primary border-primary/20 hover:bg-primary/20"
+                          : "bg-emerald-500/10 text-emerald-600 border-emerald-500/20 hover:bg-emerald-500/20"
+                      )}
+                    >
+                      {isPerfilEmpresa ? <Building2 className="w-4 h-4" /> : <User className="w-4 h-4" />}
+                    </button>
+                  </DropdownMenuTrigger>
+                </TooltipTrigger>
+                <TooltipContent side="right">
+                  {isPerfilEmpresa ? "Perfil da Empresa (Clique para alternar)" : "Meu Perfil (Clique para alternar)"}
+                </TooltipContent>
+              </Tooltip>
+              <DropdownMenuContent side="right" className="w-[230px] p-1.5 shadow-lg">
+                <DropdownMenuLabel className="text-[11px] font-medium text-muted-foreground px-2 py-1">
+                  Alternar Perfil
+                </DropdownMenuLabel>
+                <DropdownMenuItem
+                  data-testid="profile-collapsed-option-empresa"
+                  onClick={() => handleSwitchProfile(primaryManagementRole || 'admin_empresa')}
+                  className={cn(
+                    "flex items-start gap-2.5 p-2 rounded-md cursor-pointer transition-colors",
+                    isPerfilEmpresa ? "bg-accent/80 font-medium" : "hover:bg-accent/50"
+                  )}
+                >
+                  <div className="w-7 h-7 rounded-md bg-primary/10 text-primary border border-primary/20 flex items-center justify-center shrink-0 mt-0.5">
+                    <Building2 className="w-3.5 h-3.5" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[13px] text-foreground">Perfil da Empresa</span>
+                      {isPerfilEmpresa && <ShieldCheck className="w-3.5 h-3.5 text-primary shrink-0" />}
+                    </div>
+                    <p className="text-[10px] text-muted-foreground leading-snug">
+                      Painel administrativo, gestão de equipe e relatórios
+                    </p>
+                  </div>
+                </DropdownMenuItem>
+
+                <DropdownMenuItem
+                  data-testid="profile-collapsed-option-pessoal"
+                  onClick={() => handleSwitchProfile('colaborador')}
+                  className={cn(
+                    "flex items-start gap-2.5 p-2 rounded-md cursor-pointer transition-colors mt-1",
+                    isMeuPerfil ? "bg-accent/80 font-medium" : "hover:bg-accent/50"
+                  )}
+                >
+                  <div className="w-7 h-7 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 flex items-center justify-center shrink-0 mt-0.5">
+                    <User className="w-3.5 h-3.5" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[13px] text-foreground">Meu Perfil</span>
+                      {isMeuPerfil && <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />}
+                    </div>
+                    <p className="text-[10px] text-muted-foreground leading-snug">
+                      Minhas férias, minhas tarefas, avaliações
+                    </p>
+                  </div>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <Tooltip delayDuration={0}>
+              <TooltipTrigger asChild>
+                <div
+                  data-testid="profile-collapsed-fixed-badge"
+                  className={cn(
+                    "w-9 h-9 rounded-lg flex items-center justify-center border",
+                    isPerfilEmpresa
+                      ? "bg-primary/10 text-primary border-primary/20"
+                      : "bg-emerald-500/10 text-emerald-600 border-emerald-500/20"
+                  )}
+                >
+                  {isPerfilEmpresa ? <Building2 className="w-4 h-4" /> : <User className="w-4 h-4" />}
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="right">
+                {isPerfilEmpresa ? "Perfil da Empresa" : "Meu Perfil"}
+              </TooltipContent>
+            </Tooltip>
+          )}
+        </div>
+      )}
 
       {/* Navigation */}
       <nav 

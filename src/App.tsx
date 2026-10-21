@@ -88,7 +88,11 @@ const App = () => (
               <Route path="/" element={<HomeRoute />} />
               <Route path="/blog" element={<Blog />} />
               <Route path="/blog/:slug" element={<BlogPostPage />} />
-              <Route path="/colaboradores" element={<ProtectedRoute moduleKey="/colaboradores"><Colaboradores /></ProtectedRoute>} />
+              <Route path="/colaboradores" element={
+                <ProtectedRoute allowedRoles={['admin_master', 'admin_empresa', 'analista_rh', 'gestor_departamento']} moduleKey="/colaboradores">
+                  <Colaboradores />
+                </ProtectedRoute>
+              } />
               <Route path="/diario-bordo" element={<ProtectedRoute moduleKey="/diario-bordo"><DiarioBordo /></ProtectedRoute>} />
               <Route path="/cuidar-mais" element={<ProtectedRoute moduleKey="/cuidar-mais"><CuidarMais /></ProtectedRoute>} />
               <Route path="/mapa-riscos-nr1" element={<ProtectedRoute moduleKey="/mapa-riscos-nr1"><MapaRiscosNR1 /></ProtectedRoute>} />
@@ -109,7 +113,7 @@ const App = () => (
                 </ProtectedRoute>
               } />
               <Route path="/minhas-ferias" element={
-                <ProtectedRoute moduleKey="/ferias">
+                <ProtectedRoute allowedRoles={['colaborador']} moduleKey="/ferias">
                   <MinhasFerias />
                 </ProtectedRoute>
               } />

@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import type { ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import type { AuthError } from '@supabase/supabase-js';
@@ -15,7 +15,10 @@ type AuthContextValue = {
   /** true quando role/profile/companyId do usuário autenticado já foram resolvidos (ou a tentativa terminou) */
   profileLoaded: boolean;
   role: AppRole | null;
+  activeRole: AppRole | null;
   roles: AppRoleAny[];
+  availableRoles: AppRole[];
+  switchActiveRole: (newRole: AppRole) => Promise<{ error: string | null }>;
   companyId: string | null;
   mustChangePassword: boolean;
   isBlocked: boolean;
@@ -239,13 +242,39 @@ function useProvideAuth(): AuthContextValue {
     return { error };
   };
 
+  const availableRoles = useMemo(() => {
+    return roles.filter((r): r is AppRole => r !== 'super_admin');
+  }, [roles]);
+
+  const switchActiveRole = useCallback(async (newRole: AppRole): Promise<{ error: string | null }> => {
+    try {
+      const { error: rpcError } = await supabase.rpc('set_active_role', {
+        p_role: newRole,
+      });
+
+      if (rpcError) {
+        console.error('[useAuth] Erro ao alternar papel via RPC:', rpcError.message);
+        return { error: rpcError.message };
+      }
+
+      setRole(newRole);
+      return { error: null };
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Erro ao alternar papel';
+      return { error: msg };
+    }
+  }, []);
+
   return {
     user,
     session,
     loading,
     profileLoaded,
     role,
+    activeRole: role,
     roles,
+    availableRoles,
+    switchActiveRole,
     companyId,
     mustChangePassword,
     isBlocked,
