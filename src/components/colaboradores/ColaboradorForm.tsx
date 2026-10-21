@@ -47,6 +47,7 @@ interface ColaboradorFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   colaborador?: Colaborador | null;
+  initialData?: Partial<ColaboradorFormData>;
   onSubmit: (data: ColaboradorFormData) => Promise<void>;
   isSubmitting?: boolean;
 }
@@ -66,6 +67,7 @@ export function ColaboradorForm({
   open,
   onOpenChange,
   colaborador,
+  initialData,
   onSubmit,
   isSubmitting,
 }: ColaboradorFormProps) {
@@ -209,11 +211,16 @@ export function ColaboradorForm({
         status: colaborador.status as any,
         cursos_realizados: (colaborador as any).cursos_realizados || '',
       });
+    } else if (open && initialData) {
+      form.reset({
+        ...emptyDefaults,
+        ...initialData,
+      });
     } else {
       form.reset(emptyDefaults);
     }
     setCurrentTab(0);
-  }, [colaborador, form, open]);
+  }, [colaborador, form, open, initialData]);
 
   // Matrícula não é mais preenchida automaticamente — usa-se a matrícula do e-Social
 

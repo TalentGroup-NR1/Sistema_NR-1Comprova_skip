@@ -11,6 +11,7 @@ import { FuncionariosPorEmpresaCard } from "@/components/dashboard/FuncionariosP
 import { useDashboardMetrics } from "@/hooks/useDashboardMetrics";
 import { useAniversariantesGlobais } from "@/hooks/useAniversariantesGlobais";
 import { useIsModuleVisible } from "@/hooks/useVisibleModules";
+import { AdminFichaAlertBanner } from "@/components/dashboard/AdminFichaAlertBanner";
 import { Users, UserPlus, UserMinus } from "lucide-react";
 
 const MES_NOMES = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
@@ -60,6 +61,7 @@ export function DashboardAdmin() {
 
   return (
     <>
+      <AdminFichaAlertBanner />
       {verDiario && <DiariosBordoHojeAlert />}
       <AniversariosHojeAlert
         aniversariantes={aniversariantes}

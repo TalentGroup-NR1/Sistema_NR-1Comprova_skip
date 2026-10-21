@@ -251,7 +251,9 @@ export function useCreateColaborador() {
         throw new Error('Datas inválidas');
       }
 
-      // Guard: verificar se o e-mail pessoal já pertence a uma conta ativa na plataforma
+      // Guard Inteligente: verificar se o e-mail pessoal já pertence a uma conta ativa na plataforma
+      let linkedUserId: string | null = (colaboradorData as any).user_id || null;
+
       if (colaboradorData.email_pessoal) {
         const emailTrimmed = colaboradorData.email_pessoal.trim();
         const { data: emailExists, error: checkError } = await supabase.rpc('check_email_exists', {
@@ -259,7 +261,31 @@ export function useCreateColaborador() {
         });
 
         if (!checkError && emailExists) {
-          throw new Error('Este e-mail já possui acesso à plataforma. Use outro e-mail ou contate o suporte.');
+          // Se já possui conta ativa, verifica se é elegível para vinculação na MESMA empresa
+          let canLink = false;
+          try {
+            const { data: vincStatus, error: vincErr } = await supabase.rpc('check_email_vinculacao', {
+              p_email: emailTrimmed,
+              p_company_id: targetCompanyId,
+            });
+
+            if (!vincErr && vincStatus) {
+              const status = vincStatus as {
+                can_link: boolean;
+                user_id: string | null;
+              };
+              if (status.can_link && status.user_id) {
+                canLink = true;
+                linkedUserId = status.user_id;
+              }
+            }
+          } catch {
+            canLink = false;
+          }
+
+          if (!canLink) {
+            throw new Error('Este e-mail já possui acesso à plataforma. Use outro e-mail ou contate o suporte.');
+          }
         }
       }
 
@@ -267,6 +293,7 @@ export function useCreateColaborador() {
         .from('colaboradores')
         .insert({
           company_id: targetCompanyId,
+          user_id: linkedUserId,
           matricula: colaboradorData.matricula || null,
           full_name: colaboradorData.full_name,
           social_name: colaboradorData.social_name || null,

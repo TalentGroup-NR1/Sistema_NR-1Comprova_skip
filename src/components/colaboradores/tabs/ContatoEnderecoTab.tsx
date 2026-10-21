@@ -1,7 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { UseFormReturn } from 'react-hook-form';
-import { Loader2 } from 'lucide-react';
+import { Loader2, CheckCircle2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { useEffectiveCompanyId } from '@/hooks/useEffectiveCompanyId';
+import { supabase } from '@/integrations/supabase/client';
 import {
   Select,
   SelectContent,
@@ -31,6 +34,9 @@ const estados = [
 
 export function ContatoEnderecoTab({ form }: ContatoEnderecoTabProps) {
   const [isLoadingCep, setIsLoadingCep] = useState(false);
+  const [isCheckingEmail, setIsCheckingEmail] = useState(false);
+  const [linkStatus, setLinkStatus] = useState<{ canLink: boolean; reason: string } | null>(null);
+  const effectiveCompanyId = useEffectiveCompanyId();
 
   const handleCepBlur = async (cep: string) => {
     const cleanCep = cep.replace(/\D/g, '');
@@ -54,6 +60,36 @@ export function ContatoEnderecoTab({ form }: ContatoEnderecoTabProps) {
     }
   };
 
+  const handleEmailBlur = async (email: string) => {
+    const trimmed = (email || '').trim().toLowerCase();
+    if (!trimmed || !effectiveCompanyId || !trimmed.includes('@')) {
+      setLinkStatus(null);
+      return;
+    }
+
+    setIsCheckingEmail(true);
+    try {
+      const { data, error } = await supabase.rpc('check_email_vinculacao', {
+        p_email: trimmed,
+        p_company_id: effectiveCompanyId,
+      });
+
+      if (!error && data) {
+        const res = data as any;
+        setLinkStatus({
+          canLink: !!res.can_link,
+          reason: res.reason,
+        });
+      } else {
+        setLinkStatus(null);
+      }
+    } catch {
+      setLinkStatus(null);
+    } finally {
+      setIsCheckingEmail(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* E-mails */}
@@ -72,8 +108,18 @@ export function ContatoEnderecoTab({ form }: ContatoEnderecoTabProps) {
                     placeholder="email.pessoal@exemplo.com"
                     {...field}
                     value={field.value || ''}
+                    onBlur={(e) => {
+                      field.onBlur();
+                      handleEmailBlur(e.target.value);
+                    }}
                   />
                 </FormControl>
+                {linkStatus?.canLink && (
+                  <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 flex items-center gap-1.5 py-1 px-2.5 mt-2 text-xs font-normal">
+                    <CheckCircle2 className="h-3.5 w-3.5 text-primary shrink-0" />
+                    <span>Conta de usuário identificada nesta empresa. A ficha será vinculada à conta existente (sem nova senha).</span>
+                  </Badge>
+                )}
                 <FormMessage />
               </FormItem>
             )}
