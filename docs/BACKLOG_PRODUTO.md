@@ -17,3 +17,9 @@
 5. `src/components/layout/MainLayout.tsx`
    - A renderização do `<PontoAssinaturaBlockerModal />` foi comentada.
 
+
+## Multi-Perfil Fase 2 (Ps Go-Live)
+Consulte o documento completo de fechamento e especificao da Fase 2 em: docs/MULTI_PERFIL_FASE1_FECHAMENTO.md.
+- Refatorao N:N em user_companies (mltiplos papis por empresa).
+- Reescrever has_role() para verificar o active_role contextualmente selecionado.
+- Reviso e granularizao das 400+ policies de RLS do banco de dados.
