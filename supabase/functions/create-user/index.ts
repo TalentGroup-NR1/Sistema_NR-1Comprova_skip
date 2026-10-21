@@ -199,13 +199,31 @@ serve(async (req) => {
 
     console.log('User created:', newUser.user?.id);
 
-    // Update profile with company_id and full_name
+    // 1. Papel do usuário (inserido ANTES de profiles para que o trigger trg_sync_profile_user_company leia o papel correto)
+    await supabaseAdmin.from('user_roles').delete().eq('user_id', newUser.user!.id);
+    const { error: roleError } = await supabaseAdmin
+      .from('user_roles')
+      .insert({
+        user_id: newUser.user!.id,
+        role,
+      });
+
+    if (roleError) {
+      console.error('Error assigning user role:', roleError);
+      return new Response(JSON.stringify({ error: 'Failed to assign user role' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // 2. Perfil do usuário (ativa o trigger trg_sync_profile_user_company, que já encontrará o role correto em user_roles)
     const { error: profileError } = await supabaseAdmin
       .from('profiles')
       .upsert({
         user_id: newUser.user!.id,
         company_id: targetCompanyId,
         full_name,
+        is_active: true,
       }, { onConflict: 'user_id' });
 
     if (profileError) {
@@ -216,20 +234,18 @@ serve(async (req) => {
       });
     }
 
-    // Update role
-    const { error: roleError } = await supabaseAdmin
-      .from('user_roles')
+    // 3. Vínculo direto e explícito em user_companies (dupla garantia)
+    const { error: userCompanyError } = await supabaseAdmin
+      .from('user_companies')
       .upsert({
         user_id: newUser.user!.id,
-        role,
-      }, { onConflict: 'user_id, role' });
+        company_id: targetCompanyId,
+        role: role,
+        is_default: true,
+      }, { onConflict: 'user_id, company_id' });
 
-    if (roleError) {
-      console.error('Error updating role:', roleError);
-      return new Response(JSON.stringify({ error: 'Failed to assign user role' }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+    if (userCompanyError) {
+      console.warn('Aviso: falha ao inserir vínculo explícito em user_companies:', userCompanyError.message);
     }
 
     return new Response(JSON.stringify({ 

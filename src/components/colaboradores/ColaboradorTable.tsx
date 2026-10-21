@@ -12,6 +12,7 @@ import {
   ArrowRightLeft,
   Users,
   UserPlus,
+  AlertCircle,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useTransferenciasRecentes } from '@/hooks/useTransferenciaColaborador';
@@ -139,17 +140,17 @@ export function ColaboradorTable({
   const canTransferir = isAdminMaster || isAdminEmpresa || role === 'analista_rh';
   const { data: recentTransfers } = useTransferenciasRecentes();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [colaboradorToDelete, setColaboradorToDelete] = useState<string | null>(null);
+  const [colaboradorToDelete, setColaboradorToDelete] = useState<Colaborador | null>(null);
   const [transferTarget, setTransferTarget] = useState<Colaborador | null>(null);
 
-  const handleDeleteClick = (id: string) => {
-    setColaboradorToDelete(id);
+  const handleDeleteClick = (colaborador: Colaborador) => {
+    setColaboradorToDelete(colaborador);
     setDeleteDialogOpen(true);
   };
 
   const handleConfirmDelete = () => {
     if (colaboradorToDelete) {
-      onDelete(colaboradorToDelete);
+      onDelete(colaboradorToDelete.id);
     }
     setDeleteDialogOpen(false);
     setColaboradorToDelete(null);
@@ -297,7 +298,7 @@ export function ColaboradorTable({
                       )}
                       <DropdownMenuSeparator />
                       <DropdownMenuItem 
-                        onClick={(e) => { e.stopPropagation(); handleDeleteClick(colaborador.id); }}
+                        onClick={(e) => { e.stopPropagation(); handleDeleteClick(colaborador); }}
                         className="text-destructive focus:text-destructive"
                       >
                         <Trash2 className="mr-2 h-4 w-4" />
@@ -329,7 +330,7 @@ export function ColaboradorTable({
                 )}
                 <ContextMenuSeparator />
                 <ContextMenuItem 
-                  onClick={(e) => { e.stopPropagation(); handleDeleteClick(colaborador.id); }}
+                  onClick={(e) => { e.stopPropagation(); handleDeleteClick(colaborador); }}
                   className="text-destructive focus:text-destructive"
                 >
                   <Trash2 className="mr-2 h-4 w-4" />
@@ -345,18 +346,37 @@ export function ColaboradorTable({
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
-            <AlertDialogDescription>
-              Tem certeza que deseja excluir este colaborador? Esta ação não pode ser desfeita.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Excluir
-            </AlertDialogAction>
-          </AlertDialogFooter>
+          {colaboradorToDelete?.user_id ? (
+            <>
+              <AlertDialogHeader>
+                <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+                  <AlertCircle className="h-5 w-5 text-destructive shrink-0" />
+                  Exclusão não permitida
+                </AlertDialogTitle>
+                <AlertDialogDescription className="text-foreground pt-2">
+                  Este colaborador possui acesso ao sistema. Para encerrar o vínculo, realize o desligamento no módulo Demissões.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel onClick={() => setColaboradorToDelete(null)}>Entendi</AlertDialogCancel>
+              </AlertDialogFooter>
+            </>
+          ) : (
+            <>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Tem certeza que deseja excluir este colaborador? Esta ação não pode ser desfeita.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel onClick={() => setColaboradorToDelete(null)}>Cancelar</AlertDialogCancel>
+                <AlertDialogAction onClick={handleConfirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                  Excluir
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </>
+          )}
         </AlertDialogContent>
       </AlertDialog>
 

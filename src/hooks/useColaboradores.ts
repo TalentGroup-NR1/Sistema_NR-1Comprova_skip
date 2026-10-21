@@ -510,6 +510,22 @@ export function useDeleteColaborador() {
 
   return useMutation({
     mutationFn: async (id: string) => {
+      // Pré-checagem: verificar se o colaborador possui acesso ativo ao sistema
+      const { data: colab, error: fetchErr } = await supabase
+        .from('colaboradores')
+        .select('user_id')
+        .eq('id', id)
+        .single();
+
+      if (fetchErr) {
+        console.error('Error checking colaborador before delete:', fetchErr);
+        throw fetchErr;
+      }
+
+      if (colab?.user_id) {
+        throw new Error('Este colaborador possui acesso ao sistema. Para encerrar o vínculo, realize o desligamento no módulo Demissões.');
+      }
+
       const { error } = await supabase
         .from('colaboradores')
         .delete()
@@ -526,7 +542,7 @@ export function useDeleteColaborador() {
     },
     onError: (error: Error) => {
       console.error('Error deleting colaborador:', error);
-      toast.error('Erro ao excluir colaborador: ' + error.message);
+      toast.error(error.message);
     },
   });
 }
