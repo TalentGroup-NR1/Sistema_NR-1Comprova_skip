@@ -270,7 +270,11 @@ serve(async (req) => {
       });
     }
 
-    const recoveryUrl = linkData.properties.action_link;
+    const hashedToken = linkData.properties.hashed_token;
+    const emailParam = encodeURIComponent(colaborador.email_pessoal);
+    const recoveryUrl = hashedToken
+      ? `${appOrigin}/atualizar-senha?token_hash=${hashedToken}&type=recovery&email=${emailParam}`
+      : linkData.properties.action_link;
 
     // Update profile with company_id and full_name
     const { error: profileError } = await supabaseAdmin

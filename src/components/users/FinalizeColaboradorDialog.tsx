@@ -19,6 +19,7 @@ import { Input } from '@/components/ui/input';
 import { Loader2, KeyRound, Mail, User, Building2, Briefcase, AlertTriangle } from 'lucide-react';
 import { useFinalizeColaborador, type ColaboradorPendente } from '@/hooks/useColaboradoresPendentes';
 import { contractTypeOptions } from '@/lib/validators/colaborador';
+import { LINK_EXPIRATION_HOURS } from '@/lib/constants';
 import { DevInviteDialog } from './DevInviteDialog';
 
 interface FinalizeColaboradorDialogProps {
@@ -184,7 +185,7 @@ export function FinalizeColaboradorDialog({ colaborador, open, onClose }: Finali
             </div>
 
             <div className="text-sm text-muted-foreground">
-              <p>O link enviado expira em <strong className="text-foreground">24 horas</strong> e é de uso único.</p>
+              <p>O link enviado expira em <strong className="text-foreground">{LINK_EXPIRATION_HOURS} horas</strong> e é de uso único.</p>
             </div>
 
             <DialogFooter className="pt-2">

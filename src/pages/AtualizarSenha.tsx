@@ -19,6 +19,7 @@ import { Lock, Loader2, Eye, EyeOff, Mail, RefreshCw } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { TERMS_VERSION, PRIVACY_VERSION, getClientIp } from '@/lib/legal';
+import { LINK_EXPIRATION_HOURS } from '@/lib/constants';
 import {
   Dialog,
   DialogContent,
@@ -53,6 +54,7 @@ export default function AtualizarSenha() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [isReady, setIsReady] = useState(false);
   const [hasSession, setHasSession] = useState(false);
+  const [tokenHash, setTokenHash] = useState<string | null>(null);
   const [linkError, setLinkError] = useState<string | null>(null);
   const [requestDialogOpen, setRequestDialogOpen] = useState(false);
   const [resendEmail, setResendEmail] = useState('');
@@ -96,43 +98,47 @@ export default function AtualizarSenha() {
       : new URLSearchParams();
     const query = new URLSearchParams(window.location.search);
 
+    const emailParam = query.get('email');
+    if (emailParam) {
+      setResendEmail(emailParam);
+    }
+
     // 1) Error returned by the auth verification endpoint (expired / already used link)
     const errorCode = hash.get('error_code') || query.get('error_code');
     const errorParam = hash.get('error') || query.get('error');
     if (errorCode || errorParam) {
       setLinkError(
         errorCode === 'otp_expired'
-          ? 'Este link expirou ou já foi utilizado. Solicite um novo e-mail ao RH.'
-          : 'Link inválido. Solicite um novo e-mail de definição de senha ao RH.'
+          ? 'Este link expirou ou já foi utilizado.'
+          : 'Link inválido. Solicite um novo link de definição de senha abaixo.'
       );
       setIsReady(true);
       return () => subscription.unsubscribe();
     }
 
-    // 2) Legacy hash tokens (type=recovery)
+    // 2) Legacy hash tokens (type=recovery ou access_token direto no hash)
     if (hash.get('type') === 'recovery' || hash.get('access_token')) {
       recoveryDetected = true;
       setIsReady(true);
     }
 
-    // 3) Newer formats: ?code= (PKCE) or ?token_hash=&type=recovery
+    // 3) Formato token_hash (À PROVA DE SCANNER DE E-MAIL):
+    // CRÍTICO: NÃO chamar verifyOtp no mount! O scanner corporativo consome GET.
+    // Apenas guardamos o token_hash e renderizamos o formulário. O token só é consumido
+    // quando o usuário intencionalmente clica no botão de submissão do formulário.
+    const urlTokenHash = query.get('token_hash');
     const code = query.get('code');
-    const tokenHash = query.get('token_hash');
-    if (code) {
+
+    if (urlTokenHash) {
+      recoveryDetected = true;
+      setTokenHash(urlTokenHash);
+      setLinkError(null);
+      setIsReady(true);
+    } else if (code) {
       recoveryDetected = true;
       supabase.auth.exchangeCodeForSession(code).then(({ error }) => {
         if (error) {
-          setLinkError('Este link expirou ou já foi utilizado. Solicite um novo e-mail ao RH.');
-        } else {
-          setHasSession(true);
-        }
-        setIsReady(true);
-      });
-    } else if (tokenHash) {
-      recoveryDetected = true;
-      supabase.auth.verifyOtp({ type: 'recovery', token_hash: tokenHash }).then(({ error }) => {
-        if (error) {
-          setLinkError('Este link expirou ou já foi utilizado. Solicite um novo e-mail ao RH.');
+          setLinkError('Este link expirou ou já foi utilizado.');
         } else {
           setHasSession(true);
         }
@@ -145,7 +151,7 @@ export default function AtualizarSenha() {
       if (session) {
         setHasSession(true);
         setIsReady(true);
-      } else if (!recoveryDetected) {
+      } else if (!recoveryDetected && !urlTokenHash) {
         setTimeout(() => {
           setIsReady(true);
           setHasSession((current) => {
@@ -163,17 +169,35 @@ export default function AtualizarSenha() {
 
 
   const onSubmit = async (values: FormValues) => {
-    if (!hasSession) {
-      toast({
-        variant: 'destructive',
-        title: 'Link inválido',
-        description: 'Use o link enviado por e-mail para redefinir sua senha.',
-      });
-      return;
-    }
-
     setIsLoading(true);
     try {
+      // Se tivermos token_hash (fluxo anti-scanner), consumimos o OTP de forma transacional aqui
+      if (tokenHash) {
+        const { error: otpError } = await supabase.auth.verifyOtp({
+          type: 'recovery',
+          token_hash: tokenHash,
+        });
+
+        if (otpError) {
+          console.error('[AtualizarSenha] Falha ao verificar OTP:', otpError);
+          setLinkError('Este link expirou ou já foi utilizado.');
+          toast({
+            variant: 'destructive',
+            title: 'Link expirado ou já utilizado',
+            description: 'Este link expirou ou já foi utilizado. Solicite um novo link abaixo.',
+          });
+          return;
+        }
+        setHasSession(true);
+      } else if (!hasSession) {
+        toast({
+          variant: 'destructive',
+          title: 'Link inválido',
+          description: 'Use o link enviado por e-mail para redefinir sua senha.',
+        });
+        return;
+      }
+
       // 1. Atualizar a senha no Supabase Auth
       const { error: pwdError } = await supabase.auth.updateUser({ password: values.password });
       if (pwdError) {
@@ -270,11 +294,19 @@ export default function AtualizarSenha() {
             <p className="text-muted-foreground mt-2">
               Crie uma senha segura para acessar o sistema pela primeira vez.
             </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Este link expira em {LINK_EXPIRATION_HOURS} horas e é de uso único.
+            </p>
           </div>
 
           {linkError ? (
             <div className="space-y-4 text-center">
-              <p className="text-sm text-destructive">{linkError}</p>
+              <p className="text-sm font-medium text-destructive">{linkError}</p>
+              {resendEmail && (
+                <p className="text-xs text-muted-foreground">
+                  E-mail: <span className="font-mono text-foreground">{resendEmail}</span>
+                </p>
+              )}
               <div className="flex flex-col gap-2">
                 <Button
                   variant="default"
@@ -428,13 +460,18 @@ export default function AtualizarSenha() {
                 />
               </div>
 
-              {!canSubmit && (
-                <p className="text-xs text-muted-foreground text-center">
-                  É necessário aceitar os Termos de Uso e a Política de Privacidade para prosseguir.
+              {!canSubmit ? (
+                <p className="text-xs text-amber-600 dark:text-amber-400 text-center font-medium">
+                  Marque o aceite dos Termos de Uso e da Política de Privacidade para habilitar a criação de senha.
                 </p>
-              )}
+              ) : null}
 
-              <Button type="submit" className="w-full" disabled={isLoading || !canSubmit}>
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={isLoading || !canSubmit}
+                title={!canSubmit ? 'Aceite os termos para habilitar o botão' : 'Clique para definir a senha'}
+              >
                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Definir Senha e Acessar
               </Button>

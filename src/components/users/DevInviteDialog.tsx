@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Copy, Check, ExternalLink, Terminal, ShieldAlert } from 'lucide-react';
 import { toast } from 'sonner';
+import { LINK_EXPIRATION_HOURS } from '@/lib/constants';
 
 interface DevInviteDialogProps {
   open: boolean;
@@ -77,7 +78,7 @@ export function DevInviteDialog({
 
           <div className="space-y-2">
             <label className="text-xs font-medium text-muted-foreground">
-              Link de Ativação / Definição de Senha (expira em 24h):
+              Link de Ativação / Definição de Senha (expira em {LINK_EXPIRATION_HOURS}h):
             </label>
             <div className="flex gap-2">
               <Input

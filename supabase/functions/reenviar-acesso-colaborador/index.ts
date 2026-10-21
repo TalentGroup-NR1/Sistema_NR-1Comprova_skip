@@ -183,7 +183,11 @@ serve(async (req) => {
       });
     }
 
-    const recoveryUrl = linkData.properties.action_link;
+    const hashedToken = linkData.properties.hashed_token;
+    const emailParam = encodeURIComponent(colaborador.email_pessoal);
+    const recoveryUrl = hashedToken
+      ? `${appOrigin}/atualizar-senha?token_hash=${hashedToken}&type=recovery&email=${emailParam}`
+      : linkData.properties.action_link;
 
     // Checagem de ambiente: produção vs fallback dev
     const appEnv = (Deno.env.get('APP_ENV') || '').toLowerCase();
@@ -221,6 +225,7 @@ serve(async (req) => {
               logoUrl: logoUrl || undefined,
               confirmationUrl: recoveryUrl,
               expirationHours: 24,
+              isResend: true,
             },
           },
         });
@@ -257,6 +262,7 @@ serve(async (req) => {
                 logoUrl: logoUrl || undefined,
                 confirmationUrl: recoveryUrl,
                 expirationHours: 24,
+                isResend: true,
               },
             },
           });

@@ -21,6 +21,7 @@ interface AcessoLiberadoProps {
   logoUrl?: string
   confirmationUrl?: string
   expirationHours?: number
+  isResend?: boolean
 }
 
 export const template = {
@@ -35,6 +36,7 @@ export const template = {
     companyName: 'Talent Group',
     confirmationUrl: 'https://nr1pronto.com.br/atualizar-senha#token=exemplo',
     expirationHours: 24,
+    isResend: false,
   },
 }
 
@@ -46,6 +48,7 @@ function AcessoLiberadoEmail({
   logoUrl,
   confirmationUrl = '#',
   expirationHours = 24,
+  isResend = false,
 }: AcessoLiberadoProps) {
   const primary = '#DC2626'
   const primaryForeground = '#FFFFFF'
@@ -106,6 +109,31 @@ function AcessoLiberadoEmail({
           <Text style={{ color: foreground, fontSize: '16px', lineHeight: '1.6', margin: '0 0 16px 0' }}>
             Olá, {recipientName}
           </Text>
+
+          {isResend && (
+            <Section
+              style={{
+                backgroundColor: '#FEF3C7',
+                border: '1px solid #FCD34D',
+                borderRadius: '8px',
+                padding: '12px 16px',
+                margin: '0 0 20px 0',
+                textAlign: 'center',
+              }}
+            >
+              <Text
+                style={{
+                  color: '#92400E',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  margin: 0,
+                  lineHeight: '1.4',
+                }}
+              >
+                Este é o seu link mais recente. E-mails anteriores foram invalidados por segurança.
+              </Text>
+            </Section>
+          )}
 
           <Text style={{ color: mutedForeground, fontSize: '16px', lineHeight: '1.6', margin: '0 0 24px 0' }}>
             O acesso ao <strong style={{ color: foreground }}>{siteName}</strong> foi liberado para você{' '}
