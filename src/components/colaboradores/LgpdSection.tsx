@@ -23,8 +23,9 @@ interface Props {
 }
 
 export function LgpdSection({ colaboradorId, colaboradorNome, onDeleted }: Props) {
-  const { isAdminMaster, isAdminEmpresa, role } = useAuth();
-  const podeExportar = isAdminMaster || isAdminEmpresa || role === 'analista_rh';
+  const { isAdminMaster, isAdminEmpresa, role, activeRole } = useAuth();
+  const currentRole = activeRole ?? role;
+  const podeExportar = isAdminMaster || isAdminEmpresa || currentRole === 'analista_rh';
   const podeExcluir = isAdminMaster || isAdminEmpresa;
 
   const [excluirOpen, setExcluirOpen] = useState(false);

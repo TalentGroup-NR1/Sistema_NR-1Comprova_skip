@@ -312,13 +312,18 @@ serve(async (req) => {
     }
     const { analise_id } = parsed.data;
 
-    // Caller's role
-    const { data: roleRow } = await supabaseAdmin
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", caller.id)
-      .maybeSingle();
-    const callerRole = roleRow?.role as string | undefined;
+    // Caller's active role via get_my_role() (which evaluates profiles.active_role)
+    const { data: activeRoleRpc, error: roleRpcErr } = await supabaseUser.rpc("get_my_role");
+    let callerRole: string | null = activeRoleRpc as string | null;
+
+    if (roleRpcErr || !callerRole) {
+      const { data: rolesRows } = await supabaseAdmin
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", caller.id);
+      callerRole = rolesRows?.[0]?.role ?? null;
+    }
+
     const allowedRoles = ["admin_master", "admin_empresa", "analista_rh"];
     if (!callerRole || !allowedRoles.includes(callerRole)) {
       return new Response(JSON.stringify({ error: "Forbidden" }), {

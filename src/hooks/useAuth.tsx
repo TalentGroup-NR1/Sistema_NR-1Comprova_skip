@@ -212,9 +212,25 @@ function useProvideAuth(): AuthContextValue {
     return () => subscription.unsubscribe();
   }, [fetchUserData]);
 
-  // Method to manually refresh user data (e.g., after password change)
+  // Sincronização de activeRole entre múltiplas abas abertas
+  useEffect(() => {
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === 'nr1_active_role_sync' && e.newValue) {
+        supabase.rpc('get_my_role').then(({ data }) => {
+          if (data) {
+            setRole(data as AppRole);
+          }
+        });
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, []);
+
+  // Method to manually refresh user data (e.g., after password change or role sync)
   const refreshUserData = useCallback(async () => {
     if (user?.id) {
+      lastFetchedUserIdRef.current = null;
       await fetchUserData(user.id);
     }
   }, [user?.id, fetchUserData]);
@@ -243,7 +259,13 @@ function useProvideAuth(): AuthContextValue {
   };
 
   const availableRoles = useMemo(() => {
-    return roles.filter((r): r is AppRole => r !== 'super_admin');
+    const filtered = roles.filter((r): r is AppRole => r !== 'super_admin');
+    // Para super_admin, viabiliza alternância no seletor Flash entre visão corporativa e visão pessoal
+    if (roles.includes('super_admin')) {
+      if (!filtered.includes('admin_master')) filtered.unshift('admin_master');
+      if (!filtered.includes('colaborador')) filtered.push('colaborador');
+    }
+    return filtered;
   }, [roles]);
 
   const switchActiveRole = useCallback(async (newRole: AppRole): Promise<{ error: string | null }> => {
@@ -258,6 +280,11 @@ function useProvideAuth(): AuthContextValue {
       }
 
       setRole(newRole);
+      try {
+        localStorage.setItem('nr1_active_role_sync', `${newRole}_${Date.now()}`);
+      } catch {
+        // safe ignore se localStorage indisponível
+      }
       return { error: null };
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Erro ao alternar papel';

@@ -92,9 +92,11 @@ const jobLevelLabels: Record<string, string> = {
   C_LEVEL: 'C-Level',
 };
 
-function getInitials(name: string): string {
+function getInitials(name?: string | null): string {
+  if (!name) return '??';
   return name
     .split(' ')
+    .filter(Boolean)
     .map((n) => n[0])
     .join('')
     .slice(0, 2)
@@ -136,8 +138,10 @@ export function ColaboradorTable({
   onNovo,
 }: ColaboradorTableProps) {
   const navigate = useNavigate();
-  const { isAdminMaster, isAdminEmpresa, role } = useAuth();
-  const canTransferir = isAdminMaster || isAdminEmpresa || role === 'analista_rh';
+  const { isAdminMaster, isAdminEmpresa, role, activeRole } = useAuth();
+  const currentRole = activeRole ?? role;
+  const canTransferir = isAdminMaster || isAdminEmpresa || currentRole === 'analista_rh';
+  const canExcluir = isAdminMaster || isAdminEmpresa;
   const { data: recentTransfers } = useTransferenciasRecentes();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [colaboradorToDelete, setColaboradorToDelete] = useState<Colaborador | null>(null);
@@ -296,14 +300,18 @@ export function ColaboradorTable({
                           Transferir para outra empresa
                         </DropdownMenuItem>
                       )}
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem 
-                        onClick={(e) => { e.stopPropagation(); handleDeleteClick(colaborador); }}
-                        className="text-destructive focus:text-destructive"
-                      >
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Excluir
-                      </DropdownMenuItem>
+                      {canExcluir && (
+                        <>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem 
+                            onClick={(e) => { e.stopPropagation(); handleDeleteClick(colaborador); }}
+                            className="text-destructive focus:text-destructive"
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Excluir
+                          </DropdownMenuItem>
+                        </>
+                      )}
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </TableCell>
@@ -328,14 +336,18 @@ export function ColaboradorTable({
                     Transferir para outra empresa
                   </ContextMenuItem>
                 )}
-                <ContextMenuSeparator />
-                <ContextMenuItem 
-                  onClick={(e) => { e.stopPropagation(); handleDeleteClick(colaborador); }}
-                  className="text-destructive focus:text-destructive"
-                >
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Excluir
-                </ContextMenuItem>
+                {canExcluir && (
+                  <>
+                    <ContextMenuSeparator />
+                    <ContextMenuItem 
+                      onClick={(e) => { e.stopPropagation(); handleDeleteClick(colaborador); }}
+                      className="text-destructive focus:text-destructive"
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Excluir
+                    </ContextMenuItem>
+                  </>
+                )}
               </ContextMenuContent>
             </ContextMenu>
             ))}

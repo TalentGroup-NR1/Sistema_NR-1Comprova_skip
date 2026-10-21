@@ -63,24 +63,20 @@ serve(async (req) => {
 
     const userId = userData.user.id;
 
-    // --- Authorization: check role ---
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    // --- Authorization: check role via get_my_role() (which evaluates profiles.active_role) ---
+    const { data: activeRoleRpc, error: roleRpcErr } = await userClient.rpc("get_my_role");
+    let callerRole: string | null = activeRoleRpc as string | null;
 
-    const { data: roleData, error: roleError } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", userId)
-      .single();
-
-    if (roleError || !roleData) {
-      return new Response(
-        JSON.stringify({ error: "Insufficient permissions" }),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    if (roleRpcErr || !callerRole) {
+      const { data: rolesData } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", userId);
+      callerRole = rolesData?.[0]?.role ?? null;
     }
 
     const allowedRoles = ["admin_master", "admin_empresa", "analista_rh"];
-    if (!allowedRoles.includes(roleData.role)) {
+    if (!callerRole || !allowedRoles.includes(callerRole)) {
       return new Response(
         JSON.stringify({ error: "Insufficient permissions" }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -94,7 +90,7 @@ serve(async (req) => {
     }
 
     // For non-admin_master, verify they belong to the requested company
-    if (roleData.role !== "admin_master") {
+    if (callerRole !== "admin_master") {
       const { data: profileData } = await supabase
         .from("profiles")
         .select("company_id")

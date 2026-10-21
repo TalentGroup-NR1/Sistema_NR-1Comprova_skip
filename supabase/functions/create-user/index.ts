@@ -83,15 +83,20 @@ serve(async (req) => {
       });
     }
 
-    // Get caller's role
-    const { data: callerRoleData } = await supabaseAdmin
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', callerUser.id)
-      .single();
+    // Get caller's active role via get_my_role() (which evaluates profiles.active_role)
+    const { data: activeRoleRpc, error: roleRpcErr } = await supabaseUser.rpc('get_my_role');
+    let callerRole: string | null = activeRoleRpc as string | null;
 
-    const callerRole = callerRoleData?.role;
-    console.log('Caller role:', callerRole);
+    if (roleRpcErr || !callerRole) {
+      // Fallback seguro de leitura caso RPC falhe
+      const { data: rolesData } = await supabaseAdmin
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', callerUser.id);
+      callerRole = rolesData?.[0]?.role ?? null;
+    }
+
+    console.log('Caller active role:', callerRole);
 
     if (callerRole !== 'admin_master' && callerRole !== 'admin_empresa') {
       return new Response(JSON.stringify({ error: 'Insufficient permissions' }), {

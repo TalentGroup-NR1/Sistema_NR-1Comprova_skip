@@ -58,16 +58,19 @@ serve(async (req) => {
     }
     const caller = userData.user;
 
-    const { data: roleRows } = await supabaseAdmin
-      .from("user_roles").select("role").eq("user_id", caller.id);
-    
-    const dbRoles = roleRows?.map((r: any) => r.role) || [];
-    const jwtRole = caller.user_metadata?.role || caller.app_metadata?.role;
-    if (jwtRole) dbRoles.push(jwtRole);
+    // ── Role check via get_my_role() (which evaluates profiles.active_role) ──
+    const { data: activeRoleRpc, error: roleRpcErr } = await supabaseUser.rpc("get_my_role");
+    let callerRole: string | null = activeRoleRpc as string | null;
+
+    if (roleRpcErr || !callerRole) {
+      const { data: roleRows } = await supabaseAdmin
+        .from("user_roles").select("role").eq("user_id", caller.id);
+      callerRole = roleRows?.[0]?.role ?? null;
+    }
 
     const allowedRoles = ["admin_master", "admin_empresa", "analista_rh"];
-    if (!dbRoles.some((r: string) => allowedRoles.includes(r))) {
-      return new Response(JSON.stringify({ error: "Forbidden: insufficient permissions" }), { status: 200, headers: jsonHeaders });
+    if (!callerRole || !allowedRoles.includes(callerRole)) {
+      return new Response(JSON.stringify({ error: "Forbidden: insufficient permissions" }), { status: 403, headers: jsonHeaders });
     }
 
     const rawBody = await req.json().catch(() => null);

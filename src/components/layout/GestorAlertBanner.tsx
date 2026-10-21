@@ -8,11 +8,13 @@ import { supabase } from '@/integrations/supabase/client';
 import { useEffectiveCompanyId } from '@/hooks/useEffectiveCompanyId';
 
 export function GestorAlertBanner() {
-  const { session } = useAuth();
+  const { session, activeRole, role: fallbackRole } = useAuth();
   const companyId = useEffectiveCompanyId();
   const navigate = useNavigate();
 
-  // Check if user is gestor
+  const resolvedRole = activeRole ?? fallbackRole;
+
+  // Prioriza activeRole do useAuth reativamente. Se ausente no mock, mantém fallback
   const { data: role } = useQuery({
     queryKey: ['user-role-banner', session?.user?.id],
     queryFn: async () => {
@@ -20,10 +22,12 @@ export function GestorAlertBanner() {
       if (error) throw error;
       return data;
     },
-    enabled: !!session?.user?.id,
+    enabled: !resolvedRole && !!session?.user?.id,
+    initialData: resolvedRole ?? undefined,
   });
 
-  const isGestor = role === 'gestor_departamento';
+  const currentRole = resolvedRole ?? role;
+  const isGestor = currentRole === 'gestor_departamento';
 
   // Fetch drilldown to get cases
   const { data: drilldown } = useQuery({
