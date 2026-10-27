@@ -16,6 +16,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+  TooltipProvider,
+} from '@/components/ui/tooltip';
 import { UserProfile } from '@/hooks/useUsers';
 import { useAuth, AppRole } from '@/hooks/useAuth';
 import { useUpdateUserRole } from '@/hooks/useUpdateUserRole';
@@ -33,10 +39,16 @@ interface ChangeUserRoleDialogProps {
   user: UserProfile | null;
   open: boolean;
   onClose: () => void;
+  totalCompanyAdmins?: number;
 }
 
-export function ChangeUserRoleDialog({ user, open, onClose }: ChangeUserRoleDialogProps) {
-  const { isAdminMaster, companyId: authCompanyId } = useAuth();
+export function ChangeUserRoleDialog({
+  user,
+  open,
+  onClose,
+  totalCompanyAdmins,
+}: ChangeUserRoleDialogProps) {
+  const { isAdminMaster, isSuperAdmin, companyId: authCompanyId } = useAuth();
   const updateRoleMutation = useUpdateUserRole();
   const [selectedRole, setSelectedRole] = useState<AppRole | ''>('');
 
@@ -53,15 +65,21 @@ export function ChangeUserRoleDialog({ user, open, onClose }: ChangeUserRoleDial
   const targetCompanyId = user.company_id || authCompanyId;
 
   // Papéis disponíveis conforme o perfil do chamador
-  const availableRoles: AppRole[] = isAdminMaster
+  // admin_master e super_admin podem atribuir qualquer papel, inclusive admin_master
+  // admin_empresa pode atribuir admin_empresa, analista_rh, gestor_departamento, colaborador
+  const availableRoles: AppRole[] = isAdminMaster || isSuperAdmin
     ? ['admin_master', 'admin_empresa', 'analista_rh', 'gestor_departamento', 'colaborador']
-    : ['analista_rh', 'gestor_departamento', 'colaborador'];
+    : ['admin_empresa', 'analista_rh', 'gestor_departamento', 'colaborador'];
+
+  const isTargetAdmin = user.role === 'admin_empresa';
+  const isLastAdmin = isTargetAdmin && (totalCompanyAdmins !== undefined ? totalCompanyAdmins <= 1 : false);
+  const isDemotingLastAdmin = isLastAdmin && selectedRole !== 'admin_empresa';
 
   const isSameRole = selectedRole === user.role;
   const isLoading = updateRoleMutation.isPending;
 
   const handleSave = async () => {
-    if (!selectedRole || isSameRole) return;
+    if (!selectedRole || isSameRole || isDemotingLastAdmin) return;
     if (!targetCompanyId) {
       return;
     }
@@ -79,85 +97,136 @@ export function ChangeUserRoleDialog({ user, open, onClose }: ChangeUserRoleDial
   };
 
   return (
-    <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <ShieldCheck className="h-5 w-5 text-primary" />
-            Alterar Perfil de Acesso
-          </DialogTitle>
-          <DialogDescription>
-            Atualize o nível de acesso do usuário ativo. A senha e as credenciais de login permanecem 100% intactas.
-          </DialogDescription>
-        </DialogHeader>
+    <TooltipProvider delayDuration={150}>
+      <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ShieldCheck className="h-5 w-5 text-primary" />
+              Alterar Perfil de Acesso
+            </DialogTitle>
+            <DialogDescription>
+              Atualize o nível de acesso do usuário ativo. A senha e as credenciais de login permanecem 100% intactas.
+            </DialogDescription>
+          </DialogHeader>
 
-        <div className="space-y-4 py-2">
-          {/* Informações somente leitura do usuário */}
-          <div className="rounded-lg border border-border bg-muted/40 p-3 space-y-2 text-sm">
-            <div className="flex items-center gap-2 text-foreground font-medium">
-              <User className="h-4 w-4 text-muted-foreground" />
-              <span>{user.full_name || 'Sem nome'}</span>
+          <div className="space-y-4 py-2">
+            {/* Aviso de Salvaguarda do Último Admin */}
+            {isLastAdmin && (
+              <div className="flex items-start gap-2.5 p-3 rounded-lg border border-amber-500/30 bg-amber-500/10 text-amber-500 text-xs">
+                <ShieldAlert className="h-4 w-4 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-semibold">Salvaguarda do Último Administrador</p>
+                  <p className="text-amber-500/90 mt-0.5">
+                    Operação bloqueada: a empresa deve possuir pelo menos um Administrador ativo. Não é permitido rebaixar o único administrador.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Informações somente leitura do usuário */}
+            <div className="rounded-lg border border-border bg-muted/40 p-3 space-y-2 text-sm">
+              <div className="flex items-center gap-2 text-foreground font-medium">
+                <User className="h-4 w-4 text-muted-foreground" />
+                <span>{user.full_name || 'Sem nome'}</span>
+              </div>
+              <div className="flex items-center gap-2 text-muted-foreground font-mono text-xs">
+                <Mail className="h-4 w-4" />
+                <span>{user.email || 'Sem e-mail'}</span>
+              </div>
+              <div className="flex items-center gap-2 pt-1 border-t border-border/40 text-xs">
+                <span className="text-muted-foreground">Perfil Atual:</span>
+                <Badge variant="outline" className="font-semibold">
+                  {user.role ? roleLabels[user.role] : 'Indefinido'}
+                </Badge>
+              </div>
             </div>
-            <div className="flex items-center gap-2 text-muted-foreground font-mono text-xs">
-              <Mail className="h-4 w-4" />
-              <span>{user.email || 'Sem e-mail'}</span>
-            </div>
-            <div className="flex items-center gap-2 pt-1 border-t border-border/40 text-xs">
-              <span className="text-muted-foreground">Perfil Atual:</span>
-              <Badge variant="outline" className="font-semibold">
-                {user.role ? roleLabels[user.role] : 'Indefinido'}
-              </Badge>
+
+            {/* Seleção do novo perfil */}
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-foreground">
+                Novo Perfil <span className="text-destructive">*</span>
+              </label>
+              <Select
+                value={selectedRole}
+                onValueChange={(val) => setSelectedRole(val as AppRole)}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Selecione o novo perfil" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableRoles.map((r) => {
+                    const isDemotion = isTargetAdmin && r !== 'admin_empresa';
+                    const isOptionDisabled = isLastAdmin && isDemotion;
+
+                    if (isOptionDisabled) {
+                      return (
+                        <Tooltip key={r}>
+                          <TooltipTrigger asChild>
+                            <div>
+                              <SelectItem value={r} disabled className="opacity-50 cursor-not-allowed">
+                                {roleLabels[r]} (Bloqueado)
+                              </SelectItem>
+                            </div>
+                          </TooltipTrigger>
+                          <TooltipContent side="right">
+                            Operação bloqueada: a empresa deve possuir pelo menos um Administrador ativo.
+                          </TooltipContent>
+                        </Tooltip>
+                      );
+                    }
+
+                    return (
+                      <SelectItem key={r} value={r}>
+                        {roleLabels[r]}
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+              <p className="text-[11px] text-muted-foreground">
+                {selectedRole === 'admin_empresa' && (
+                  'Administrador da Empresa terá controle total sobre as configurações e colaboradores da empresa.'
+                )}
+                {selectedRole === 'gestor_departamento' && (
+                  'Gestor de Departamento terá acesso aos colaboradores da sua equipe com as restrições deliberadas da NR-1.'
+                )}
+                {selectedRole === 'analista_rh' && (
+                  'Analista RH terá permissão operacional para gestão de colaboradores, férias e comunicados.'
+                )}
+                {selectedRole === 'colaborador' && (
+                  'Colaborador terá acesso padrão ao autoatendimento e módulo NR-1.'
+                )}
+              </p>
             </div>
           </div>
 
-          {/* Seleção do novo perfil */}
-          <div className="space-y-2">
-            <label className="text-xs font-semibold text-foreground">
-              Novo Perfil <span className="text-destructive">*</span>
-            </label>
-            <Select
-              value={selectedRole}
-              onValueChange={(val) => setSelectedRole(val as AppRole)}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Selecione o novo perfil" />
-              </SelectTrigger>
-              <SelectContent>
-                {availableRoles.map((r) => (
-                  <SelectItem key={r} value={r}>
-                    {roleLabels[r]}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <p className="text-[11px] text-muted-foreground">
-              {selectedRole === 'gestor_departamento' && (
-                'Gestor de Departamento terá acesso aos colaboradores da sua equipe com as restrições deliberadas da NR-1.'
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={onClose} disabled={isLoading}>
+              Cancelar
+            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span tabIndex={0}>
+                  <Button
+                    onClick={handleSave}
+                    disabled={isLoading || isSameRole || !selectedRole || isDemotingLastAdmin}
+                    className="gradient-primary"
+                  >
+                    {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Salvar Perfil
+                  </Button>
+                </span>
+              </TooltipTrigger>
+              {isDemotingLastAdmin && (
+                <TooltipContent>
+                  Operação bloqueada: a empresa deve possuir pelo menos um Administrador ativo.
+                </TooltipContent>
               )}
-              {selectedRole === 'analista_rh' && (
-                'Analista RH terá permissão operacional para gestão de colaboradores, férias e comunicados.'
-              )}
-              {selectedRole === 'colaborador' && (
-                'Colaborador terá acesso padrão ao autoatendimento e módulo NR-1.'
-              )}
-            </p>
-          </div>
-        </div>
-
-        <DialogFooter className="gap-2 sm:gap-0">
-          <Button variant="outline" onClick={onClose} disabled={isLoading}>
-            Cancelar
-          </Button>
-          <Button
-            onClick={handleSave}
-            disabled={isLoading || isSameRole || !selectedRole}
-            className="gradient-primary"
-          >
-            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Salvar Perfil
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+            </Tooltip>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </TooltipProvider>
   );
 }

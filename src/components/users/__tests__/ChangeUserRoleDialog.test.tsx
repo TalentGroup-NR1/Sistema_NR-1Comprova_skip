@@ -82,4 +82,43 @@ describe('ChangeUserRoleDialog', () => {
     const saveButton = screen.getByRole('button', { name: /salvar perfil/i });
     expect(saveButton).toBeDisabled();
   });
+
+  it('quando o alvo é admin_empresa e a empresa possui apenas 1 admin, exibe alerta de salvaguarda', () => {
+    const adminUser: UserProfile = {
+      ...mockUser,
+      role: 'admin_empresa',
+    };
+
+    render(
+      <ChangeUserRoleDialog
+        open={true}
+        onClose={vi.fn()}
+        user={adminUser}
+        totalCompanyAdmins={1}
+      />
+    );
+
+    expect(screen.getByText('Salvaguarda do Último Administrador')).toBeInTheDocument();
+    expect(
+      screen.getByText(/A empresa deve possuir pelo menos um Administrador ativo/i)
+    ).toBeInTheDocument();
+  });
+
+  it('quando a empresa possui mais de 1 admin, NÃO exibe o bloqueio de salvaguarda do último admin', () => {
+    const adminUser: UserProfile = {
+      ...mockUser,
+      role: 'admin_empresa',
+    };
+
+    render(
+      <ChangeUserRoleDialog
+        open={true}
+        onClose={vi.fn()}
+        user={adminUser}
+        totalCompanyAdmins={2}
+      />
+    );
+
+    expect(screen.queryByText('Salvaguarda do Último Administrador')).not.toBeInTheDocument();
+  });
 });

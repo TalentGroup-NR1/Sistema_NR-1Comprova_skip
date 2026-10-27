@@ -72,7 +72,7 @@ describe('UserTable - Ações de Usuário Ativo', () => {
     expect(screen.getByText('Desativar')).toBeInTheDocument();
   });
 
-  it('quando o alvo é outro admin_empresa, exibe Reenviar Convite e Vincular Empresa, mas BLOQUEIA Alterar Perfil e Desativar', () => {
+  it('quando o alvo é outro admin_empresa, exibe Alterar Perfil, Reenviar Convite e Vincular Empresa', () => {
     const adminPeerUser: UserProfile[] = [
       {
         id: 'profile-peer-admin',
@@ -91,13 +91,36 @@ describe('UserTable - Ações de Usuário Ativo', () => {
 
     render(<UserTable users={adminPeerUser} />);
 
-    // Bloqueios mantidos entre administradores
-    expect(screen.queryByText('Alterar Perfil')).not.toBeInTheDocument();
-    expect(screen.queryByText('Desativar')).not.toBeInTheDocument();
+    // Alterar Perfil agora é PERMITIDO para gerenciar outro admin da empresa
+    expect(screen.getByText('Alterar Perfil')).toBeInTheDocument();
 
     // Permissões granulares liberadas
     expect(screen.getByText('Reenviar convite de senha')).toBeInTheDocument();
     expect(screen.getByText('Vincular a outra empresa')).toBeInTheDocument();
+  });
+
+  it('quando o alvo é admin_master, BLOQUEIA Alterar Perfil e Desativar para caller admin_empresa', () => {
+    const adminMasterUser: UserProfile[] = [
+      {
+        id: 'profile-master',
+        user_id: 'master-user-id',
+        full_name: 'Super Usuário Mestre',
+        email: 'mestre@plataforma.com',
+        company_id: 'comp-1',
+        role: 'admin_master',
+        is_active: true,
+        created_at: '2026-10-01',
+        updated_at: '2026-10-01',
+        phone: null,
+        avatar_url: null,
+      },
+    ];
+
+    render(<UserTable users={adminMasterUser} />);
+
+    // Bloqueios mantidos para alvos admin_master
+    expect(screen.queryByText('Alterar Perfil')).not.toBeInTheDocument();
+    expect(screen.queryByText('Desativar')).not.toBeInTheDocument();
   });
 
   it('quando a linha é do próprio usuário logado, exibe badge Você e menu reduzido com Vincular Empresa', () => {

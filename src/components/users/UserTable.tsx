@@ -74,11 +74,12 @@ export function UserTable({ users, isLoading }: UserTableProps) {
   };
 
   // Permissão para alterar papel e ativar/desativar
-  // (admin_empresa NÃO pode alterar outro admin_empresa nem a si mesmo)
+  // (admin_empresa pode alterar qualquer membro da mesma empresa, inclusive outro admin_empresa;
+  // auto-edição e alvos admin_master/super_admin permanecem bloqueados)
   const canModifyRoleAndStatus = (targetUser: UserProfile) => {
     if (targetUser.user_id === currentUser?.id) return false;
     if (isAdminMaster || isSuperAdmin) return true;
-    if (targetUser.role === 'admin_master' || targetUser.role === 'admin_empresa') {
+    if (targetUser.role === 'admin_master' || targetUser.role === 'super_admin') {
       return false;
     }
     return true;
@@ -252,6 +253,7 @@ export function UserTable({ users, isLoading }: UserTableProps) {
         open={!!changingRoleUser}
         onClose={() => setChangingRoleUser(null)}
         user={changingRoleUser}
+        totalCompanyAdmins={users.filter((u) => u.role === 'admin_empresa' && u.is_active !== false).length}
       />
 
       {linkingCompanyUser && (
