@@ -73,19 +73,27 @@ export function UserTable({ users, isLoading }: UserTableProps) {
       .slice(0, 2);
   };
 
-  const canManageUser = (targetUser: UserProfile) => {
-    // Can't edit yourself through this interface
+  // Permissão para alterar papel e ativar/desativar
+  // (admin_empresa NÃO pode alterar outro admin_empresa nem a si mesmo)
+  const canModifyRoleAndStatus = (targetUser: UserProfile) => {
     if (targetUser.user_id === currentUser?.id) return false;
-    
-    // Admin master / Super admin can edit everyone
     if (isAdminMaster || isSuperAdmin) return true;
-    
-    // Admin empresa can't edit admin users
     if (targetUser.role === 'admin_master' || targetUser.role === 'admin_empresa') {
       return false;
     }
-    
     return true;
+  };
+
+  // Permissão para reenviar convite de senha (permitido para admin_empresa sobre qualquer membro da mesma empresa)
+  const canResendInvite = (targetUser: UserProfile) => {
+    if (targetUser.user_id === currentUser?.id) return false;
+    if (isAdminMaster || isSuperAdmin || isAdminEmpresa) return true;
+    return false;
+  };
+
+  // Permissão para vincular a outra empresa (permitido para admin_empresa/admin_master sobre qualquer usuário)
+  const canLinkUserToCompany = (_targetUser: UserProfile) => {
+    return !!canLinkCompany;
   };
 
   const handleToggleStatus = async (user: UserProfile) => {
@@ -166,49 +174,73 @@ export function UserTable({ users, isLoading }: UserTableProps) {
                 )}
               </TableCell>
               <TableCell className="text-right">
-                {canManageUser(user) && (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon">
-                        <MoreVertical className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => setChangingRoleUser(user)}>
-                        <ShieldCheck className="h-4 w-4 mr-2 text-primary" /> Alterar Perfil
-                      </DropdownMenuItem>
+                {(() => {
+                  const isSelf = user.user_id === currentUser?.id;
+                  const allowRoleAndStatus = canModifyRoleAndStatus(user);
+                  const allowResend = canResendInvite(user);
+                  const allowLinkCompany = canLinkUserToCompany(user);
+                  const hasAnyAction = allowRoleAndStatus || allowResend || allowLinkCompany;
 
-                      {canLinkCompany && (
-                        <DropdownMenuItem onClick={() => setLinkingCompanyUser(user)}>
-                          <Building2 className="h-4 w-4 mr-2 text-primary" /> Vincular a outra empresa
-                        </DropdownMenuItem>
+                  return (
+                    <div className="flex items-center justify-end gap-2">
+                      {isSelf && (
+                        <Badge variant="outline" className="text-xs text-muted-foreground border-border/60">
+                          Você
+                        </Badge>
                       )}
 
-                      <DropdownMenuItem
-                        disabled={resendAcesso.isPending}
-                        onClick={() => resendAcesso.mutate({ user_id: user.user_id })}
-                      >
-                        <Mail className="h-4 w-4 mr-2" /> Reenviar convite de senha
-                      </DropdownMenuItem>
+                      {hasAnyAction && (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            {allowRoleAndStatus && (
+                              <DropdownMenuItem onClick={() => setChangingRoleUser(user)}>
+                                <ShieldCheck className="h-4 w-4 mr-2 text-primary" /> Alterar Perfil
+                              </DropdownMenuItem>
+                            )}
 
-                      {user.is_active ? (
-                        <DropdownMenuItem 
-                          className="text-warning"
-                          onClick={() => handleToggleStatus(user)}
-                        >
-                          <Lock className="h-4 w-4 mr-2" /> Desativar
-                        </DropdownMenuItem>
-                      ) : (
-                        <DropdownMenuItem 
-                          className="text-success"
-                          onClick={() => handleToggleStatus(user)}
-                        >
-                          <Unlock className="h-4 w-4 mr-2" /> Ativar
-                        </DropdownMenuItem>
+                            {allowLinkCompany && (
+                              <DropdownMenuItem onClick={() => setLinkingCompanyUser(user)}>
+                                <Building2 className="h-4 w-4 mr-2 text-primary" /> Vincular a outra empresa
+                              </DropdownMenuItem>
+                            )}
+
+                            {allowResend && (
+                              <DropdownMenuItem
+                                disabled={resendAcesso.isPending}
+                                onClick={() => resendAcesso.mutate({ user_id: user.user_id })}
+                              >
+                                <Mail className="h-4 w-4 mr-2" /> Reenviar convite de senha
+                              </DropdownMenuItem>
+                            )}
+
+                            {allowRoleAndStatus && (
+                              user.is_active ? (
+                                <DropdownMenuItem 
+                                  className="text-warning"
+                                  onClick={() => handleToggleStatus(user)}
+                                >
+                                  <Lock className="h-4 w-4 mr-2" /> Desativar
+                                </DropdownMenuItem>
+                              ) : (
+                                <DropdownMenuItem 
+                                  className="text-success"
+                                  onClick={() => handleToggleStatus(user)}
+                                >
+                                  <Unlock className="h-4 w-4 mr-2" /> Ativar
+                                </DropdownMenuItem>
+                              )
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       )}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                )}
+                    </div>
+                  );
+                })()}
               </TableCell>
             </TableRow>
           ))}
