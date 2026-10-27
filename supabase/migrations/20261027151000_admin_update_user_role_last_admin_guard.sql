@@ -137,4 +137,4 @@ END;
 $$;
 
 REVOKE ALL ON FUNCTION public.admin_update_user_role(uuid, uuid, app_role) FROM public;
-GRANT EXECUTE ON FUNCTION public.admin_update_user_role(uuid, uuid, app_role) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.admin_update_user_role(uuid, uuid, app_role) TO authenticated, service_role;
