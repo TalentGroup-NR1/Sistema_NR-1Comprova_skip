@@ -35,7 +35,7 @@ export function FeedbackTimeline({ feedbacks, isLoading, onEdit, onDelete, isDel
   const canEditDelete = (feedback: FeedbackColaborador) => {
     // Admin master e admin empresa podem editar/excluir qualquer feedback
     if (isAdminMaster || isAdminEmpresa) return true;
-    // Analista RH pode editar/excluir qualquer feedback
+    // Administrador Operacional pode editar/excluir qualquer feedback
     if (role === 'analista_rh') return true;
     // Gestor só pode editar/excluir seus próprios feedbacks
     return feedback.registrado_por_user_id === user?.id;
