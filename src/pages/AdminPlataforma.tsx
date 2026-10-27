@@ -1,4 +1,4 @@
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { PlataformaMetricsCards } from '@/components/plataforma/PlataformaMetricsCards';
 import { PlataformaEmpresasTable } from '@/components/plataforma/PlataformaEmpresasTable';
@@ -7,10 +7,12 @@ import { BlogPostsTab } from '@/components/plataforma/BlogPostsTab';
 import { ContactRequestsTab } from '@/components/plataforma/ContactRequestsTab';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { useContactRequests } from '@/hooks/useContactRequests';
-import { Server } from 'lucide-react';
+import { Server, Plus } from 'lucide-react';
 
 const AdminPlataforma = () => {
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const tab = searchParams.get('tab') ?? 'empresas';
   const { data: requests } = useContactRequests();
@@ -19,16 +21,22 @@ const AdminPlataforma = () => {
   return (
     <MainLayout>
       <div className="space-y-6">
-        <header className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
-            <Server className="h-5 w-5 text-primary" />
+        <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
+              <Server className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-semibold tracking-tight">Painel da Plataforma</h1>
+              <p className="text-sm text-muted-foreground">
+                Visão agregada das empresas. Sem acesso aos dados operacionais de nenhuma empresa.
+              </p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Painel da Plataforma</h1>
-            <p className="text-sm text-muted-foreground">
-              Visão agregada das empresas. Sem acesso aos dados operacionais de nenhuma empresa.
-            </p>
-          </div>
+          <Button onClick={() => navigate('/cadastro-empresa')}>
+            <Plus className="h-4 w-4 mr-2" />
+            Nova Empresa
+          </Button>
         </header>
 
         <Tabs
