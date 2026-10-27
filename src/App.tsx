@@ -75,7 +75,12 @@ const App = () => (
             <ErrorBoundary fallbackMessage="Ocorreu um erro ao carregar a página. Por favor, tente recarregar.">
               <Routes>
                 <Route path="/auth" element={<Auth />} />
-                <Route path="/cadastro-empresa" element={<CadastroEmpresa />} />
+                <Route path="/login" element={<Navigate to="/auth" replace />} />
+                <Route path="/cadastro-empresa" element={
+                  <ProtectedRoute requireSuperAdmin unauthenticatedRedirect="/login">
+                    <CadastroEmpresa />
+                  </ProtectedRoute>
+                } />
                 <Route path="/termos" element={<Termos />} />
               <Route path="/privacidade" element={<Privacidade />} />
               <Route path="/atualizar-senha" element={<AtualizarSenha />} />

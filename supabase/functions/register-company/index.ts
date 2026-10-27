@@ -117,40 +117,60 @@ Deno.serve(async (req) => {
     req.headers.get("cf-connecting-ip") ||
     "unknown";
 
-  // Capturar caller e seu papel para autorização e audit log
+  // 1. Validação estrita de autenticação (JWT obrigatório)
+  const authHeader = req.headers.get("Authorization");
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return json({ success: false, error: "Autenticação obrigatória" }, 401);
+  }
+
+  const token = authHeader.replace(/^Bearer\s+/i, "").trim();
+  const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+  if (!token || token === anonKey) {
+    return json({ success: false, error: "Autenticação obrigatória: token de usuário necessário" }, 401);
+  }
+
   let callerUserId: string | null = null;
   let callerEmail: string | null = null;
   let callerRole: string | null = null;
 
-  const authHeader = req.headers.get("Authorization");
-  if (authHeader) {
-    try {
-      const userClient = createClient(
-        Deno.env.get("SUPABASE_URL") ?? "",
-        Deno.env.get("SUPABASE_ANON_KEY") ?? "",
-        { global: { headers: { Authorization: authHeader } } },
-      );
-      const { data: { user } } = await userClient.auth.getUser();
-      if (user) {
-        callerUserId = user.id;
-        callerEmail = user.email?.toLowerCase() ?? null;
-        const { data: rolesRows, error: rolesError } = await admin
-          .from("user_roles")
-          .select("role")
-          .eq("user_id", user.id);
-        if (rolesError) {
-          console.warn("falha ao consultar user_roles", rolesError.message);
-        }
-        const callerRoles = (rolesRows ?? []).map((r) => r.role);
-        callerRole = callerRoles.includes("admin_master")
-          ? "admin_master"
-          : callerRoles.includes("super_admin")
-          ? "super_admin"
-          : callerRoles[0] ?? (user.app_metadata?.role as string) ?? null;
-      }
-    } catch {
-      // Ignorar — audit log com caller null é aceitável
+  try {
+    const { data: { user }, error: authError } = await admin.auth.getUser(token);
+    if (authError || !user) {
+      return json({ success: false, error: "Sessão inválida ou expirada" }, 401);
     }
+    callerUserId = user.id;
+    callerEmail = user.email?.toLowerCase() ?? null;
+
+    // Verificar se o usuário possui papel super_admin ou admin_master
+    const { data: rolesRows, error: rolesError } = await admin
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", user.id);
+    if (rolesError) {
+      console.warn("falha ao consultar user_roles", rolesError.message);
+    }
+    const callerRoles = (rolesRows ?? []).map((r) => r.role);
+    const isMaster =
+      callerRoles.includes("admin_master") ||
+      callerRoles.includes("super_admin") ||
+      user.app_metadata?.role === "admin_master" ||
+      user.app_metadata?.role === "super_admin";
+
+    if (!isMaster) {
+      return json(
+        {
+          success: false,
+          error: "Acesso restrito: apenas administradores da plataforma (Admin Master / Super Admin) podem cadastrar empresas.",
+        },
+        403,
+      );
+    }
+
+    callerRole = callerRoles.includes("admin_master")
+      ? "admin_master"
+      : "super_admin";
+  } catch (err) {
+    return json({ success: false, error: "Falha na verificação de autenticação" }, 401);
   }
 
   let companyId: string | null = null;

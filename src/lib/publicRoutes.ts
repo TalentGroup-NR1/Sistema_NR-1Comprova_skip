@@ -5,7 +5,7 @@
  */
 export const PUBLIC_ROUTES = [
   '/auth',
-  '/cadastro-empresa',
+  '/login',
   '/atualizar-senha',
   '/unsubscribe',
   '/feedback',
