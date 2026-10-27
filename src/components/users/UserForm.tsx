@@ -27,14 +27,15 @@ import {
 import { useAuth, AppRole } from '@/hooks/useAuth';
 import { useCompanies } from '@/hooks/useCompanies';
 import { useUserMutations } from '@/hooks/useUserMutations';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Building2, Wrench, Users, User, ShieldAlert } from 'lucide-react';
+import { ROLE_LABELS } from '@/lib/constants';
 
-const roleLabels: Record<AppRole, string> = {
-  admin_master: 'Admin Master',
-  admin_empresa: 'Admin Empresa',
-  analista_rh: 'Analista RH',
-  gestor_departamento: 'Gestor de Departamento',
-  colaborador: 'Colaborador',
+const roleIcons: Record<AppRole, React.ComponentType<{ className?: string }>> = {
+  admin_master: ShieldAlert,
+  admin_empresa: Building2,
+  analista_rh: Wrench,
+  gestor_departamento: Users,
+  colaborador: User,
 };
 
 const createUserSchema = z.object({
@@ -168,11 +169,18 @@ export function UserForm({ open, onClose }: UserFormProps) {
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {availableRoles.map((role) => (
-                        <SelectItem key={role} value={role}>
-                          {roleLabels[role]}
-                        </SelectItem>
-                      ))}
+                      {availableRoles.map((role) => {
+                        const Icon = roleIcons[role];
+                        const label = ROLE_LABELS[role] || role;
+                        return (
+                          <SelectItem key={role} value={role}>
+                            <div className="flex items-center gap-2">
+                              {Icon && <Icon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
+                              <span>{label}</span>
+                            </div>
+                          </SelectItem>
+                        );
+                      })}
                     </SelectContent>
                   </Select>
                   <FormMessage />

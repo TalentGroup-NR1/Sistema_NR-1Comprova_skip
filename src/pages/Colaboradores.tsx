@@ -48,7 +48,7 @@ const Colaboradores = () => {
   const updateColaborador = useUpdateColaborador();
   const deleteColaborador = useDeleteColaborador();
 
-  // Check if user can manage colaboradores: apenas Admin Master (com empresa selecionada), Admin Empresa e Analista RH
+  // Check if user can manage colaboradores: apenas Admin Master (com empresa selecionada), Admin Empresa e Administrador Operacional
   const canManage = (isAdminMaster && !!effectiveCompanyId) || isAdminEmpresa || currentRole === 'analista_rh';
 
   // Extract unique departments and vínculos values for filters

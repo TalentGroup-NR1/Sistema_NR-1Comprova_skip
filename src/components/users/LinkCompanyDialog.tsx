@@ -30,20 +30,14 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Building2, Loader2, Info } from 'lucide-react';
+import { Building2, Loader2, Info, Wrench, Users, User } from 'lucide-react';
 import { useAuth, AppRole } from '@/hooks/useAuth';
 import { useCompanies } from '@/hooks/useCompanies';
 import { useUserCompanies } from '@/hooks/useUserCompanies';
 import { useUserMutations } from '@/hooks/useUserMutations';
 import { UserProfile } from '@/hooks/useUsers';
 import { supabase } from '@/integrations/supabase/client';
-
-const roleLabels: Record<string, string> = {
-  admin_empresa: 'Admin Empresa',
-  analista_rh: 'Analista RH',
-  gestor_departamento: 'Gestor de Departamento',
-  colaborador: 'Colaborador',
-};
+import { ROLE_LABELS } from '@/lib/constants';
 
 const linkCompanySchema = z.object({
   company_id: z.string().min(1, 'Selecione uma empresa'),
@@ -222,16 +216,28 @@ export function LinkCompanyDialog({ open, onClose, user }: LinkCompanyDialogProp
                       </FormControl>
                       <SelectContent>
                         <SelectItem value="admin_empresa">
-                          {roleLabels.admin_empresa} (Gestão Total da Empresa)
+                          <div className="flex items-center gap-2">
+                            <Building2 className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
+                            <span>{ROLE_LABELS.admin_empresa} (Gestão Total da Empresa)</span>
+                          </div>
                         </SelectItem>
                         <SelectItem value="analista_rh">
-                          {roleLabels.analista_rh} (Operação de RH)
+                          <div className="flex items-center gap-2">
+                            <Wrench className="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-400 shrink-0" />
+                            <span>{ROLE_LABELS.analista_rh} (Operação do Sistema)</span>
+                          </div>
                         </SelectItem>
                         <SelectItem value="gestor_departamento">
-                          {roleLabels.gestor_departamento} (Gestão de Equipe)
+                          <div className="flex items-center gap-2">
+                            <Users className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+                            <span>{ROLE_LABELS.gestor_departamento} (Gestão de Equipe)</span>
+                          </div>
                         </SelectItem>
                         <SelectItem value="colaborador">
-                          {roleLabels.colaborador} (Acesso Colaborador)
+                          <div className="flex items-center gap-2">
+                            <User className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                            <span>{ROLE_LABELS.colaborador} (Acesso Colaborador)</span>
+                          </div>
                         </SelectItem>
                       </SelectContent>
                     </Select>

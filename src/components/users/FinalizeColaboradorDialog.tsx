@@ -16,10 +16,10 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
-import { Loader2, KeyRound, Mail, User, Building2, Briefcase, AlertTriangle } from 'lucide-react';
+import { Loader2, KeyRound, Mail, User, Building2, Briefcase, AlertTriangle, Wrench, Users } from 'lucide-react';
 import { useFinalizeColaborador, type ColaboradorPendente } from '@/hooks/useColaboradoresPendentes';
 import { contractTypeOptions } from '@/lib/validators/colaborador';
-import { LINK_EXPIRATION_HOURS } from '@/lib/constants';
+import { LINK_EXPIRATION_HOURS, ROLE_LABELS } from '@/lib/constants';
 import { DevInviteDialog } from './DevInviteDialog';
 
 interface FinalizeColaboradorDialogProps {
@@ -153,10 +153,18 @@ export function FinalizeColaboradorDialog({ colaborador, open, onClose }: Finali
                       <SelectValue placeholder="Selecione o nível de acesso" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="colaborador" className="text-xs">Colaborador</SelectItem>
-                      <SelectItem value="gestor_departamento" className="text-xs">Gestor de Departamento</SelectItem>
-                      <SelectItem value="analista_rh" className="text-xs">Analista de RH</SelectItem>
-                      <SelectItem value="admin_empresa" className="text-xs font-medium text-destructive">Administrador da Empresa</SelectItem>
+                      <SelectItem value="admin_empresa" className="text-xs font-medium text-destructive">
+                        Administrador da Empresa
+                      </SelectItem>
+                      <SelectItem value="analista_rh" className="text-xs">
+                        Administrador Operacional
+                      </SelectItem>
+                      <SelectItem value="gestor_departamento" className="text-xs">
+                        Gestor de Departamento
+                      </SelectItem>
+                      <SelectItem value="colaborador" className="text-xs">
+                        Colaborador
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

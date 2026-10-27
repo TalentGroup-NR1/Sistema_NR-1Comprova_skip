@@ -11,15 +11,7 @@ import { useUserCompanies } from "@/hooks/useUserCompanies";
 import { useCompanyContext } from "@/contexts/CompanyContext";
 import { useAuth } from "@/hooks/useAuth";
 import { Badge } from "@/components/ui/badge";
-
-const ROLE_LABELS: Record<string, string> = {
-  admin_master: "Admin Master",
-  admin_empresa: "Admin Empresa",
-  analista_rh: "Analista RH",
-  gestor_departamento: "Gestor",
-  colaborador: "Colaborador",
-  super_admin: "Super Admin",
-};
+import { ROLE_LABELS } from "@/lib/constants";
 
 export function CompanySelector() {
   const { isAdminMaster, isSuperAdmin } = useAuth();

@@ -25,14 +25,15 @@ import {
 import { UserProfile } from '@/hooks/useUsers';
 import { useAuth, AppRole } from '@/hooks/useAuth';
 import { useUpdateUserRole } from '@/hooks/useUpdateUserRole';
-import { ShieldAlert, User, Mail, ShieldCheck, Loader2 } from 'lucide-react';
+import { ShieldAlert, User, Mail, ShieldCheck, Loader2, Building2, Wrench, Users } from 'lucide-react';
+import { ROLE_LABELS } from '@/lib/constants';
 
-const roleLabels: Record<AppRole, string> = {
-  admin_master: 'Admin Master',
-  admin_empresa: 'Admin Empresa',
-  analista_rh: 'Analista RH',
-  gestor_departamento: 'Gestor de Departamento',
-  colaborador: 'Colaborador',
+const roleIcons: Record<AppRole, React.ComponentType<{ className?: string }>> = {
+  admin_master: ShieldAlert,
+  admin_empresa: Building2,
+  analista_rh: Wrench,
+  gestor_departamento: Users,
+  colaborador: User,
 };
 
 interface ChangeUserRoleDialogProps {
@@ -137,7 +138,7 @@ export function ChangeUserRoleDialog({
               <div className="flex items-center gap-2 pt-1 border-t border-border/40 text-xs">
                 <span className="text-muted-foreground">Perfil Atual:</span>
                 <Badge variant="outline" className="font-semibold">
-                  {user.role ? roleLabels[user.role] : 'Indefinido'}
+                  {user.role ? (ROLE_LABELS[user.role] || user.role) : 'Indefinido'}
                 </Badge>
               </div>
             </div>
@@ -158,6 +159,8 @@ export function ChangeUserRoleDialog({
                   {availableRoles.map((r) => {
                     const isDemotion = isTargetAdmin && r !== 'admin_empresa';
                     const isOptionDisabled = isLastAdmin && isDemotion;
+                    const Icon = roleIcons[r];
+                    const label = ROLE_LABELS[r] || r;
 
                     if (isOptionDisabled) {
                       return (
@@ -165,7 +168,10 @@ export function ChangeUserRoleDialog({
                           <TooltipTrigger asChild>
                             <div>
                               <SelectItem value={r} disabled className="opacity-50 cursor-not-allowed">
-                                {roleLabels[r]} (Bloqueado)
+                                <div className="flex items-center gap-2">
+                                  {Icon && <Icon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
+                                  <span>{label} (Bloqueado)</span>
+                                </div>
                               </SelectItem>
                             </div>
                           </TooltipTrigger>
@@ -178,7 +184,10 @@ export function ChangeUserRoleDialog({
 
                     return (
                       <SelectItem key={r} value={r}>
-                        {roleLabels[r]}
+                        <div className="flex items-center gap-2">
+                          {Icon && <Icon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
+                          <span>{label}</span>
+                        </div>
                       </SelectItem>
                     );
                   })}
@@ -186,13 +195,13 @@ export function ChangeUserRoleDialog({
               </Select>
               <p className="text-[11px] text-muted-foreground">
                 {selectedRole === 'admin_empresa' && (
-                  'Administrador da Empresa terá controle total sobre as configurações e colaboradores da empresa.'
+                  'Administrador Empresa terá controle total sobre as configurações e colaboradores da empresa.'
+                )}
+                {selectedRole === 'analista_rh' && (
+                  'Administrador Operacional terá permissão operacional para gestão de colaboradores, férias e comunicados.'
                 )}
                 {selectedRole === 'gestor_departamento' && (
                   'Gestor de Departamento terá acesso aos colaboradores da sua equipe com as restrições deliberadas da NR-1.'
-                )}
-                {selectedRole === 'analista_rh' && (
-                  'Analista RH terá permissão operacional para gestão de colaboradores, férias e comunicados.'
                 )}
                 {selectedRole === 'colaborador' && (
                   'Colaborador terá acesso padrão ao autoatendimento e módulo NR-1.'

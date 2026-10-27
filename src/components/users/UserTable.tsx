@@ -24,8 +24,14 @@ import {
   XCircle,
   Mail,
   ShieldCheck,
+  ShieldAlert,
   Building2,
+  Wrench,
+  Users,
+  User,
 } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { ROLE_LABELS } from '@/lib/constants';
 import { UserProfile } from '@/hooks/useUsers';
 import { useUserMutations } from '@/hooks/useUserMutations';
 import { useAuth, AppRole } from '@/hooks/useAuth';
@@ -33,20 +39,27 @@ import { ChangeUserRoleDialog } from './ChangeUserRoleDialog';
 import { LinkCompanyDialog } from './LinkCompanyDialog';
 import { useResendAcessoByUserId } from '@/hooks/useColaboradoresPendentes';
 
-const roleLabels: Record<AppRole, string> = {
-  admin_master: 'Admin Master',
-  admin_empresa: 'Admin Empresa',
-  analista_rh: 'Analista RH',
-  gestor_departamento: 'Gestor',
-  colaborador: 'Colaborador',
-};
-
-const roleBadgeColors: Record<AppRole, string> = {
-  admin_master: 'bg-destructive/10 text-destructive border-destructive/20',
-  admin_empresa: 'bg-primary/10 text-primary border-primary/20',
-  analista_rh: 'bg-info/10 text-info border-info/20',
-  gestor_departamento: 'bg-warning/10 text-warning border-warning/20',
-  colaborador: 'bg-success/10 text-success border-success/20',
+const roleBadgeConfig: Record<AppRole, { className: string; icon: React.ComponentType<{ className?: string }> }> = {
+  admin_master: {
+    className: 'bg-destructive/10 text-destructive border-destructive/30 hover:bg-destructive/15',
+    icon: ShieldAlert,
+  },
+  admin_empresa: {
+    className: 'bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 border-indigo-500/30 hover:bg-indigo-500/15',
+    icon: Building2,
+  },
+  analista_rh: {
+    className: 'bg-cyan-500/10 text-cyan-800 dark:text-cyan-300 border-cyan-500/30 hover:bg-cyan-500/15',
+    icon: Wrench,
+  },
+  gestor_departamento: {
+    className: 'bg-amber-500/10 text-amber-800 dark:text-amber-300 border-amber-500/30 hover:bg-amber-500/15',
+    icon: Users,
+  },
+  colaborador: {
+    className: 'bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/15',
+    icon: User,
+  },
 };
 
 interface UserTableProps {
@@ -152,11 +165,24 @@ export function UserTable({ users, isLoading }: UserTableProps) {
                 </div>
               </TableCell>
               <TableCell>
-                {user.role && (
-                  <Badge className={roleBadgeColors[user.role]}>
-                    {roleLabels[user.role]}
-                  </Badge>
-                )}
+                {user.role && (() => {
+                  const config = roleBadgeConfig[user.role];
+                  const Icon = config?.icon;
+                  const label = ROLE_LABELS[user.role] ?? user.role;
+                  return (
+                    <Badge
+                      variant="outline"
+                      className={cn(
+                        "inline-flex items-center gap-1.5 font-medium px-2.5 py-0.5 text-xs whitespace-nowrap shadow-none border",
+                        config?.className
+                      )}
+                      title={label}
+                    >
+                      {Icon && <Icon className="h-3 w-3 shrink-0" />}
+                      <span className="truncate max-w-[170px] sm:max-w-none">{label}</span>
+                    </Badge>
+                  );
+                })()}
               </TableCell>
               {isAdminMaster && (
                 <TableCell className="text-muted-foreground text-sm">

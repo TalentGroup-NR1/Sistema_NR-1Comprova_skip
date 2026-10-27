@@ -72,7 +72,7 @@ describe("CuidarMais - Acompanhamento Gestores Gate", () => {
     expect(screen.queryByText("Acompanhamento Gestores")).toBeInTheDocument();
   });
 
-  it("deve renderizar aba de Acompanhamento Gestores para Analista RH", async () => {
+  it("deve renderizar aba de Acompanhamento Gestores para Administrador Operacional (analista_rh)", async () => {
     const { useAuth } = await import("@/hooks/useAuth");
     vi.mocked(useAuth).mockReturnValue({ role: "analista_rh" } as any);
     
@@ -111,7 +111,7 @@ describe("CuidarMais - Acompanhamento Gestores Gate", () => {
     expect(screen.getByText("Acompanhamentos")).toBeInTheDocument();
   });
 
-  it("deve renderizar Acompanhamentos para Admin Master e Analista RH", async () => {
+  it("deve renderizar Acompanhamentos para Admin Master e Administrador Operacional (analista_rh)", async () => {
     const { useAuth } = await import("@/hooks/useAuth");
     vi.mocked(useAuth).mockReturnValue({ role: "analista_rh" } as any);
 

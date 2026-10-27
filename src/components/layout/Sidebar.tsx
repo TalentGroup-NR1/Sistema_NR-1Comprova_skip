@@ -30,6 +30,7 @@ import { useBranding } from "@/hooks/useBranding";
 import { BrandLogo } from "@/components/layout/BrandLogo";
 import { useVisibleModules, useIsModuleVisible } from "@/hooks/useVisibleModules";
 import { resolverModuloPai, isModuloBase, obterModuloPorRota } from "@/lib/modulosContrataveis";
+import { ROLE_LABELS } from "@/lib/constants";
 
 
 interface NavItem {
@@ -76,13 +77,7 @@ const configuracoesItems: NavItem[] = [
   { icon: ShieldAlert, label: "Comportamentos Ofensivos", href: "/comportamentos-ofensivos", roles: ['admin_master', 'admin_empresa', 'analista_rh'] },
 ];
 
-const roleLabels: Record<string, string> = {
-  admin_master: "Admin Master",
-  admin_empresa: "Admin Empresa",
-  analista_rh: "Analista RH",
-  gestor_departamento: "Gestor",
-  colaborador: "Colaborador",
-};
+const roleLabels: Record<string, string> = ROLE_LABELS;
 
 let savedScrollPos = 0;
 
