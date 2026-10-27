@@ -325,5 +325,192 @@ describe("CadastroEmpresa — Fluxo Simplificado (4 Campos) e Filial", () => {
     expect(toast.success).not.toHaveBeenCalled();
     expect(mockNavigate).not.toHaveBeenCalled();
   });
+
+  it("quando filial cadastrada por Super Admin → redireciona para /empresas (não /dashboard) e personaliza toast", async () => {
+    mockUseAuth.mockReturnValue({
+      user: { id: "super-1", email: "admin.master@talentgroup.com.br" },
+      isAuthenticated: true,
+      isAdminEmpresa: false,
+      isAdminMaster: true,
+      isSuperAdmin: true,
+    });
+
+    mockInvoke.mockResolvedValueOnce({
+      data: { success: true, company_id: "comp-branch-1", is_branch: true },
+      error: null,
+    });
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <BrowserRouter>
+          <CadastroEmpresa />
+        </BrowserRouter>
+      </QueryClientProvider>
+    );
+
+    fireEvent.change(screen.getByLabelText(/Razão social/i), {
+      target: { value: "TG UNITI SERVIÇOS LTDA" },
+    });
+    fireEvent.change(screen.getByLabelText(/CNPJ/i), {
+      target: { value: "39.453.650/0001-28" },
+    });
+    fireEvent.change(screen.getByLabelText(/Nome completo do administrador/i), {
+      target: { value: "Gabriela Gomes de Mattos" },
+    });
+    fireEvent.change(screen.getByLabelText(/E-mail do administrador/i), {
+      target: { value: "gmattos@talentgroup.com.br" },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /Cadastrar Empresa/i }));
+
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith("/empresas");
+    });
+
+    expect(toast.success).toHaveBeenCalledWith(
+      expect.stringContaining("vinculada a gmattos@talentgroup.com.br"),
+      expect.anything()
+    );
+  });
+
+  it("quando filial cadastrada por Admin Empresa → redireciona para / (não /dashboard) e personaliza toast", async () => {
+    mockUseAuth.mockReturnValue({
+      user: { id: "admin-empresa-1", email: "gmattos@talentgroup.com.br", user_metadata: { full_name: "Gabriela Gomes" } },
+      isAuthenticated: true,
+      isAdminEmpresa: true,
+      isAdminMaster: false,
+      isSuperAdmin: false,
+    });
+
+    mockInvoke.mockResolvedValueOnce({
+      data: { success: true, company_id: "comp-branch-2", is_branch: true },
+      error: null,
+    });
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <BrowserRouter>
+          <CadastroEmpresa />
+        </BrowserRouter>
+      </QueryClientProvider>
+    );
+
+    fireEvent.change(screen.getByLabelText(/Razão social/i), {
+      target: { value: "TG UNITI SERVIÇOS LTDA" },
+    });
+    fireEvent.change(screen.getByLabelText(/CNPJ/i), {
+      target: { value: "39.453.650/0001-28" },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /Cadastrar Filial/i }));
+
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith("/");
+    });
+
+    expect(toast.success).toHaveBeenCalledWith(
+      expect.stringContaining("vinculada à sua conta"),
+      expect.anything()
+    );
+  });
+
+  it("quando Edge Function retorna erro 409 com context.json() → toast exibe a mensagem específica do backend", async () => {
+    mockUseAuth.mockReturnValue({
+      user: null,
+      isAuthenticated: false,
+      isAdminEmpresa: false,
+      isAdminMaster: false,
+    });
+
+    mockInvoke.mockResolvedValueOnce({
+      data: null,
+      error: {
+        message: "Edge Function returned a non-2xx status code",
+        context: {
+          json: async () => ({ success: false, error: "CNPJ já cadastrado" }),
+        },
+      },
+    });
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <BrowserRouter>
+          <CadastroEmpresa />
+        </BrowserRouter>
+      </QueryClientProvider>
+    );
+
+    fireEvent.change(screen.getByLabelText(/Razão social/i), {
+      target: { value: "TG UNITI SERVIÇOS LTDA" },
+    });
+    fireEvent.change(screen.getByLabelText(/CNPJ/i), {
+      target: { value: "39.453.650/0001-28" },
+    });
+    fireEvent.change(screen.getByLabelText(/Nome completo do administrador/i), {
+      target: { value: "Gabriela Gomes de Mattos" },
+    });
+    fireEvent.change(screen.getByLabelText(/E-mail do administrador/i), {
+      target: { value: "gmattos@talentgroup.com.br" },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /Cadastrar Empresa/i }));
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith("CNPJ já cadastrado");
+    });
+
+    expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  it("quando Edge Function retorna erro sem body JSON → toast exibe fallback genérico sem quebrar", async () => {
+    mockUseAuth.mockReturnValue({
+      user: null,
+      isAuthenticated: false,
+      isAdminEmpresa: false,
+      isAdminMaster: false,
+    });
+
+    mockInvoke.mockResolvedValueOnce({
+      data: null,
+      error: {
+        message: "Falha de conexão com a Edge Function",
+        context: {
+          json: async () => {
+            throw new Error("stream closed");
+          },
+        },
+      },
+    });
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <BrowserRouter>
+          <CadastroEmpresa />
+        </BrowserRouter>
+      </QueryClientProvider>
+    );
+
+    fireEvent.change(screen.getByLabelText(/Razão social/i), {
+      target: { value: "TG UNITI SERVIÇOS LTDA" },
+    });
+    fireEvent.change(screen.getByLabelText(/CNPJ/i), {
+      target: { value: "39.453.650/0001-28" },
+    });
+    fireEvent.change(screen.getByLabelText(/Nome completo do administrador/i), {
+      target: { value: "Gabriela Gomes de Mattos" },
+    });
+    fireEvent.change(screen.getByLabelText(/E-mail do administrador/i), {
+      target: { value: "gmattos@talentgroup.com.br" },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /Cadastrar Empresa/i }));
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith("Falha de conexão com a Edge Function");
+    });
+
+    expect(mockNavigate).not.toHaveBeenCalled();
+  });
 });
+
 

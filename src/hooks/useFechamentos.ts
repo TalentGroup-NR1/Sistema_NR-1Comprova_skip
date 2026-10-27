@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffectiveCompanyId } from "./useEffectiveCompanyId";
 import { toast } from "sonner";
+import { extractFunctionError } from "@/lib/functionsError";
 
 export interface Fechamento {
   id: string;
@@ -70,7 +71,10 @@ export function useFecharPeriodo() {
       const { data, error } = await supabase.functions.invoke("fechar-periodo", {
         body: params,
       });
-      if (error) throw error;
+      if (error) {
+        const msg = await extractFunctionError(error, "Erro ao fechar período");
+        throw new Error(msg);
+      }
       if ((data as any)?.error) throw new Error((data as any).error);
       return data;
     },
@@ -92,7 +96,10 @@ export function useReabrirPeriodoMassa() {
   return useMutation({
     mutationFn: async (params: { company_id: string; periodo_inicio: string; periodo_fim: string; motivo: string }) => {
       const { data, error } = await supabase.functions.invoke("reabrir-periodo-massa", { body: params });
-      if (error) throw error;
+      if (error) {
+        const msg = await extractFunctionError(error, "Erro ao reabrir período em massa");
+        throw new Error(msg);
+      }
       if ((data as any)?.error) throw new Error((data as any).error);
       return data;
     },
@@ -115,7 +122,10 @@ export function useReabrirPeriodo() {
   return useMutation({
     mutationFn: async (params: { fechamento_id: string; motivo: string }) => {
       const { data, error } = await supabase.functions.invoke("reabrir-periodo", { body: params });
-      if (error) throw error;
+      if (error) {
+        const msg = await extractFunctionError(error, "Erro ao reabrir período");
+        throw new Error(msg);
+      }
       if ((data as any)?.error) throw new Error((data as any).error);
       return data;
     },
@@ -214,7 +224,10 @@ export function useAssinarPeriodo() {
   return useMutation({
     mutationFn: async (params: { fechamento_id: string }) => {
       const { data, error } = await supabase.functions.invoke("assinar-fechamento", { body: params });
-      if (error) throw error;
+      if (error) {
+        const msg = await extractFunctionError(error, "Erro ao assinar fechamento");
+        throw new Error(msg);
+      }
       if ((data as any)?.error) throw new Error((data as any).error);
       return data as { id: string; status: string; hash: string; assinado_em: string; versao: number; pdf_url: string | null };
     },
@@ -237,7 +250,10 @@ export async function getFechamentoDownloadUrl(
   const { data, error } = await supabase.functions.invoke("exportar-fechamento", {
     body: { fechamento_id, tipo, escopo },
   });
-  if (error) throw error;
+  if (error) {
+    const msg = await extractFunctionError(error, "Erro ao exportar fechamento");
+    throw new Error(msg);
+  }
   if ((data as any)?.error) throw new Error((data as any).error);
   return (data as any)?.url as string;
 }

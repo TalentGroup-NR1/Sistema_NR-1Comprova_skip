@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { AppRole } from './useAuth';
+import { extractFunctionError } from '@/lib/functionsError';
 
 interface CreateUserData {
   email: string;
@@ -32,7 +33,8 @@ export function useUserMutations() {
       });
 
       if (response.error) {
-        throw new Error(response.error.message);
+        const errorMsg = await extractFunctionError(response.error, 'Erro ao criar usuário');
+        throw new Error(errorMsg);
       }
 
       if (response.data?.error) {
@@ -64,7 +66,8 @@ export function useUserMutations() {
       });
 
       if (response.error) {
-        throw new Error(response.error.message);
+        const errorMsg = await extractFunctionError(response.error, 'Erro ao atualizar usuário');
+        throw new Error(errorMsg);
       }
 
       if (response.data?.error) {
@@ -96,7 +99,8 @@ export function useUserMutations() {
       });
 
       if (response.error) {
-        throw new Error(response.error.message);
+        const errorMsg = await extractFunctionError(response.error, 'Erro ao alterar status do usuário');
+        throw new Error(errorMsg);
       }
 
       if (response.data?.error) {

@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffectiveCompanyId } from "@/hooks/useEffectiveCompanyId";
 import { useAuth } from "@/hooks/useAuth";
+import { extractFunctionError } from "@/lib/functionsError";
 
 export interface DadosEmpresaPgr {
   nome: string | null;
@@ -369,10 +370,12 @@ export function useExcluirImportacaoPgr() {
         body: { importacao_id: importacaoId }
       });
 
-      const actualError = fnErr || (data && data.error ? new Error(data.error) : null);
-      if (actualError) {
-        console.error("[usePgrImportacao] Delete error:", actualError);
-        throw new Error(`Erro ao excluir: ${mapPostgresError(actualError)}`);
+      if (fnErr) {
+        const errorMsg = await extractFunctionError(fnErr, "Erro ao excluir importação.");
+        throw new Error(`Erro ao excluir: ${errorMsg}`);
+      }
+      if (data && data.error) {
+        throw new Error(`Erro ao excluir: ${data.error}`);
       }
 
       return data;

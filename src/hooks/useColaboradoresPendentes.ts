@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { useEffectiveCompanyId } from './useEffectiveCompanyId';
+import { extractFunctionError } from '@/lib/functionsError';
 
 export interface ColaboradorPendente {
   id: string;
@@ -87,7 +88,7 @@ export function useFinalizeColaborador() {
 
       if (response.error) {
         console.error('[FinalizeColaborador] Function error:', response.error);
-        const errorMessage = response.error.message || 'Erro ao chamar função';
+        const errorMessage = await extractFunctionError(response.error, 'Erro ao liberar acesso');
         throw new Error(errorMessage);
       }
 
@@ -148,7 +149,7 @@ export function useResendAcessoColaborador() {
       });
 
       if (response.error) {
-        const errorMessage = response.error.message || 'Erro ao chamar função';
+        const errorMessage = await extractFunctionError(response.error, 'Erro ao reenviar convite');
         throw new Error(errorMessage);
       }
 
@@ -203,7 +204,10 @@ export function useResendAcessoByUserId() {
         body: { colaborador_id: colaborador.id },
       });
 
-      if (response.error) throw new Error(response.error.message || 'Erro ao chamar função');
+      if (response.error) {
+        const errorMessage = await extractFunctionError(response.error, 'Erro ao reenviar convite');
+        throw new Error(errorMessage);
+      }
       if (response.data?.error) throw new Error(response.data.error);
 
       return response.data;

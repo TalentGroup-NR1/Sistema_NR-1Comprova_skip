@@ -81,20 +81,37 @@ export default function CadastroEmpresa() {
         },
       });
 
-      if (error || !result?.success) {
-        const message =
-          (result as { error?: string } | null)?.error ??
-          "Não foi possível concluir o cadastro. Tente novamente.";
-        toast.error(message);
+      let errorMessage: string | null = null;
+      if (error) {
+        try {
+          const body = await (error as any)?.context?.json?.();
+          errorMessage = body?.error || body?.message || error.message;
+        } catch {
+          errorMessage = error.message;
+        }
+      } else if (!result?.success) {
+        errorMessage = (result as { error?: string } | null)?.error ?? null;
+      }
+
+      if (errorMessage || !result?.success) {
+        toast.error(errorMessage ?? "Não foi possível concluir o cadastro. Tente novamente.");
         return;
       }
 
       if (result?.is_branch) {
-        toast.success(
-          `Filial ${data.razao_social} cadastrada e vinculada à sua conta com sucesso!`,
-          { duration: 6000 }
-        );
-        navigate("/dashboard");
+        if (isSuperAdminUser) {
+          toast.success(
+            `Filial ${data.razao_social} cadastrada e vinculada a ${data.admin_email} com sucesso!`,
+            { duration: 6000 }
+          );
+          navigate("/empresas");
+        } else {
+          toast.success(
+            `Filial ${data.razao_social} cadastrada e vinculada à sua conta com sucesso!`,
+            { duration: 6000 }
+          );
+          navigate("/");
+        }
         return;
       }
 
