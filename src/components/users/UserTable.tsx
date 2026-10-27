@@ -24,11 +24,13 @@ import {
   XCircle,
   Mail,
   ShieldCheck,
+  Building2,
 } from 'lucide-react';
 import { UserProfile } from '@/hooks/useUsers';
 import { useUserMutations } from '@/hooks/useUserMutations';
 import { useAuth, AppRole } from '@/hooks/useAuth';
 import { ChangeUserRoleDialog } from './ChangeUserRoleDialog';
+import { LinkCompanyDialog } from './LinkCompanyDialog';
 import { useResendAcessoByUserId } from '@/hooks/useColaboradoresPendentes';
 
 const roleLabels: Record<AppRole, string> = {
@@ -53,10 +55,13 @@ interface UserTableProps {
 }
 
 export function UserTable({ users, isLoading }: UserTableProps) {
-  const { isAdminMaster, role: callerRole, user: currentUser } = useAuth();
+  const { isAdminMaster, isSuperAdmin, isAdminEmpresa, role: callerRole, user: currentUser } = useAuth();
   const { toggleUserStatus } = useUserMutations();
   const resendAcesso = useResendAcessoByUserId();
   const [changingRoleUser, setChangingRoleUser] = useState<UserProfile | null>(null);
+  const [linkingCompanyUser, setLinkingCompanyUser] = useState<UserProfile | null>(null);
+
+  const canLinkCompany = isAdminMaster || isSuperAdmin || isAdminEmpresa;
 
   const getInitials = (name: string | null) => {
     if (!name) return '??';
@@ -72,8 +77,8 @@ export function UserTable({ users, isLoading }: UserTableProps) {
     // Can't edit yourself through this interface
     if (targetUser.user_id === currentUser?.id) return false;
     
-    // Admin master can edit everyone
-    if (isAdminMaster) return true;
+    // Admin master / Super admin can edit everyone
+    if (isAdminMaster || isSuperAdmin) return true;
     
     // Admin empresa can't edit admin users
     if (targetUser.role === 'admin_master' || targetUser.role === 'admin_empresa') {
@@ -172,6 +177,13 @@ export function UserTable({ users, isLoading }: UserTableProps) {
                       <DropdownMenuItem onClick={() => setChangingRoleUser(user)}>
                         <ShieldCheck className="h-4 w-4 mr-2 text-primary" /> Alterar Perfil
                       </DropdownMenuItem>
+
+                      {canLinkCompany && (
+                        <DropdownMenuItem onClick={() => setLinkingCompanyUser(user)}>
+                          <Building2 className="h-4 w-4 mr-2 text-primary" /> Vincular a outra empresa
+                        </DropdownMenuItem>
+                      )}
+
                       <DropdownMenuItem
                         disabled={resendAcesso.isPending}
                         onClick={() => resendAcesso.mutate({ user_id: user.user_id })}
@@ -209,6 +221,14 @@ export function UserTable({ users, isLoading }: UserTableProps) {
         onClose={() => setChangingRoleUser(null)}
         user={changingRoleUser}
       />
+
+      {linkingCompanyUser && (
+        <LinkCompanyDialog
+          open={!!linkingCompanyUser}
+          onClose={() => setLinkingCompanyUser(null)}
+          user={linkingCompanyUser}
+        />
+      )}
     </>
   );
 }

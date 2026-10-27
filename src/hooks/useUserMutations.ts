@@ -21,6 +21,14 @@ interface UpdateUserData {
   is_active?: boolean;
 }
 
+export interface LinkUserCompanyData {
+  user_id: string;
+  company_id: string;
+  company_name?: string;
+  role: AppRole;
+  is_default?: boolean;
+}
+
 export function useUserMutations() {
   const queryClient = useQueryClient();
 
@@ -125,9 +133,53 @@ export function useUserMutations() {
     },
   });
 
+  const linkUserToCompany = useMutation({
+    mutationFn: async (data: LinkUserCompanyData) => {
+      const response = await supabase.functions.invoke('link-user-company', {
+        body: {
+          user_id: data.user_id,
+          company_id: data.company_id,
+          role: data.role,
+          is_default: !!data.is_default,
+        },
+      });
+
+      if (response.error) {
+        const errorMsg = await extractFunctionError(
+          response.error,
+          'Erro ao vincular usuário à empresa'
+        );
+        throw new Error(errorMsg);
+      }
+
+      if (response.data?.error) {
+        throw new Error(response.data.error);
+      }
+
+      return response.data;
+    },
+    onSuccess: (result, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      queryClient.invalidateQueries({ queryKey: ['user_companies'] });
+      const compName = result?.company_name || variables.company_name || 'empresa';
+      toast({
+        title: 'Vínculo realizado',
+        description: `Usuário vinculado a ${compName} com sucesso.`,
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        variant: 'destructive',
+        title: 'Erro ao vincular empresa',
+        description: error.message,
+      });
+    },
+  });
+
   return {
     createUser,
     updateUser,
     toggleUserStatus,
+    linkUserToCompany,
   };
 }
