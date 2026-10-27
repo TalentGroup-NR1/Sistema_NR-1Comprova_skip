@@ -38,7 +38,9 @@ const Colaboradores = () => {
   const [selectedColaborador, setSelectedColaborador] = useState<Colaborador | null>(null);
   const [viewingColaboradorId, setViewingColaboradorId] = useState<string | null>(null);
 
-  const { isAdminMaster, isAdminEmpresa } = useAuth();
+  const { isAdminMaster, isAdminEmpresa, role, activeRole } = useAuth();
+  const currentRole = activeRole ?? role;
+  const isGestor = currentRole === 'gestor_departamento';
   const effectiveCompanyId = useEffectiveCompanyId();
   const { data: colaboradores = [], isLoading } = useColaboradores();
   const { data: colaboradorDetails } = useColaborador(viewingColaboradorId);
@@ -46,8 +48,8 @@ const Colaboradores = () => {
   const updateColaborador = useUpdateColaborador();
   const deleteColaborador = useDeleteColaborador();
 
-  // Check if user can manage colaboradores
-  const canManage = !isAdminMaster || effectiveCompanyId;
+  // Check if user can manage colaboradores: apenas Admin Master (com empresa selecionada), Admin Empresa e Analista RH
+  const canManage = (isAdminMaster && !!effectiveCompanyId) || isAdminEmpresa || currentRole === 'analista_rh';
 
   // Extract unique departments and vínculos values for filters
   const departments = [...new Set(colaboradores.map(c => c.department).filter(Boolean))].sort();

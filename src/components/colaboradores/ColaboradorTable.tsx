@@ -142,6 +142,7 @@ export function ColaboradorTable({
   const currentRole = activeRole ?? role;
   const canTransferir = isAdminMaster || isAdminEmpresa || currentRole === 'analista_rh';
   const canExcluir = isAdminMaster || isAdminEmpresa;
+  const canEditar = isAdminMaster || isAdminEmpresa || currentRole === 'analista_rh';
   const { data: recentTransfers } = useTransferenciasRecentes();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [colaboradorToDelete, setColaboradorToDelete] = useState<Colaborador | null>(null);
@@ -188,9 +189,15 @@ export function ColaboradorTable({
         <div className="rounded-full bg-primary/10 p-4 text-primary mb-3">
           <Users className="h-8 w-8" />
         </div>
-        <p className="text-lg font-semibold text-foreground">Convide os primeiros colaboradores</p>
+        <p className="text-lg font-semibold text-foreground">
+          {currentRole === 'gestor_departamento'
+            ? 'Nenhum colaborador no seu departamento'
+            : 'Convide os primeiros colaboradores'}
+        </p>
         <p className="text-sm text-muted-foreground max-w-md mt-1 mb-5">
-          Adicione os membros da sua equipe para liberar o acesso ao sistema, gerenciar registros e acompanhar o Mapa de Riscos NR-1.
+          {currentRole === 'gestor_departamento'
+            ? 'Não há colaboradores vinculados ao seu departamento no momento.'
+            : 'Adicione os membros da sua equipe para liberar o acesso ao sistema, gerenciar registros e acompanhar o Mapa de Riscos NR-1.'}
         </p>
         {onNovo && (
           <Button onClick={onNovo} className="gradient-primary text-primary-foreground shadow-sm">
@@ -286,10 +293,12 @@ export function ColaboradorTable({
                         <Eye className="mr-2 h-4 w-4" />
                         Ver Perfil
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit(colaborador); }}>
-                        <Edit className="mr-2 h-4 w-4" />
-                        Editar
-                      </DropdownMenuItem>
+                      {canEditar && (
+                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit(colaborador); }}>
+                          <Edit className="mr-2 h-4 w-4" />
+                          Editar
+                        </DropdownMenuItem>
+                      )}
                       <DropdownMenuItem onClick={(e) => { e.stopPropagation(); navigate(`/ficha-profissional/${colaborador.id}`); }}>
                         <FileUser className="mr-2 h-4 w-4" />
                         Ficha Profissional
@@ -322,10 +331,12 @@ export function ColaboradorTable({
                   <Eye className="mr-2 h-4 w-4" />
                   Ver Perfil
                 </ContextMenuItem>
-                <ContextMenuItem onClick={() => onEdit(colaborador)}>
-                  <Edit className="mr-2 h-4 w-4" />
-                  Editar
-                </ContextMenuItem>
+                {canEditar && (
+                  <ContextMenuItem onClick={() => onEdit(colaborador)}>
+                    <Edit className="mr-2 h-4 w-4" />
+                    Editar
+                  </ContextMenuItem>
+                )}
                 <ContextMenuItem onClick={() => navigate(`/ficha-profissional/${colaborador.id}`)}>
                   <FileUser className="mr-2 h-4 w-4" />
                   Ficha Profissional

@@ -73,9 +73,10 @@ export function ColaboradorForm({
 }: ColaboradorFormProps) {
   const [currentTab, setCurrentTab] = useState(0);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
-  const isEditing = !!colaborador;
-  const { isAdminMaster, isAdminEmpresa, role } = useAuth();
-  const canSeeTransferencias = isAdminMaster || isAdminEmpresa || role === 'analista_rh';
+  const { isAdminMaster, isAdminEmpresa, role, activeRole } = useAuth();
+  const currentRole = activeRole ?? role;
+  const canSeeTransferencias = isAdminMaster || isAdminEmpresa || currentRole === 'analista_rh';
+  const canSave = isAdminMaster || isAdminEmpresa || currentRole === 'analista_rh';
 
 
   // Filter tabs based on whether we're editing (show Promoções only in edit mode)
@@ -280,7 +281,9 @@ export function ColaboradorForm({
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto" onEscapeKeyDown={(e) => { e.preventDefault(); handleRequestClose(); }}>
           <DialogHeader>
             <DialogTitle>
-              {isEditing ? `Editar Colaborador: ${colaborador.full_name}` : 'Novo Colaborador'}
+              {isEditing 
+                ? (canSave ? `Editar Colaborador: ${colaborador.full_name}` : `Visualizar Colaborador: ${colaborador.full_name}`) 
+                : 'Novo Colaborador'}
             </DialogTitle>
           </DialogHeader>
 
@@ -377,7 +380,7 @@ export function ColaboradorForm({
                         <ArrowRight className="ml-2 h-4 w-4" />
                       </Button>
                     )}
-                    {isEditing && (
+                    {canSave && isEditing && (
                       <Button type="submit" disabled={isSubmitting}>
                         {isSubmitting ? (
                           <>
@@ -392,7 +395,7 @@ export function ColaboradorForm({
                         )}
                       </Button>
                     )}
-                    {!isEditing && (safeCurrentTab >= visibleTabs.length - 1 || visibleTabs[safeCurrentTab + 1]?.id === 'promocoes') && (
+                    {canSave && !isEditing && (safeCurrentTab >= visibleTabs.length - 1 || visibleTabs[safeCurrentTab + 1]?.id === 'promocoes') && (
                       <Button type="submit" disabled={isSubmitting}>
                         {isSubmitting ? (
                           <>

@@ -14,6 +14,10 @@ export function useGestorFilter() {
   return {
     /** The gestor's own colaborador ID (null if not gestor or not loaded) */
     gestorColaboradorId: isGestor ? myColaborador?.id ?? null : null,
+    /** The gestor's own department (null if not gestor or not loaded) */
+    gestorDepartment: isGestor ? myColaborador?.department ?? null : null,
+    /** The gestor's own colaborador record */
+    myColaborador: isGestor ? myColaborador : null,
     /** Whether the current user is a gestor_departamento */
     isGestor,
     /** Whether queries should filter by gestor_id */

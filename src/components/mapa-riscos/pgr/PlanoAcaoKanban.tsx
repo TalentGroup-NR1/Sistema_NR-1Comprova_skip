@@ -23,6 +23,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { CalendarIcon, PaperclipIcon } from "lucide-react";
 import { toast } from "sonner";
+import { useAuth } from "@/hooks/useAuth";
 
 const COLUNAS = [
   { id: "pendente", title: "Pendente", color: "border-l-4 border-l-slate-400" },
@@ -134,6 +135,9 @@ export function PlanoAcaoKanban({ pgrImportacaoId }: { pgrImportacaoId: string }
   const { data: importacoes } = usePgrImportacoes();
   const updateMutation = useUpdateAcao();
   const syncMutation = useSincronizarAcoes();
+  const { role, activeRole } = useAuth();
+  const currentRole = activeRole ?? role;
+  const isGestor = currentRole === 'gestor_departamento';
   
   const [selectedAcao, setSelectedAcao] = useState<PgrPlanoAcao | null>(null);
   const [hasAttemptedSync, setHasAttemptedSync] = useState(false);
@@ -142,9 +146,10 @@ export function PlanoAcaoKanban({ pgrImportacaoId }: { pgrImportacaoId: string }
   const jsonAcoes = pgr?.plano_acao || pgr?.extracao_raw?.plano_acao;
   const jsonHasAcoes = Array.isArray(jsonAcoes) && jsonAcoes.length > 0;
 
-  // Gatilho automático retroativo
+  // Gatilho automático retroativo (apenas para não-gestores)
   React.useEffect(() => {
     if (
+      !isGestor &&
       !isLoading && 
       (!acoes || acoes.length === 0) && 
       pgr?.status === "confirmado" && 
@@ -155,7 +160,7 @@ export function PlanoAcaoKanban({ pgrImportacaoId }: { pgrImportacaoId: string }
       setHasAttemptedSync(true);
       syncMutation.mutate(pgrImportacaoId);
     }
-  }, [acoes, isLoading, pgr?.status, jsonHasAcoes, hasAttemptedSync, pgrImportacaoId, syncMutation]);
+  }, [isGestor, acoes, isLoading, pgr?.status, jsonHasAcoes, hasAttemptedSync, pgrImportacaoId, syncMutation]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -163,6 +168,11 @@ export function PlanoAcaoKanban({ pgrImportacaoId }: { pgrImportacaoId: string }
   );
 
   const handleDragEnd = async (event: DragEndEvent) => {
+    if (isGestor) {
+      toast.error("Gestor de departamento possui acesso somente leitura ao plano de ação.");
+      return;
+    }
+
     const { active, over } = event;
     if (!over || active.id === over.id) return;
 
@@ -218,7 +228,7 @@ export function PlanoAcaoKanban({ pgrImportacaoId }: { pgrImportacaoId: string }
       <div className="flex flex-wrap items-center justify-between gap-4">
         <h2 className="text-xl font-bold">Gestão do Plano de Ação (Kanban)</h2>
         <div className="flex gap-2 items-center">
-          {jsonHasAcoes && isVazio && (
+          {!isGestor && jsonHasAcoes && isVazio && (
             <Button 
               size="sm" 
               variant="outline" 

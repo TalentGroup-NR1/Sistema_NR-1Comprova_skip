@@ -7,12 +7,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useFeriasPendentesAprovacao, useAprovarFeriasGozo } from "@/hooks/useFerias";
+import { useAuth } from "@/hooks/useAuth";
 import { RecusarFeriasDialog } from "./RecusarFeriasDialog";
 
 export function AprovacoesPendentesList() {
   const { data, isLoading } = useFeriasPendentesAprovacao();
   const aprovar = useAprovarFeriasGozo();
   const [recusarId, setRecusarId] = useState<string | null>(null);
+  const { role } = useAuth();
+  const isGestor = role === 'gestor_departamento';
 
   return (
     <Card>
@@ -30,7 +33,11 @@ export function AprovacoesPendentesList() {
         ) : !data || data.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground">
             <Inbox className="h-12 w-12 mx-auto mb-3 opacity-50" />
-            <p>Nenhuma solicitação pendente de aprovação</p>
+            <p>
+              {isGestor
+                ? "Nenhuma solicitação de férias aguardando sua aprovação."
+                : "Nenhuma solicitação pendente de aprovação"}
+            </p>
           </div>
         ) : (
           <Table>
