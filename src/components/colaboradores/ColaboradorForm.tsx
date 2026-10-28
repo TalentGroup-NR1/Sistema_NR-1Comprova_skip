@@ -77,6 +77,7 @@ export function ColaboradorForm({
   const currentRole = activeRole ?? role;
   const canSeeTransferencias = isAdminMaster || isAdminEmpresa || currentRole === 'analista_rh';
   const canSave = isAdminMaster || isAdminEmpresa || currentRole === 'analista_rh';
+  const isEditing = !!colaborador;
 
 
   // Filter tabs based on whether we're editing (show Promoções only in edit mode)

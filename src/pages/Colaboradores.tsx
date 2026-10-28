@@ -56,11 +56,12 @@ const Colaboradores = () => {
   const vinculos = [...new Set(colaboradores.map(c => c.contract_type).filter(Boolean) as string[])].sort();
 
   const filteredColaboradores = colaboradores.filter((colab) => {
+    const term = searchTerm.toLowerCase();
     const matchesSearch =
-      colab.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      colab.corporate_email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      colab.job_title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      colab.department.toLowerCase().includes(searchTerm.toLowerCase());
+      (colab.full_name?.toLowerCase() ?? "").includes(term) ||
+      (colab.corporate_email?.toLowerCase() ?? "").includes(term) ||
+      (colab.job_title?.toLowerCase() ?? "").includes(term) ||
+      (colab.department?.toLowerCase() ?? "").includes(term);
     const matchesStatus = statusFilter === "todos" || colab.status === statusFilter;
     const matchesDepartment = departmentFilter === "todos" || colab.department === departmentFilter;
     const matchesVinculo = vinculoFilter === "todos" || colab.contract_type === vinculoFilter;
