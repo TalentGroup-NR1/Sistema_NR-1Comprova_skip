@@ -282,21 +282,33 @@ serve(async (req) => {
       : linkData.properties.action_link;
 
     // 1. Papel do usuário (inserido ANTES de profiles para que o trigger trg_sync_profile_user_company leia o papel correto)
+    // Preserva papéis existentes e garante tanto o papel solicitado quanto 'colaborador' caso seja papel de gestão
     const assignedRole = requestedRole;
-    await supabaseAdmin.from('user_roles').delete().eq('user_id', userId);
-    const { error: roleError } = await supabaseAdmin
-      .from('user_roles')
-      .insert({
-        user_id: userId,
-        role: assignedRole,
-      });
+    const rolesToEnsure = [assignedRole];
+    if (assignedRole !== 'colaborador') {
+      rolesToEnsure.push('colaborador');
+    }
 
-    if (roleError) {
-      console.error('Error assigning user role:', roleError);
-      return new Response(JSON.stringify({ error: 'Failed to assign user role' }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+    for (const r of rolesToEnsure) {
+      const { data: existingRole } = await supabaseAdmin
+        .from('user_roles')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('role', r)
+        .maybeSingle();
+
+      if (!existingRole) {
+        const { error: roleError } = await supabaseAdmin
+          .from('user_roles')
+          .insert({
+            user_id: userId,
+            role: r,
+          });
+
+        if (roleError) {
+          console.error(`Error assigning user role ${r}:`, roleError);
+        }
+      }
     }
 
     // 2. Perfil do usuário (ativa o trigger trg_sync_profile_user_company, que já encontrará o role correto em user_roles)

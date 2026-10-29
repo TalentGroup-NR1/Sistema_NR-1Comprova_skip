@@ -283,4 +283,92 @@ describe('Sidebar — Seletor de Perfil Ativo (Estilo Flash)', () => {
     // Minhas Férias deve estar oculto
     expect(screen.queryByText('Minhas Férias')).not.toBeInTheDocument();
   });
+
+  it('renderiza o seletor interativo para Administrador Operacional (analista_rh + colaborador)', async () => {
+    const switchActiveRoleMock = vi.fn().mockResolvedValue({ error: null });
+
+    vi.spyOn(useAuthModule, 'useAuth').mockReturnValue({
+      isAuthenticated: true,
+      role: 'analista_rh',
+      activeRole: 'analista_rh',
+      roles: ['analista_rh', 'colaborador'],
+      availableRoles: ['analista_rh', 'colaborador'],
+      switchActiveRole: switchActiveRoleMock,
+      user: { id: 'daniela-1', email: 'daniela.alcantara@talentgroup.com.br' },
+      isSuperAdmin: false,
+      loading: false,
+      profileLoaded: true,
+      companyId: 'comp-1',
+      mustChangePassword: false,
+      isBlocked: false,
+      blockReason: null,
+      isAdminMaster: false,
+      isAdminEmpresa: false,
+      isAdmin: false,
+      signIn: vi.fn(),
+      signOut: vi.fn(),
+      refreshUserData: vi.fn(),
+      clearMustChangePassword: vi.fn(),
+    } as any);
+
+    renderSidebar();
+
+    const trigger = screen.getByTestId('profile-switcher-trigger');
+    expect(trigger).toBeInTheDocument();
+    expect(screen.getByTestId('active-profile-title')).toHaveTextContent('Perfil da Empresa');
+
+    fireEvent.pointerDown(trigger, { button: 0 });
+    fireEvent.click(trigger);
+
+    const pessoalOption = await screen.findByTestId('profile-option-pessoal');
+    expect(pessoalOption).toBeInTheDocument();
+
+    fireEvent.click(pessoalOption);
+    expect(switchActiveRoleMock).toHaveBeenCalledWith('colaborador');
+  });
+
+  it('prioriza admin_empresa sobre analista_rh ao alternar para Perfil da Empresa', async () => {
+    const switchActiveRoleMock = vi.fn().mockResolvedValue({ error: null });
+
+    vi.spyOn(useAuthModule, 'useAuth').mockReturnValue({
+      isAuthenticated: true,
+      role: 'colaborador',
+      activeRole: 'colaborador',
+      // availableRoles onde analista_rh veio antes de admin_empresa
+      roles: ['analista_rh', 'admin_empresa', 'colaborador'],
+      availableRoles: ['analista_rh', 'admin_empresa', 'colaborador'],
+      switchActiveRole: switchActiveRoleMock,
+      user: { id: 'daniela-1', email: 'daniela.alcantara@talentgroup.com.br' },
+      isSuperAdmin: false,
+      loading: false,
+      profileLoaded: true,
+      companyId: 'comp-1',
+      mustChangePassword: false,
+      isBlocked: false,
+      blockReason: null,
+      isAdminMaster: false,
+      isAdminEmpresa: true,
+      isAdmin: true,
+      signIn: vi.fn(),
+      signOut: vi.fn(),
+      refreshUserData: vi.fn(),
+      clearMustChangePassword: vi.fn(),
+    } as any);
+
+    renderSidebar();
+
+    const trigger = screen.getByTestId('profile-switcher-trigger');
+    expect(trigger).toBeInTheDocument();
+    expect(screen.getByTestId('active-profile-title')).toHaveTextContent('Meu Perfil');
+
+    fireEvent.pointerDown(trigger, { button: 0 });
+    fireEvent.click(trigger);
+
+    const empresaOption = await screen.findByTestId('profile-option-empresa');
+    expect(empresaOption).toBeInTheDocument();
+
+    fireEvent.click(empresaOption);
+    // Deve priorizar admin_empresa sobre analista_rh
+    expect(switchActiveRoleMock).toHaveBeenCalledWith('admin_empresa');
+  });
 });

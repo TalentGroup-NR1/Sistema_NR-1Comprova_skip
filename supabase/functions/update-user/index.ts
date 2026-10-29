@@ -221,15 +221,31 @@ serve(async (req) => {
       }
     }
 
-    // Update role
+    // Update role: promoção a admin_empresa insere sem remover papéis existentes (ex: colaborador)
     if (role) {
-      const { error: roleError } = await supabaseAdmin
-        .from('user_roles')
-        .update({ role })
-        .eq('user_id', user_id);
+      if (role === 'admin_empresa') {
+        const { data: hasAdmin } = await supabaseAdmin
+          .from('user_roles')
+          .select('id')
+          .eq('user_id', user_id)
+          .eq('role', 'admin_empresa')
+          .maybeSingle();
 
-      if (roleError) {
-        console.error('Error updating role:', roleError);
+        if (!hasAdmin) {
+          await supabaseAdmin.from('user_roles').insert({
+            user_id,
+            role: 'admin_empresa',
+          });
+        }
+      } else {
+        const { error: roleError } = await supabaseAdmin
+          .from('user_roles')
+          .update({ role })
+          .eq('user_id', user_id);
+
+        if (roleError) {
+          console.error('Error updating role:', roleError);
+        }
       }
     }
 

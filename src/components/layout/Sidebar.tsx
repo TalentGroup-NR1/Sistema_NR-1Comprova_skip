@@ -115,7 +115,7 @@ export function Sidebar() {
   const effectiveRole = activeRole ?? role;
 
   const MANAGEMENT_ROLES: AppRole[] = ['admin_master', 'admin_empresa', 'analista_rh', 'gestor_departamento'];
-  const primaryManagementRole = availableRoles.find(r => MANAGEMENT_ROLES.includes(r as AppRole));
+  const primaryManagementRole = MANAGEMENT_ROLES.find(mRole => availableRoles.includes(mRole));
   const hasManagementRole = !!primaryManagementRole;
   const hasColaboradorRole = availableRoles.includes('colaborador');
   const isMultiPerfil = hasManagementRole && hasColaboradorRole;
