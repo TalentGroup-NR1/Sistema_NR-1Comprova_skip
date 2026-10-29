@@ -52,8 +52,11 @@ CREATE TRIGGER trg_prevent_lifecycle_events_update_delete
 BEFORE UPDATE OR DELETE ON public.company_lifecycle_events
 FOR EACH ROW EXECUTE FUNCTION public.prevent_lifecycle_events_modification();
 
--- 7. RLS em company_lifecycle_events
+-- 7. RLS e Permissões em company_lifecycle_events
 ALTER TABLE public.company_lifecycle_events ENABLE ROW LEVEL SECURITY;
+
+GRANT SELECT ON public.company_lifecycle_events TO authenticated, service_role;
+REVOKE INSERT, UPDATE, DELETE ON public.company_lifecycle_events FROM authenticated, anon;
 
 DROP POLICY IF EXISTS "Apenas super_admin e admin_master leem auditoria de ciclo de vida" ON public.company_lifecycle_events;
 CREATE POLICY "Apenas super_admin e admin_master leem auditoria de ciclo de vida"
@@ -167,3 +170,31 @@ $$;
 
 REVOKE EXECUTE ON FUNCTION public.transition_company_lifecycle(uuid, text, text) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.transition_company_lifecycle(uuid, text, text) TO authenticated;
+
+-- 9. Atualização de get_plataforma_metrics para suportar novos status e permissão de admin_master
+CREATE OR REPLACE FUNCTION public.get_plataforma_metrics()
+RETURNS jsonb
+LANGUAGE plpgsql
+STABLE SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v jsonb;
+BEGIN
+  IF NOT (public.is_super_admin(auth.uid()) OR public.is_admin_master(auth.uid())) THEN
+    RAISE EXCEPTION 'Acesso negado';
+  END IF;
+
+  SELECT jsonb_build_object(
+    'empresas_ativas', (SELECT count(*) FROM public.companies WHERE status IN ('active', 'ativa')),
+    'empresas_internas', (SELECT count(*) FROM public.companies WHERE is_internal IS TRUE),
+    'empresas_externas', (SELECT count(*) FROM public.companies WHERE is_internal IS NOT TRUE),
+    'empresas_suspensas', (SELECT count(*) FROM public.companies WHERE status IN ('suspended', 'suspensa')),
+    'empresas_encerradas', (SELECT count(*) FROM public.companies WHERE status = 'encerrada'),
+    'total_usuarios', (SELECT count(*) FROM public.profiles),
+    'novos_30_dias', (SELECT count(*) FROM public.companies WHERE created_at >= now() - interval '30 days')
+  ) INTO v;
+
+  RETURN v;
+END;
+$$;

@@ -180,17 +180,12 @@ export default function CadastroEmpresa() {
 
       // Se for modo skip_invite ou filial vinculada
       if (isSkipInvite || result?.is_branch) {
-        if (isFilialFlow) {
-          toast.success(
-            `Filial ${data.razao_social} cadastrada e vinculada à sua conta com sucesso!`,
-            { duration: 6000 }
-          );
-        } else {
-          toast.success(
-            `Empresa ${data.razao_social} cadastrada e vinculada a ${data.admin_email} com sucesso!`,
-            { duration: 6000 }
-          );
-        }
+        toast.success(
+          isFilialFlow
+            ? `Filial ${data.razao_social} cadastrada e vinculada à sua conta com sucesso!`
+            : `Empresa ${data.razao_social} cadastrada e vinculada a ${data.admin_email} com sucesso!`,
+          { duration: 6000 }
+        );
         navigate(isSuperAdminUser ? "/empresas" : "/");
         return;
       }
@@ -287,11 +282,10 @@ export default function CadastroEmpresa() {
                       className="grid grid-cols-1 sm:grid-cols-2 gap-3"
                     >
                       <div
-                        className={`flex items-start space-x-3 rounded-lg border p-3 cursor-pointer transition-colors ${
-                          adminMode === "novo"
+                        className={`flex items-start space-x-3 rounded-lg border p-3 cursor-pointer transition-colors ${adminMode === "novo"
                             ? "border-primary bg-primary/5 text-foreground"
                             : "border-border hover:bg-muted/50 text-muted-foreground"
-                        }`}
+                          }`}
                         onClick={() => handleModeChange("novo")}
                       >
                         <RadioGroupItem value="novo" id="mode-novo" className="mt-0.5" />
@@ -306,11 +300,10 @@ export default function CadastroEmpresa() {
                       </div>
 
                       <div
-                        className={`flex items-start space-x-3 rounded-lg border p-3 cursor-pointer transition-colors ${
-                          adminMode === "existente"
+                        className={`flex items-start space-x-3 rounded-lg border p-3 cursor-pointer transition-colors ${adminMode === "existente"
                             ? "border-primary bg-primary/5 text-foreground"
                             : "border-border hover:bg-muted/50 text-muted-foreground"
-                        }`}
+                          }`}
                         onClick={() => handleModeChange("existente")}
                       >
                         <RadioGroupItem value="existente" id="mode-existente" className="mt-0.5" />
@@ -441,8 +434,8 @@ export default function CadastroEmpresa() {
                     {isFilialFlow
                       ? "Cadastrar Filial"
                       : adminMode === "existente"
-                      ? "Cadastrar Empresa e Vincular Administrador"
-                      : "Cadastrar Empresa e Enviar Convite"}
+                        ? "Cadastrar Empresa e Vincular Administrador"
+                        : "Cadastrar Empresa e Enviar Convite"}
                   </>
                 )}
               </Button>
