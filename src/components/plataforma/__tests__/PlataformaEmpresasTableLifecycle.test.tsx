@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
-import { PlataformaEmpresasTable } from '../PlataformaEmpresasTable';
+import { PlataformaEmpresasTable, renderCompanyStatusBadge } from '../PlataformaEmpresasTable';
 import * as plataformaHook from '@/hooks/usePlataforma';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
@@ -94,5 +94,55 @@ describe('PlataformaEmpresasTable — Máquina de Estados e Ciclo de Vida', () =
 
     const suspenderBtn = screen.getByRole('button', { name: /^suspender$/i });
     expect(suspenderBtn).toBeDisabled();
+  });
+
+  it('status desconhecido renderiza badge neutro "—", emite console.warn e não exibe botões de transição', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const unknownEmpresa: plataformaHook.PlataformaEmpresa = {
+      id: 'emp-unknown',
+      name: 'Empresa Desconhecida LTDA',
+      brand_name: 'Desconhecida',
+      cnpj: '99.999.999/0001-99',
+      status: 'invalido' as any,
+      is_internal: false,
+      created_at: '2026-01-01T00:00:00.000Z',
+      total_colaboradores: 1,
+    };
+
+    vi.spyOn(plataformaHook, 'usePlataformaEmpresas').mockReturnValue({
+      data: [unknownEmpresa],
+      isLoading: false,
+    } as any);
+
+    renderWithClient(<PlataformaEmpresasTable />);
+
+    expect(screen.getByText('—')).toBeInTheDocument();
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining('[PlataformaEmpresasTable] Status desconhecido para empresa: "invalido"')
+    );
+    expect(screen.queryByRole('button', { name: /^suspender$/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^reativar$/i })).not.toBeInTheDocument();
+    expect(screen.queryByText('Terminal')).not.toBeInTheDocument();
+
+    warnSpy.mockRestore();
+  });
+
+  it('renderCompanyStatusBadge retorna as variantes e classes corretas para cada status', () => {
+    const { container: ativaContainer } = render(renderCompanyStatusBadge('ativa'));
+    expect(ativaContainer.textContent).toBe('Ativa');
+    expect(ativaContainer.firstElementChild?.className).toContain('bg-emerald-600');
+
+    const { container: suspensaContainer } = render(renderCompanyStatusBadge('suspensa'));
+    expect(suspensaContainer.textContent).toBe('Suspensa');
+    expect(suspensaContainer.firstElementChild?.className).toContain('bg-amber-500/15');
+
+    const { container: encerradaContainer } = render(renderCompanyStatusBadge('encerrada'));
+    expect(encerradaContainer.textContent).toBe('Encerrada');
+
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const { container: unknownContainer } = render(renderCompanyStatusBadge('xyz'));
+    expect(unknownContainer.textContent).toBe('—');
+    expect(warnSpy).toHaveBeenCalled();
+    warnSpy.mockRestore();
   });
 });

@@ -24,3 +24,4 @@ export function useCompanyStatus(companyId: string | null | undefined) {
     staleTime: 1000 * 30, // 30s
   });
 }
+

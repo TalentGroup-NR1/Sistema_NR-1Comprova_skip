@@ -48,3 +48,4 @@ describe('CompanySuspendedBanner', () => {
     expect(container).toBeEmptyDOMElement();
   });
 });
+
