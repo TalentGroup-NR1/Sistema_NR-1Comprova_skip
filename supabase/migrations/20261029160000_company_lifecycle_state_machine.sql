@@ -1,24 +1,28 @@
 -- Migração: Máquina de Estados e Auditoria do Ciclo de Vida de Empresa
 -- Data: 2026-10-29
 
--- 1. Normalização dos dados existentes (active -> ativa)
+-- 1. Remover constraint legada antes da normalização dos dados
+ALTER TABLE public.companies
+  DROP CONSTRAINT IF EXISTS companies_status_check;
+
+ALTER TABLE public.companies
+  DROP CONSTRAINT IF EXISTS check_companies_status;
+
+-- 2. Normalização dos dados existentes (active -> ativa)
 UPDATE public.companies
 SET status = 'ativa'
 WHERE status = 'active' OR status IS NULL;
 
--- 2. Criação da CHECK constraint para companies.status
+-- 3. Criação da nova CHECK constraint para companies.status
 ALTER TABLE public.companies
-  DROP CONSTRAINT IF EXISTS check_companies_status;
-
-ALTER TABLE public.companies
-  ADD CONSTRAINT check_companies_status
+  ADD CONSTRAINT companies_status_check
   CHECK (status IN ('ativa', 'suspensa', 'encerrada'));
 
--- 3. Adição da coluna suspension_reason para evolução futura
+-- 4. Adição da coluna suspension_reason para evolução futura
 ALTER TABLE public.companies
   ADD COLUMN IF NOT EXISTS suspension_reason text;
 
--- 4. Tabela de auditoria append-only: company_lifecycle_events
+-- 5. Tabela de auditoria append-only: company_lifecycle_events
 CREATE TABLE IF NOT EXISTS public.company_lifecycle_events (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   company_id uuid NOT NULL REFERENCES public.companies(id) ON DELETE RESTRICT,
@@ -32,7 +36,7 @@ CREATE TABLE IF NOT EXISTS public.company_lifecycle_events (
 CREATE INDEX IF NOT EXISTS idx_company_lifecycle_events_company_id
   ON public.company_lifecycle_events (company_id, created_at DESC);
 
--- 5. Trigger de salvaguarda: bloqueia estritamente UPDATE e DELETE em company_lifecycle_events
+-- 6. Trigger de salvaguarda: bloqueia estritamente UPDATE e DELETE em company_lifecycle_events
 CREATE OR REPLACE FUNCTION public.prevent_lifecycle_events_modification()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -48,7 +52,7 @@ CREATE TRIGGER trg_prevent_lifecycle_events_update_delete
 BEFORE UPDATE OR DELETE ON public.company_lifecycle_events
 FOR EACH ROW EXECUTE FUNCTION public.prevent_lifecycle_events_modification();
 
--- 6. RLS em company_lifecycle_events
+-- 7. RLS em company_lifecycle_events
 ALTER TABLE public.company_lifecycle_events ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Apenas super_admin e admin_master leem auditoria de ciclo de vida" ON public.company_lifecycle_events;
@@ -61,7 +65,7 @@ CREATE POLICY "Apenas super_admin e admin_master leem auditoria de ciclo de vida
     OR public.is_admin_master(auth.uid())
   );
 
--- 7. RPC transacional: transition_company_lifecycle
+-- 8. RPC transacional: transition_company_lifecycle
 CREATE OR REPLACE FUNCTION public.transition_company_lifecycle(
   _company_id uuid,
   _target_status text,
