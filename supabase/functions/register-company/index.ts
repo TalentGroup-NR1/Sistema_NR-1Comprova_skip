@@ -18,6 +18,7 @@ const BodySchema = z.object({
   cnpj: z.string().trim().regex(cnpjRegex, "CNPJ inválido"),
   admin_nome: z.string().trim().min(2).max(200),
   admin_email: z.string().trim().email().max(255),
+  skip_invite: z.boolean().optional().default(false),
   aceite_termos: z.boolean().optional(),
   terms_version: z.string().trim().min(1).max(20).optional().default("1.0"),
   privacy_version: z.string().trim().min(1).max(20).optional().default("1.0"),
@@ -225,7 +226,14 @@ Deno.serve(async (req) => {
       .ilike("email", email)
       .maybeSingle();
 
-    isBranchCreation = !!existingProfile;
+    if (data.skip_invite && !existingProfile) {
+      return json(
+        { success: false, error: "skip_invite requer um administrador já cadastrado." },
+        400,
+      );
+    }
+
+    isBranchCreation = !!existingProfile || data.skip_invite;
 
     if (isBranchCreation) {
       // Regra de segurança: apenas usuário autenticado admin_empresa/admin_master pode adicionar filial
@@ -289,7 +297,7 @@ Deno.serve(async (req) => {
     if (companyError || !company) throw new Error(companyError?.message ?? "Falha ao criar empresa");
     companyId = company.id;
 
-    if (!isBranchCreation) {
+    if (!isBranchCreation && !data.skip_invite) {
       // 2. Novo Usuário admin com SENHA ALEATÓRIA INTERNA (ninguém vê)
       const randomPassword = generateRandomPassword(64);
       const { data: created, error: userError } = await admin.auth.admin.createUser({
@@ -451,42 +459,46 @@ Deno.serve(async (req) => {
     // 7. Email transacional (falha NÃO invalida o cadastro)
     let emailSent = false;
     let emailError: string | null = null;
-    try {
-      const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-      const resp = await fetch(
-        `${Deno.env.get("SUPABASE_URL")}/functions/v1/send-transactional-email`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${serviceKey}`,
-            apikey: serviceKey,
-          },
-          body: JSON.stringify({
-            templateName: "convite-admin-empresa",
-            recipientEmail: email,
-            companyId,
-            idempotencyKey: `convite-empresa-${companyId}`,
-            templateData: {
-              siteName: "NR-1Comprova",
-              siteUrl,
-              adminName: data.admin_nome,
-              companyName: data.brand_name || data.razao_social,
-              logoUrl: logoUrl || undefined,
-              confirmationUrl: recoveryUrl ?? `${siteUrl}/auth`,
-              expirationHours: 24,
+    if (!data.skip_invite) {
+      try {
+        const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+        const resp = await fetch(
+          `${Deno.env.get("SUPABASE_URL")}/functions/v1/send-transactional-email`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${serviceKey}`,
+              apikey: serviceKey,
             },
-          }),
-        },
-      );
-      emailSent = resp.ok;
-      if (!resp.ok) {
-        emailError = await resp.text();
-        console.error("falha ao enviar convite/notificação", resp.status, emailError);
+            body: JSON.stringify({
+              templateName: "convite-admin-empresa",
+              recipientEmail: email,
+              companyId,
+              idempotencyKey: `convite-empresa-${companyId}`,
+              templateData: {
+                siteName: "NR-1Comprova",
+                siteUrl,
+                adminName: data.admin_nome,
+                companyName: data.brand_name || data.razao_social,
+                logoUrl: logoUrl || undefined,
+                confirmationUrl: recoveryUrl ?? `${siteUrl}/auth`,
+                expirationHours: 24,
+              },
+            }),
+          },
+        );
+        emailSent = resp.ok;
+        if (!resp.ok) {
+          emailError = await resp.text();
+          console.error("falha ao enviar convite/notificação", resp.status, emailError);
+        }
+      } catch (e) {
+        emailError = (e as Error).message;
+        console.error("notificação ignorada", emailError);
       }
-    } catch (e) {
-      emailError = (e as Error).message;
-      console.error("notificação ignorada", emailError);
+    } else {
+      console.log("Envio de convite suprimido: vínculo de administrador existente");
     }
 
     // 8. Audit log em platform_audit_logs
