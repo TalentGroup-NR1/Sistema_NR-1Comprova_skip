@@ -5,21 +5,32 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useToast } from '@/hooks/use-toast';
-import { usePlataformaEmpresas, useToggleEmpresaStatus } from '@/hooks/usePlataforma';
-import { Search, Boxes } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { usePlataformaEmpresas } from '@/hooks/usePlataforma';
+import { useQueryClient } from '@tanstack/react-query';
+import { Search, Boxes, MoreVertical } from 'lucide-react';
 import { GerenciarModulosEmpresaDialog } from './GerenciarModulosEmpresaDialog';
+import { CompanyLifecycleModal, CompanyLifecycleTargetStatus } from './CompanyLifecycleModal';
 
 const PAGE_SIZE = 20;
 
 export function PlataformaEmpresasTable() {
   const { data: empresas, isLoading } = usePlataformaEmpresas();
-  const toggleStatus = useToggleEmpresaStatus();
-  const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('todos');
   const [page, setPage] = useState(1);
   const [empresaModulos, setEmpresaModulos] = useState<{ id: string; name: string; brand_name?: string | null } | null>(null);
+
+  const [lifecycleModal, setLifecycleModal] = useState<{
+    company: { id: string; name: string; brand_name?: string | null; status: 'ativa' | 'suspensa' | 'encerrada' };
+    targetStatus: CompanyLifecycleTargetStatus;
+  } | null>(null);
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -29,7 +40,11 @@ export function PlataformaEmpresasTable() {
         e.name?.toLowerCase().includes(term) ||
         e.brand_name?.toLowerCase().includes(term) ||
         e.cnpj?.toLowerCase().includes(term);
-      const matchStatus = status === 'todos' || e.status === status;
+      const matchStatus =
+        status === 'todos' ||
+        e.status === status ||
+        (status === 'ativa' && e.status === 'active') ||
+        (status === 'suspensa' && e.status === 'suspended');
       return matchTerm && matchStatus;
     });
   }, [empresas, search, status]);
@@ -37,19 +52,6 @@ export function PlataformaEmpresasTable() {
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
   const rows = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
-
-  const handleToggle = async (companyId: string, ativar: boolean) => {
-    try {
-      await toggleStatus.mutateAsync({ companyId, ativar });
-      toast({ title: ativar ? 'Empresa ativada' : 'Empresa suspensa' });
-    } catch (err) {
-      toast({
-        variant: 'destructive',
-        title: 'Erro',
-        description: err instanceof Error ? err.message : 'Não foi possível alterar o status.',
-      });
-    }
-  };
 
   return (
     <Card className="rounded-xl">
@@ -71,9 +73,9 @@ export function PlataformaEmpresasTable() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="todos">Todos os status</SelectItem>
-              <SelectItem value="active">Ativas</SelectItem>
-              <SelectItem value="suspended">Suspensas</SelectItem>
-              <SelectItem value="inactive">Inativas</SelectItem>
+              <SelectItem value="ativa">Ativas</SelectItem>
+              <SelectItem value="suspensa">Suspensas</SelectItem>
+              <SelectItem value="encerrada">Encerradas</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -99,55 +101,126 @@ export function PlataformaEmpresasTable() {
               {!isLoading && rows.length === 0 && (
                 <TableRow><TableCell colSpan={7} className="text-muted-foreground">Nenhuma empresa encontrada.</TableCell></TableRow>
               )}
-              {rows.map(e => (
-                <TableRow key={e.id}>
-                  <TableCell className="font-medium">
-                    <div className="flex items-center gap-2">
-                      {e.brand_name || e.name}
-                      {e.is_internal && <Badge variant="secondary">Interna</Badge>}
-                    </div>
-                  </TableCell>
-                  <TableCell className="max-w-[240px] truncate">{e.name}</TableCell>
-                  <TableCell className="whitespace-nowrap">{e.cnpj ?? '—'}</TableCell>
-                  <TableCell>
-                    <Badge variant={e.status === 'active' ? 'default' : 'destructive'}>
-                      {e.status === 'active' ? 'Ativa' : e.status === 'suspended' ? 'Suspensa' : 'Inativa'}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">{e.total_colaboradores}</TableCell>
-                  <TableCell className="whitespace-nowrap">
-                    {new Date(e.created_at).toLocaleDateString('pt-BR')}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() =>
-                          setEmpresaModulos({
-                            id: e.id,
-                            name: e.name,
-                            brand_name: e.brand_name,
-                          })
+              {rows.map(e => {
+                const isAtiva = e.status === 'ativa' || e.status === 'active';
+                const isSuspensa = e.status === 'suspensa' || e.status === 'suspended';
+                const isEncerrada = e.status === 'encerrada';
+                const canonicalStatus = isAtiva ? 'ativa' : isSuspensa ? 'suspensa' : 'encerrada';
+
+                return (
+                  <TableRow key={e.id}>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2">
+                        {e.brand_name || e.name}
+                        {e.is_internal && <Badge variant="secondary">Interna</Badge>}
+                      </div>
+                    </TableCell>
+                    <TableCell className="max-w-[240px] truncate">{e.name}</TableCell>
+                    <TableCell className="whitespace-nowrap">{e.cnpj ?? '—'}</TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={isAtiva ? 'default' : isSuspensa ? 'secondary' : 'destructive'}
+                        className={
+                          isSuspensa
+                            ? 'bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30'
+                            : undefined
                         }
-                        title="Gerenciar módulos contratados pela empresa"
                       >
-                        <Boxes className="h-3.5 w-3.5 mr-1 text-muted-foreground" />
-                        Módulos
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant={e.status === 'active' ? 'outline' : 'default'}
-                        disabled={e.is_internal || toggleStatus.isPending}
-                        title={e.is_internal ? 'Empresas internas não podem ser suspensas' : undefined}
-                        onClick={() => handleToggle(e.id, e.status !== 'active')}
-                      >
-                        {e.status === 'active' ? 'Suspender' : 'Ativar'}
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
+                        {isAtiva ? 'Ativa' : isSuspensa ? 'Suspensa' : 'Encerrada'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">{e.total_colaboradores}</TableCell>
+                    <TableCell className="whitespace-nowrap">
+                      {new Date(e.created_at).toLocaleDateString('pt-BR')}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() =>
+                            setEmpresaModulos({
+                              id: e.id,
+                              name: e.name,
+                              brand_name: e.brand_name,
+                            })
+                          }
+                          title="Gerenciar módulos contratados pela empresa"
+                        >
+                          <Boxes className="h-3.5 w-3.5 mr-1 text-muted-foreground" />
+                          Módulos
+                        </Button>
+
+                        {isEncerrada ? (
+                          <Badge variant="outline" className="text-muted-foreground font-normal">
+                            Terminal
+                          </Badge>
+                        ) : (
+                          <>
+                            {isAtiva ? (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={e.is_internal}
+                                title={e.is_internal ? 'Empresas internas não podem ser suspensas' : undefined}
+                                onClick={() =>
+                                  setLifecycleModal({
+                                    company: { id: e.id, name: e.name, brand_name: e.brand_name, status: canonicalStatus },
+                                    targetStatus: 'suspensa',
+                                  })
+                                }
+                              >
+                                Suspender
+                              </Button>
+                            ) : (
+                              <Button
+                                size="sm"
+                                variant="default"
+                                disabled={e.is_internal}
+                                onClick={() =>
+                                  setLifecycleModal({
+                                    company: { id: e.id, name: e.name, brand_name: e.brand_name, status: canonicalStatus },
+                                    targetStatus: 'ativa',
+                                  })
+                                }
+                              >
+                                Reativar
+                              </Button>
+                            )}
+
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-8 w-8 p-0"
+                                  disabled={e.is_internal}
+                                  title={e.is_internal ? 'Empresas internas não podem ser encerradas' : 'Mais ações'}
+                                >
+                                  <MoreVertical className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem
+                                  className="text-destructive focus:text-destructive cursor-pointer"
+                                  onClick={() =>
+                                    setLifecycleModal({
+                                      company: { id: e.id, name: e.name, brand_name: e.brand_name, status: canonicalStatus },
+                                      targetStatus: 'encerrada',
+                                    })
+                                  }
+                                >
+                                  Encerrar empresa
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </div>
@@ -171,6 +244,16 @@ export function PlataformaEmpresasTable() {
         open={!!empresaModulos}
         onOpenChange={(open) => !open && setEmpresaModulos(null)}
         empresa={empresaModulos}
+      />
+
+      <CompanyLifecycleModal
+        isOpen={!!lifecycleModal}
+        onClose={() => setLifecycleModal(null)}
+        company={lifecycleModal?.company ?? null}
+        targetStatus={lifecycleModal?.targetStatus ?? 'suspensa'}
+        onSuccess={() => {
+          queryClient.invalidateQueries({ queryKey: ['plataforma'] });
+        }}
       />
     </Card>
   );
