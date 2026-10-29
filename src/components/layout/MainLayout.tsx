@@ -14,6 +14,7 @@ import { BrandLogo } from "@/components/layout/BrandLogo";
 import { WelcomeWizard } from "@/components/onboarding/WelcomeWizard";
 import { TermsReacceptanceModal } from "@/components/auth/TermsReacceptanceModal";
 import { GestorAlertBanner } from "./GestorAlertBanner";
+import { CompanySuspendedBanner } from "./CompanySuspendedBanner";
 
 
 
@@ -130,6 +131,7 @@ export function MainLayout({ children }: MainLayoutProps) {
         </div>
 
         <Header />
+        <CompanySuspendedBanner />
         <GestorAlertBanner />
         <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
           {children}
