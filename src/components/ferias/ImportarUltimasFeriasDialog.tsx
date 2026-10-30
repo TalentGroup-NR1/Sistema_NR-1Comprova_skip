@@ -139,6 +139,43 @@ export function isDiasValido(val: string | undefined): boolean {
   return /^-?\d+(\.\d+)?/.test(cleaned);
 }
 
+export function isFormatoData(val: string | undefined): boolean {
+  if (!val) return false;
+  const trimmed = val.trim();
+  if (trimmed.includes("/")) {
+    return /^\d{1,4}\/\d{1,2}(\/\d{2,4})?$/.test(trimmed);
+  }
+  return /^\d{4}-\d{2}-\d{2}$/.test(trimmed) || /^\d{1,2}-\d{1,2}-\d{2,4}$/.test(trimmed);
+}
+
+export function isDescansoFallbackMatch(h: string): boolean {
+  const hasDescansoOrGozo = h.includes("descanso") || h.includes("gozo");
+  const hasQuantityIndicator =
+    h.includes("dias") ||
+    h.includes("qtd") ||
+    h.includes("quantidade") ||
+    h.includes("total");
+
+  if (!hasDescansoOrGozo || !hasQuantityIndicator) {
+    return false;
+  }
+
+  const excluded = [
+    "inicio",
+    "fim",
+    "data",
+    "periodo",
+    "referencia",
+    "ref",
+    "ano",
+    "mes",
+    "competencia",
+    "aquisitivo",
+  ];
+
+  return !excluded.some((ex) => h.includes(ex));
+}
+
 function toISO(dateStr: string): string | null {
   if (!dateStr) return null;
   const d = parseDateBR(dateStr);
@@ -229,7 +266,7 @@ export function ImportarUltimasFeriasDialog({ open, onOpenChange }: Props) {
     const diasMatch = findColumnIndexWithFallback(
       headers,
       ALIASES_DESCANSO,
-      (h) => (h.includes("descanso") || h.includes("gozo")) && !h.includes("inicio") && !h.includes("fim") && !h.includes("data")
+      isDescansoFallbackMatch
     );
     const abonoMatch = findColumnIndexWithFallback(
       headers,
@@ -279,6 +316,8 @@ export function ImportarUltimasFeriasDialog({ open, onOpenChange }: Props) {
       else if (!iniGozo || !fimGozo) error = "Datas de gozo inválidas";
       else if (fimGozo < iniGozo) error = "Fim do gozo anterior ao início";
       else if (perFim < perIni) error = "Fim do período anterior ao início";
+      else if (rawDias && isFormatoData(rawDias)) error = `Coluna de dias parece conter data, não quantidade: "${rawDias}"`;
+      else if (rawAbono && isFormatoData(rawAbono)) error = `Coluna de abono parece conter data, não quantidade: "${rawAbono}"`;
       else if (rawDias && !isDiasValido(rawDias)) error = `Dias de descanso inválidos: "${rawDias}"`;
       else if (rawAbono && !isDiasValido(rawAbono)) error = `Abono pecuniário inválido: "${rawAbono}"`;
 

@@ -4,6 +4,8 @@ import {
   parseCSV,
   parseDias,
   isDiasValido,
+  isFormatoData,
+  isDescansoFallbackMatch,
   ALIASES_ABONO,
   ALIASES_DESCANSO,
   findColumnIndexWithFallback,
@@ -38,6 +40,76 @@ describe("ImportarUltimasFeriasDialog — Parsing e Tratamento de Abono Pecuniá
     }
   });
 
+  it("testes adversariais para seleção de colunas de descanso/gozo", () => {
+    // 1. "periodo_gozo" → NÃO deve casar como dias
+    const matchPeriodoGozo = findColumnIndexWithFallback(
+      [normalizeHeader("periodo_gozo")],
+      ALIASES_DESCANSO,
+      isDescansoFallbackMatch
+    );
+    expect(matchPeriodoGozo.index, "periodo_gozo não deve casar").toBe(-1);
+
+    // 2. "gozo_1" → NÃO deve casar como dias
+    const matchGozo1 = findColumnIndexWithFallback(
+      [normalizeHeader("gozo_1")],
+      ALIASES_DESCANSO,
+      isDescansoFallbackMatch
+    );
+    expect(matchGozo1.index, "gozo_1 não deve casar").toBe(-1);
+
+    // 3. "gozo_ano_2023" → NÃO deve casar como dias
+    const matchGozoAno = findColumnIndexWithFallback(
+      [normalizeHeader("gozo_ano_2023")],
+      ALIASES_DESCANSO,
+      isDescansoFallbackMatch
+    );
+    expect(matchGozoAno.index, "gozo_ano_2023 não deve casar").toBe(-1);
+
+    // 4. "dias_de_gozo" → DEVE casar (match exato)
+    const matchDiasDeGozo = findColumnIndexWithFallback(
+      [normalizeHeader("dias_de_gozo")],
+      ALIASES_DESCANSO,
+      isDescansoFallbackMatch
+    );
+    expect(matchDiasDeGozo.index, "dias_de_gozo deve casar").toBe(0);
+    expect(matchDiasDeGozo.isFallback, "dias_de_gozo deve ser match exato").toBe(false);
+
+    // 5. "Dias Gozados" → DEVE casar (match exato)
+    const matchDiasGozados = findColumnIndexWithFallback(
+      [normalizeHeader("Dias Gozados")],
+      ALIASES_DESCANSO,
+      isDescansoFallbackMatch
+    );
+    expect(matchDiasGozados.index, "Dias Gozados deve casar").toBe(0);
+    expect(matchDiasGozados.isFallback, "Dias Gozados deve ser match exato").toBe(false);
+
+    // 6. "Total de dias de descanso" → DEVE casar por fallback
+    const matchTotalDescanso = findColumnIndexWithFallback(
+      [normalizeHeader("Total de dias de descanso")],
+      ALIASES_DESCANSO,
+      isDescansoFallbackMatch
+    );
+    expect(matchTotalDescanso.index, "Total de dias de descanso deve casar").toBe(0);
+    expect(matchTotalDescanso.isFallback, "Total de dias de descanso deve ser fallback").toBe(true);
+  });
+
+  it("testa validação de data em campos de quantidade (isFormatoData)", () => {
+    // Datas no formato DD/MM/AAAA, AAAA-MM-DD ou DD-MM-AAAA devem ser detectadas
+    expect(isFormatoData("05/02/2024")).toBe(true);
+    expect(isFormatoData("2024-02-05")).toBe(true);
+    expect(isFormatoData("05-02-2024")).toBe(true);
+    expect(isFormatoData("5/2/2024")).toBe(true);
+
+    // Quantidades numéricas válidas NÃO devem ser consideradas data
+    expect(isFormatoData("10")).toBe(false);
+    expect(isFormatoData("10,0")).toBe(false);
+    expect(isFormatoData("10.0")).toBe(false);
+    expect(isFormatoData("10 dias")).toBe(false);
+    expect(isFormatoData("10d")).toBe(false);
+    expect(isFormatoData("")).toBe(false);
+    expect(isFormatoData(undefined)).toBe(false);
+  });
+
   it("testa fallback de aproximação para abono e descanso e garante prioridade de match exato", () => {
     // 1. "Abono (qtd. dias)" -> normalizado "abono_qtd_dias" -> casa por aproximação
     const headerAbonoAprox = [normalizeHeader("Abono (qtd. dias)")];
@@ -49,24 +121,14 @@ describe("ImportarUltimasFeriasDialog — Parsing e Tratamento de Abono Pecuniá
     expect(matchAbonoAprox.index).toBe(0);
     expect(matchAbonoAprox.isFallback).toBe(true);
 
-    // 2. "Dias de Descanso Gozados" -> casa (seja exato ou por aproximação)
+    // 2. "Dias de Descanso Gozados" -> casa (match exato)
     const headerDescansoAprox = [normalizeHeader("Dias de Descanso Gozados")];
     const matchDescansoAprox = findColumnIndexWithFallback(
       headerDescansoAprox,
       ALIASES_DESCANSO,
-      (h) => (h.includes("descanso") || h.includes("gozo")) && !h.includes("inicio") && !h.includes("fim") && !h.includes("data")
+      isDescansoFallbackMatch
     );
     expect(matchDescansoAprox.index).toBe(0);
-
-    // Teste com variação não listada nos aliases exatos para provar fallback de descanso/gozo
-    const headerGozoInedito = [normalizeHeader("Gozo usufruído no ano")];
-    const matchGozoInedito = findColumnIndexWithFallback(
-      headerGozoInedito,
-      ALIASES_DESCANSO,
-      (h) => (h.includes("descanso") || h.includes("gozo")) && !h.includes("inicio") && !h.includes("fim") && !h.includes("data")
-    );
-    expect(matchGozoInedito.index).toBe(0);
-    expect(matchGozoInedito.isFallback).toBe(true);
 
     // 3. "Coluna Aleatória" -> não deve casar (retorna -1)
     const headerAleatorio = [normalizeHeader("Coluna Aleatória")];
@@ -81,7 +143,7 @@ describe("ImportarUltimasFeriasDialog — Parsing e Tratamento de Abono Pecuniá
     const matchAleatorioDescanso = findColumnIndexWithFallback(
       headerAleatorio,
       ALIASES_DESCANSO,
-      (h) => (h.includes("descanso") || h.includes("gozo")) && !h.includes("inicio") && !h.includes("fim") && !h.includes("data")
+      isDescansoFallbackMatch
     );
     expect(matchAleatorioDescanso.index).toBe(-1);
     expect(matchAleatorioDescanso.isFallback).toBe(false);
