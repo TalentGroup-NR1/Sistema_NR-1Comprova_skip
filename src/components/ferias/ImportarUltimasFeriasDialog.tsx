@@ -82,6 +82,14 @@ export function parseDias(val: string | undefined): number {
   return 0;
 }
 
+export function isDiasValido(val: string | undefined): boolean {
+  if (!val) return true;
+  const trimmed = val.trim();
+  if (trimmed === "" || trimmed === "0") return true;
+  const cleaned = trimmed.replace(",", ".");
+  return /^-?\d+(\.\d+)?/.test(cleaned);
+}
+
 function toISO(dateStr: string): string | null {
   if (!dateStr) return null;
   const d = parseDateBR(dateStr);
@@ -210,6 +218,8 @@ export function ImportarUltimasFeriasDialog({ open, onOpenChange }: Props) {
       const iniGozo = toISO(rawIni);
       const fimGozo = toISO(rawFim);
       const pag = idxPag >= 0 ? toISO(cols[idxPag] || "") : null;
+      const rawDias = idxDias >= 0 ? (cols[idxDias] || "").trim() : "";
+      const rawAbono = idxAbono >= 0 ? (cols[idxAbono] || "").trim() : "";
       const diasParsed = idxDias >= 0 ? parseDias(cols[idxDias]) : 0;
       const abonoParsed = idxAbono >= 0 ? parseDias(cols[idxAbono]) : 0;
 
@@ -218,6 +228,8 @@ export function ImportarUltimasFeriasDialog({ open, onOpenChange }: Props) {
       else if (!iniGozo || !fimGozo) error = "Datas de gozo inválidas";
       else if (fimGozo < iniGozo) error = "Fim do gozo anterior ao início";
       else if (perFim < perIni) error = "Fim do período anterior ao início";
+      else if (rawDias && !isDiasValido(rawDias)) error = `Dias de descanso inválidos: "${rawDias}"`;
+      else if (rawAbono && !isDiasValido(rawAbono)) error = `Abono pecuniário inválido: "${rawAbono}"`;
 
       const diasFinal = !iniGozo || !fimGozo ? 0 : diasParsed > 0 ? diasParsed : diasEntre(iniGozo, fimGozo);
 
@@ -373,9 +385,11 @@ export function ImportarUltimasFeriasDialog({ open, onOpenChange }: Props) {
     setImporting(false);
     queryClient.invalidateQueries({ queryKey: ["colaboradores-ferias"] });
     queryClient.invalidateQueries({ queryKey: ["ferias-colaborador"] });
+    const resumoErros = res.erros.length > 0 ? `, ${res.erros.length} com erro` : "";
     toast({
       title: "Importação concluída",
-      description: `${res.gozos_criados} lançamento(s) criados, ${res.periodos_criados} período(s) novos.`,
+      description: `${res.gozos_criados} lançamento(s) criados${resumoErros}, ${res.periodos_criados} período(s) novos.`,
+      variant: res.erros.length > 0 ? "destructive" : "default",
     });
   };
 
@@ -472,7 +486,11 @@ export function ImportarUltimasFeriasDialog({ open, onOpenChange }: Props) {
                 <CheckCircle2 className="h-4 w-4" />
                 <AlertDescription>
                   <strong>{result.gozos_criados}</strong> lançamento(s) criados ·{" "}
-                  <strong>{result.periodos_criados}</strong> período(s) aquisitivo(s) novos.
+                  <strong>{result.periodos_criados}</strong> período(s) aquisitivo(s) novos
+                  {result.erros.length > 0 && (
+                    <span className="font-semibold text-destructive"> · {result.erros.length} com erro</span>
+                  )}
+                  .
                 </AlertDescription>
               </Alert>
               {result.nao_encontrados.length > 0 && (
@@ -489,8 +507,12 @@ export function ImportarUltimasFeriasDialog({ open, onOpenChange }: Props) {
                 <Alert variant="destructive">
                   <AlertCircle className="h-4 w-4" />
                   <AlertDescription>
-                    Erros ({result.erros.length}):{" "}
-                    {result.erros.slice(0, 5).map((e) => `linha ${e.linha}: ${e.motivo}`).join("; ")}
+                    <div className="font-semibold mb-1">Linhas com erro ({result.erros.length}):</div>
+                    <ul className="list-disc list-inside space-y-0.5 text-xs max-h-32 overflow-auto">
+                      {result.erros.map((e, idx) => (
+                        <li key={idx}>Linha {e.linha}: {e.motivo}</li>
+                      ))}
+                    </ul>
                   </AlertDescription>
                 </Alert>
               )}

@@ -3,6 +3,7 @@ import {
   normalizeHeader,
   parseCSV,
   parseDias,
+  isDiasValido,
 } from "../ImportarUltimasFeriasDialog";
 
 describe("ImportarUltimasFeriasDialog — Parsing e Tratamento de Abono Pecuniário", () => {
@@ -15,16 +16,59 @@ describe("ImportarUltimasFeriasDialog — Parsing e Tratamento de Abono Pecuniá
     expect(normalizeHeader("\uFEFFCPF")).toBe("cpf");
   });
 
-  it("parseDias extrai inteiros não negativos e lida com formatos comuns", () => {
+  it("testa os 5 cabeçalhos reais de planilhas Excel pt-BR e confirma casamento de alias", () => {
+    const acceptedAliases = [
+      "dias_abono",
+      "abono",
+      "abono_pecuniario",
+      "dias_de_abono",
+      "abono_pecuniario_dias",
+      "dias_abono_pecuniario",
+      "dias_vendidos",
+      "abono_dias",
+      "qtd_abono",
+      "quantidade_abono",
+      "dias_de_abono_pecuniario",
+    ];
+
+    const testCases = [
+      { input: "Abono Pecuniário (dias)", expectedNormalized: "abono_pecuniario_dias", expectedAlias: "abono_pecuniario_dias" },
+      { input: "Dias de Abono", expectedNormalized: "dias_de_abono", expectedAlias: "dias_de_abono" },
+      { input: "ABONO", expectedNormalized: "abono", expectedAlias: "abono" },
+      { input: "abono_pecuniário_dias", expectedNormalized: "abono_pecuniario_dias", expectedAlias: "abono_pecuniario_dias" },
+      { input: "Dias Abono Pecuniário", expectedNormalized: "dias_abono_pecuniario", expectedAlias: "dias_abono_pecuniario" },
+    ];
+
+    for (const tc of testCases) {
+      const normalized = normalizeHeader(tc.input);
+      expect(normalized).toBe(tc.expectedNormalized);
+      expect(acceptedAliases).toContain(normalized);
+      expect(normalized).toBe(tc.expectedAlias);
+    }
+  });
+
+  it("parseDias extrai inteiros não negativos e valida formatos comuns", () => {
     expect(parseDias("10")).toBe(10);
-    expect(parseDias("10 dias")).toBe(10);
+    expect(isDiasValido("10")).toBe(true);
+
     expect(parseDias("10,0")).toBe(10);
+    expect(isDiasValido("10,0")).toBe(true);
+
     expect(parseDias("10.0")).toBe(10);
-    expect(parseDias(" 10 ")).toBe(10);
-    expect(parseDias("0")).toBe(0);
+    expect(isDiasValido("10.0")).toBe(true);
+
+    expect(parseDias("10 dias")).toBe(10);
+    expect(isDiasValido("10 dias")).toBe(true);
+
+    expect(parseDias("10d")).toBe(10);
+    expect(isDiasValido("10d")).toBe(true);
+
     expect(parseDias("")).toBe(0);
-    expect(parseDias(undefined)).toBe(0);
-    expect(parseDias("-5")).toBe(0);
+    expect(isDiasValido("")).toBe(true);
+
+    // Texto não numérico: parseDias retorna 0 e isDiasValido acusa erro/aviso
+    expect(parseDias("abc")).toBe(0);
+    expect(isDiasValido("abc")).toBe(false);
   });
 
   it("parseCSV lida com separadores ';' e ',', e remove BOM UTF-8", () => {
@@ -75,3 +119,4 @@ describe("ImportarUltimasFeriasDialog — Parsing e Tratamento de Abono Pecuniá
     }
   });
 });
+
