@@ -59,16 +59,65 @@ export function normalizeHeader(h: string) {
     .replace(/^_+|_+$/g, "");
 }
 
-export function parseCSV(text: string): { headers: string[]; rows: string[][] } {
+export function parseCSV(text: string): { headers: string[]; rawHeaders: string[]; rows: string[][] } {
   const cleanText = text.replace(/^\uFEFF/, "");
   const firstLine = cleanText.split(/\r?\n/, 1)[0] || "";
   const sep = (firstLine.match(/;/g)?.length || 0) > (firstLine.match(/,/g)?.length || 0) ? ";" : ",";
   const lines = cleanText.split(/\r?\n/).filter((l) => l.trim().length > 0);
-  const headers = (lines[0] || "").split(sep).map((h) => normalizeHeader(h.replace(/^"|"$/g, "")));
+  const rawHeaders = (lines[0] || "").split(sep).map((h) => h.trim().replace(/^"|"$/g, ""));
+  const headers = rawHeaders.map((h) => normalizeHeader(h));
   const rows = lines.slice(1).map((line) =>
     line.split(sep).map((c) => c.trim().replace(/^"|"$/g, ""))
   );
-  return { headers, rows };
+  return { headers, rawHeaders, rows };
+}
+
+export const ALIASES_ABONO = [
+  "dias_abono",
+  "abono",
+  "abono_pecuniario",
+  "dias_de_abono",
+  "abono_pecuniario_dias",
+  "dias_abono_pecuniario",
+  "dias_vendidos",
+  "abono_dias",
+  "qtd_abono",
+  "quantidade_abono",
+  "dias_de_abono_pecuniario",
+];
+
+export const ALIASES_DESCANSO = [
+  "dias_descanso",
+  "dias",
+  "dias_gozados",
+  "dias_de_descanso",
+  "dias_ferias",
+  "dias_de_ferias",
+  "qtd_dias",
+  "quantidade_dias",
+  "dias_de_gozo",
+  "dias_gozo",
+  "total_dias",
+  "dias_usufruidos",
+  "dias_de_descanso_gozados",
+];
+
+export function findColumnIndexWithFallback(
+  headers: string[],
+  exactAliases: string[],
+  fallbackPredicate?: (h: string) => boolean
+): { index: number; isFallback: boolean } {
+  const exact = headers.findIndex((h) => exactAliases.includes(h));
+  if (exact >= 0) {
+    return { index: exact, isFallback: false };
+  }
+  if (fallbackPredicate) {
+    const fallback = headers.findIndex(fallbackPredicate);
+    if (fallback >= 0) {
+      return { index: fallback, isFallback: true };
+    }
+  }
+  return { index: -1, isFallback: false };
 }
 
 export function parseDias(val: string | undefined): number {
@@ -111,6 +160,7 @@ const CSV_TEMPLATE = `cpf;nome;periodo_aquisitivo_inicio;periodo_aquisitivo_fim;
 
 export function ImportarUltimasFeriasDialog({ open, onOpenChange }: Props) {
   const [parsed, setParsed] = useState<ParsedRow[]>([]);
+  const [warnings, setWarnings] = useState<string[]>([]);
   const [importing, setImporting] = useState(false);
   const [result, setResult] = useState<ImportResult | null>(null);
   const effectiveCompanyId = useEffectiveCompanyId();
@@ -128,8 +178,9 @@ export function ImportarUltimasFeriasDialog({ open, onOpenChange }: Props) {
 
   const handleFile = async (file: File) => {
     setResult(null);
+    setWarnings([]);
     const text = await file.text();
-    const { headers, rows } = parseCSV(text);
+    const { headers, rawHeaders, rows } = parseCSV(text);
 
     const idx = (names: string[]) => headers.findIndex((h) => names.includes(h));
     const idxCpf = idx(["cpf", "documento", "cpf_colaborador"]);
@@ -168,35 +219,35 @@ export function ImportarUltimasFeriasDialog({ open, onOpenChange }: Props) {
       "fim_das_ferias",
       "data_final",
     ]);
-    const idxDias = idx([
-      "dias_descanso",
-      "dias",
-      "dias_gozados",
-      "dias_de_descanso",
-      "dias_ferias",
-      "qtd_dias",
-      "quantidade_dias",
-      "dias_de_gozo",
-    ]);
-    const idxAbono = idx([
-      "dias_abono",
-      "abono",
-      "abono_pecuniario",
-      "dias_de_abono",
-      "abono_pecuniario_dias",
-      "dias_abono_pecuniario",
-      "dias_vendidos",
-      "abono_dias",
-      "qtd_abono",
-      "quantidade_abono",
-      "dias_de_abono_pecuniario",
-    ]);
     const idxPag = idx([
       "data_pagamento",
       "pagamento",
       "data_do_pagamento",
       "dt_pagamento",
     ]);
+
+    const diasMatch = findColumnIndexWithFallback(
+      headers,
+      ALIASES_DESCANSO,
+      (h) => (h.includes("descanso") || h.includes("gozo")) && !h.includes("inicio") && !h.includes("fim") && !h.includes("data")
+    );
+    const abonoMatch = findColumnIndexWithFallback(
+      headers,
+      ALIASES_ABONO,
+      (h) => h.includes("abono")
+    );
+
+    const idxDias = diasMatch.index;
+    const idxAbono = abonoMatch.index;
+
+    const detectedWarnings: string[] = [];
+    if (abonoMatch.isFallback && rawHeaders[abonoMatch.index]) {
+      detectedWarnings.push(`Coluna de abono detectada por aproximação: "${rawHeaders[abonoMatch.index]}"`);
+    }
+    if (diasMatch.isFallback && rawHeaders[diasMatch.index]) {
+      detectedWarnings.push(`Coluna de descanso detectada por aproximação: "${rawHeaders[diasMatch.index]}"`);
+    }
+    setWarnings(detectedWarnings);
 
     if (idxPerIni < 0 || idxPerFim < 0 || idxIni < 0 || idxFim < 0 || (idxCpf < 0 && idxNome < 0)) {
       toast({
@@ -395,6 +446,7 @@ export function ImportarUltimasFeriasDialog({ open, onOpenChange }: Props) {
 
   const handleClose = () => {
     setParsed([]);
+    setWarnings([]);
     setResult(null);
     onOpenChange(false);
   };
@@ -428,6 +480,18 @@ export function ImportarUltimasFeriasDialog({ open, onOpenChange }: Props) {
               <Download className="h-4 w-4 mr-2" /> Baixar modelo CSV
             </Button>
           </div>
+
+          {warnings.length > 0 && !result && (
+            <Alert className="border-amber-500/30 bg-amber-500/10 text-amber-800 dark:text-amber-300">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription className="text-xs space-y-1">
+                <div className="font-semibold">Avisos de detecção de colunas:</div>
+                {warnings.map((w, idx) => (
+                  <div key={idx}>• {w}</div>
+                ))}
+              </AlertDescription>
+            </Alert>
+          )}
 
           {parsed.length > 0 && !result && (
             <div className="border rounded-lg max-h-96 overflow-auto">
