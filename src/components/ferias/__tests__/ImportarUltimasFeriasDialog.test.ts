@@ -9,6 +9,7 @@ import {
   ALIASES_ABONO,
   ALIASES_DESCANSO,
   findColumnIndexWithFallback,
+  diagnosticarCSV,
 } from "../ImportarUltimasFeriasDialog";
 
 describe("ImportarUltimasFeriasDialog — Parsing e Tratamento de Abono Pecuniário", () => {
@@ -186,19 +187,28 @@ describe("ImportarUltimasFeriasDialog — Parsing e Tratamento de Abono Pecuniá
     expect(isDiasValido("abc")).toBe(false);
   });
 
-  it("parseCSV lida com separadores ';' e ',', e remove BOM UTF-8", () => {
+  it("parseCSV lida com separadores ';', ',' e '\\t' (TAB), e remove BOM UTF-8", () => {
     const csvSemicolon = `\uFEFFcpf;nome;dias_descanso;dias_abono\n12345678900;Colaborador Teste;20;10`;
     const res = parseCSV(csvSemicolon);
     expect(res.headers).toEqual(["cpf", "nome", "dias_descanso", "dias_abono"]);
     expect(res.rawHeaders).toEqual(["cpf", "nome", "dias_descanso", "dias_abono"]);
     expect(res.rows).toHaveLength(1);
     expect(res.rows[0]).toEqual(["12345678900", "Colaborador Teste", "20", "10"]);
+    expect(res.sep).toBe(";");
 
     const csvComma = `cpf,nome,dias_descanso,dias_abono\n12345678900,Colaborador Teste,20,10`;
     const resComma = parseCSV(csvComma);
     expect(resComma.headers).toEqual(["cpf", "nome", "dias_descanso", "dias_abono"]);
     expect(resComma.rows).toHaveLength(1);
     expect(resComma.rows[0]).toEqual(["12345678900", "Colaborador Teste", "20", "10"]);
+    expect(resComma.sep).toBe(",");
+
+    const csvTab = `cpf\tnome\tdias_descanso\tdias_abono\n12345678900\tColaborador Teste\t20\t10`;
+    const resTab = parseCSV(csvTab);
+    expect(resTab.headers).toEqual(["cpf", "nome", "dias_descanso", "dias_abono"]);
+    expect(resTab.rows).toHaveLength(1);
+    expect(resTab.rows[0]).toEqual(["12345678900", "Colaborador Teste", "20", "10"]);
+    expect(resTab.sep).toBe("\t");
   });
 
   it("reconhece colunas com variações de nomenclatura de abono", () => {
@@ -221,6 +231,40 @@ describe("ImportarUltimasFeriasDialog — Parsing e Tratamento de Abono Pecuniá
       const isAccepted = acceptedAliases.includes(normalized);
       expect(isAccepted, `Variação "${v}" (normalizada: "${normalized}") deve ser aceita`).toBe(true);
     }
+  });
+
+  it("diagnosticarCSV reporta colunas reconhecidas, fallbacks e colunas ignoradas", () => {
+    const csv = `CPF;Colaborador;Início Aquisitivo;Fim Aquisitivo;Início Gozo;Fim Gozo;Dias Gozados;Abono Pecuniário (dias);Observação Interna
+12345678900;João Silva;01/01/2023;31/12/2023;01/06/2024;20/06/2024;20;10;Férias migradas
+`;
+    const diag = diagnosticarCSV(csv);
+    expect(diag.separador).toBe(";");
+    expect(diag.valido).toBe(true);
+    expect(diag.reconhecidas.cpf?.index).toBe(0);
+    expect(diag.reconhecidas.nome?.index).toBe(1);
+    expect(diag.reconhecidas.periodoInicio?.index).toBe(2);
+    expect(diag.reconhecidas.periodoFim?.index).toBe(3);
+    expect(diag.reconhecidas.inicioGozo?.index).toBe(4);
+    expect(diag.reconhecidas.fimGozo?.index).toBe(5);
+    expect(diag.reconhecidas.descanso?.index).toBe(6);
+    expect(diag.reconhecidas.descanso?.isFallback).toBe(false);
+    expect(diag.reconhecidas.abono?.index).toBe(7);
+    expect(diag.reconhecidas.abono?.isFallback).toBe(false);
+
+    // Coluna 8 é "Observação Interna" (não mapeada para inserção)
+    expect(diag.colunasIgnoradas).toHaveLength(1);
+    expect(diag.colunasIgnoradas[0]).toEqual({
+      index: 8,
+      rawHeader: "Observação Interna",
+      header: "observacao_interna",
+    });
+  });
+
+  it("diagnosticarCSV detecta arquivo inválido quando faltam colunas essenciais", () => {
+    const csvInvalido = `CPF;Colaborador;Dias Gozados\n12345678900;João;20`;
+    const diag = diagnosticarCSV(csvInvalido);
+    expect(diag.valido).toBe(false);
+    expect(diag.motivoInvalido).toContain("Colunas obrigatórias ausentes");
   });
 });
 

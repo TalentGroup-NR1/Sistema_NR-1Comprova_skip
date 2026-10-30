@@ -48,133 +48,33 @@ interface ImportResult {
   erros: { linha: number; motivo: string }[];
 }
 
-export function normalizeHeader(h: string) {
-  return h
-    .replace(/^\uFEFF/, "")
-    .toLowerCase()
-    .trim()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9_]+/g, "_")
-    .replace(/^_+|_+$/g, "");
-}
+export {
+  normalizeHeader,
+  parseCSV,
+  parseDias,
+  isDiasValido,
+  isFormatoData,
+  isDescansoFallbackMatch,
+  findColumnIndexWithFallback,
+  diagnosticarCSV,
+  ALIASES_CPF,
+  ALIASES_NOME,
+  ALIASES_PER_INI,
+  ALIASES_PER_FIM,
+  ALIASES_INI_GOZO,
+  ALIASES_FIM_GOZO,
+  ALIASES_PAGAMENTO,
+  ALIASES_ABONO,
+  ALIASES_DESCANSO,
+} from "@/lib/feriasCsvParser";
 
-export function parseCSV(text: string): { headers: string[]; rawHeaders: string[]; rows: string[][] } {
-  const cleanText = text.replace(/^\uFEFF/, "");
-  const firstLine = cleanText.split(/\r?\n/, 1)[0] || "";
-  const sep = (firstLine.match(/;/g)?.length || 0) > (firstLine.match(/,/g)?.length || 0) ? ";" : ",";
-  const lines = cleanText.split(/\r?\n/).filter((l) => l.trim().length > 0);
-  const rawHeaders = (lines[0] || "").split(sep).map((h) => h.trim().replace(/^"|"$/g, ""));
-  const headers = rawHeaders.map((h) => normalizeHeader(h));
-  const rows = lines.slice(1).map((line) =>
-    line.split(sep).map((c) => c.trim().replace(/^"|"$/g, ""))
-  );
-  return { headers, rawHeaders, rows };
-}
-
-export const ALIASES_ABONO = [
-  "dias_abono",
-  "abono",
-  "abono_pecuniario",
-  "dias_de_abono",
-  "abono_pecuniario_dias",
-  "dias_abono_pecuniario",
-  "dias_vendidos",
-  "abono_dias",
-  "qtd_abono",
-  "quantidade_abono",
-  "dias_de_abono_pecuniario",
-];
-
-export const ALIASES_DESCANSO = [
-  "dias_descanso",
-  "dias",
-  "dias_gozados",
-  "dias_de_descanso",
-  "dias_ferias",
-  "dias_de_ferias",
-  "qtd_dias",
-  "quantidade_dias",
-  "dias_de_gozo",
-  "dias_gozo",
-  "total_dias",
-  "dias_usufruidos",
-  "dias_de_descanso_gozados",
-];
-
-export function findColumnIndexWithFallback(
-  headers: string[],
-  exactAliases: string[],
-  fallbackPredicate?: (h: string) => boolean
-): { index: number; isFallback: boolean } {
-  const exact = headers.findIndex((h) => exactAliases.includes(h));
-  if (exact >= 0) {
-    return { index: exact, isFallback: false };
-  }
-  if (fallbackPredicate) {
-    const fallback = headers.findIndex(fallbackPredicate);
-    if (fallback >= 0) {
-      return { index: fallback, isFallback: true };
-    }
-  }
-  return { index: -1, isFallback: false };
-}
-
-export function parseDias(val: string | undefined): number {
-  if (!val) return 0;
-  const cleaned = val.trim().replace(",", ".");
-  const match = cleaned.match(/^-?\d+(\.\d+)?/);
-  if (match) {
-    const n = Math.round(Number(match[0]));
-    return isNaN(n) || n < 0 ? 0 : n;
-  }
-  return 0;
-}
-
-export function isDiasValido(val: string | undefined): boolean {
-  if (!val) return true;
-  const trimmed = val.trim();
-  if (trimmed === "" || trimmed === "0") return true;
-  const cleaned = trimmed.replace(",", ".");
-  return /^-?\d+(\.\d+)?/.test(cleaned);
-}
-
-export function isFormatoData(val: string | undefined): boolean {
-  if (!val) return false;
-  const trimmed = val.trim();
-  if (trimmed.includes("/")) {
-    return /^\d{1,4}\/\d{1,2}(\/\d{2,4})?$/.test(trimmed);
-  }
-  return /^\d{4}-\d{2}-\d{2}$/.test(trimmed) || /^\d{1,2}-\d{1,2}-\d{2,4}$/.test(trimmed);
-}
-
-export function isDescansoFallbackMatch(h: string): boolean {
-  const hasDescansoOrGozo = h.includes("descanso") || h.includes("gozo");
-  const hasQuantityIndicator =
-    h.includes("dias") ||
-    h.includes("qtd") ||
-    h.includes("quantidade") ||
-    h.includes("total");
-
-  if (!hasDescansoOrGozo || !hasQuantityIndicator) {
-    return false;
-  }
-
-  const excluded = [
-    "inicio",
-    "fim",
-    "data",
-    "periodo",
-    "referencia",
-    "ref",
-    "ano",
-    "mes",
-    "competencia",
-    "aquisitivo",
-  ];
-
-  return !excluded.some((ex) => h.includes(ex));
-}
+import {
+  parseCSV,
+  parseDias,
+  isDiasValido,
+  isFormatoData,
+  diagnosticarCSV,
+} from "@/lib/feriasCsvParser";
 
 function toISO(dateStr: string): string | null {
   if (!dateStr) return null;
@@ -204,7 +104,7 @@ export function ImportarUltimasFeriasDialog({ open, onOpenChange }: Props) {
   const queryClient = useQueryClient();
 
   const downloadTemplate = () => {
-    const blob = new Blob([CSV_TEMPLATE], { type: "text/csv;charset=utf-8;" });
+    const blob = new Blob(["\uFEFF" + CSV_TEMPLATE], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -216,77 +116,79 @@ export function ImportarUltimasFeriasDialog({ open, onOpenChange }: Props) {
   const handleFile = async (file: File) => {
     setResult(null);
     setWarnings([]);
-    const text = await file.text();
-    const { headers, rawHeaders, rows } = parseCSV(text);
 
-    const idx = (names: string[]) => headers.findIndex((h) => names.includes(h));
-    const idxCpf = idx(["cpf", "documento", "cpf_colaborador"]);
-    const idxNome = idx(["nome", "full_name", "nome_completo", "colaborador", "nome_do_colaborador"]);
-    const idxPerIni = idx([
-      "periodo_aquisitivo_inicio",
-      "periodo_inicio",
-      "inicio_periodo_aquisitivo",
-      "inicio_aquisitivo",
-      "data_inicio_aquisitivo",
-      "periodo_aquisitivo_ini",
-    ]);
-    const idxPerFim = idx([
-      "periodo_aquisitivo_fim",
-      "periodo_fim",
-      "fim_periodo_aquisitivo",
-      "fim_aquisitivo",
-      "data_fim_aquisitivo",
-      "periodo_aquisitivo_termino",
-    ]);
-    const idxIni = idx([
-      "data_inicio_gozo",
-      "inicio",
-      "data_inicio",
-      "inicio_gozo",
-      "data_inicio_ferias",
-      "inicio_das_ferias",
-      "data_inicial",
-    ]);
-    const idxFim = idx([
-      "data_fim_gozo",
-      "fim",
-      "data_fim",
-      "fim_gozo",
-      "data_fim_ferias",
-      "fim_das_ferias",
-      "data_final",
-    ]);
-    const idxPag = idx([
-      "data_pagamento",
-      "pagamento",
-      "data_do_pagamento",
-      "dt_pagamento",
-    ]);
+    let text = "";
+    try {
+      const buffer = await file.arrayBuffer();
+      text = new TextDecoder("utf-8").decode(buffer);
 
-    const diasMatch = findColumnIndexWithFallback(
-      headers,
-      ALIASES_DESCANSO,
-      isDescansoFallbackMatch
-    );
-    const abonoMatch = findColumnIndexWithFallback(
-      headers,
-      ALIASES_ABONO,
-      (h) => h.includes("abono")
-    );
+      if (text.includes("\uFFFD")) {
+        try {
+          const text1252 = new TextDecoder("windows-1252").decode(buffer);
+          if (!text1252.includes("\uFFFD")) {
+            text = text1252;
+          } else {
+            toast({
+              title: "Codificação do arquivo",
+              description: "Arquivo não está em UTF-8. Salve como CSV UTF-8 no Excel caso haja caracteres corrompidos.",
+              variant: "destructive",
+            });
+          }
+        } catch {
+          toast({
+            title: "Codificação do arquivo",
+            description: "Arquivo não está em UTF-8. Salve como CSV UTF-8 no Excel.",
+            variant: "destructive",
+          });
+        }
+      }
+    } catch {
+      text = await file.text();
+    }
 
-    const idxDias = diasMatch.index;
-    const idxAbono = abonoMatch.index;
+    const diag = diagnosticarCSV(text);
+
+    // Log seguro sem PII (nunca logar CPF, nome ou valores das linhas)
+    console.info("[import-ferias] mapeamento", {
+      descanso: diag.reconhecidas.descanso
+        ? {
+            index: diag.reconhecidas.descanso.index,
+            isFallback: diag.reconhecidas.descanso.isFallback,
+            header: diag.reconhecidas.descanso.header,
+          }
+        : null,
+      abono: diag.reconhecidas.abono
+        ? {
+            index: diag.reconhecidas.abono.index,
+            isFallback: diag.reconhecidas.abono.isFallback,
+            header: diag.reconhecidas.abono.header,
+          }
+        : null,
+      ignoradas: diag.colunasIgnoradas.map((c) => c.rawHeader),
+    });
+
+    const { rows } = parseCSV(text);
+
+    const idxCpf = diag.reconhecidas.cpf?.index ?? -1;
+    const idxNome = diag.reconhecidas.nome?.index ?? -1;
+    const idxPerIni = diag.reconhecidas.periodoInicio?.index ?? -1;
+    const idxPerFim = diag.reconhecidas.periodoFim?.index ?? -1;
+    const idxIni = diag.reconhecidas.inicioGozo?.index ?? -1;
+    const idxFim = diag.reconhecidas.fimGozo?.index ?? -1;
+    const idxPag = diag.reconhecidas.pagamento?.index ?? -1;
+    const idxDias = diag.reconhecidas.descanso?.index ?? -1;
+    const idxAbono = diag.reconhecidas.abono?.index ?? -1;
 
     const detectedWarnings: string[] = [];
-    if (abonoMatch.isFallback && rawHeaders[abonoMatch.index]) {
-      detectedWarnings.push(`Coluna de abono detectada por aproximação: "${rawHeaders[abonoMatch.index]}"`);
+    if (diag.reconhecidas.abono?.isFallback && diag.reconhecidas.abono.header) {
+      detectedWarnings.push(`Coluna de abono detectada por aproximação: "${diag.reconhecidas.abono.header}"`);
     }
-    if (diasMatch.isFallback && rawHeaders[diasMatch.index]) {
-      detectedWarnings.push(`Coluna de descanso detectada por aproximação: "${rawHeaders[diasMatch.index]}"`);
+    if (diag.reconhecidas.descanso?.isFallback && diag.reconhecidas.descanso.header) {
+      detectedWarnings.push(`Coluna de descanso detectada por aproximação: "${diag.reconhecidas.descanso.header}"`);
     }
     setWarnings(detectedWarnings);
 
-    if (idxPerIni < 0 || idxPerFim < 0 || idxIni < 0 || idxFim < 0 || (idxCpf < 0 && idxNome < 0)) {
+    if (!diag.valido) {
       toast({
         title: "Cabeçalho inválido",
         description:
