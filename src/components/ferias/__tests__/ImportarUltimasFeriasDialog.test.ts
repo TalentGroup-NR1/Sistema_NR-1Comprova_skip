@@ -266,5 +266,86 @@ describe("ImportarUltimasFeriasDialog — Parsing e Tratamento de Abono Pecuniá
     expect(diag.valido).toBe(false);
     expect(diag.motivoInvalido).toContain("Colunas obrigatórias ausentes");
   });
+
+  it("idempotência: processar o mesmo lançamento de gozo duas vezes resulta em 1 registro (upsert por chave natural)", () => {
+    interface FeriasGozoRow {
+      id: string;
+      colaborador_id: string;
+      periodo_aquisitivo_id: string;
+      data_inicio_gozo: string;
+      data_fim_gozo: string;
+      dias_gozados: number;
+      abono_pecuniario_dias: number;
+      observacoes: string;
+    }
+
+    const dbGozoTable: FeriasGozoRow[] = [];
+
+    function processarGozoIdempotente(payload: {
+      colaborador_id: string;
+      periodo_aquisitivo_id: string;
+      data_inicio_gozo: string;
+      data_fim_gozo: string;
+      dias_gozados: number;
+      abono_pecuniario_dias: number;
+      observacoes: string;
+    }): { acao: "insert" | "update"; row: FeriasGozoRow } {
+      const existingIndex = dbGozoTable.findIndex(
+        (g) =>
+          g.colaborador_id === payload.colaborador_id &&
+          g.periodo_aquisitivo_id === payload.periodo_aquisitivo_id &&
+          g.data_inicio_gozo === payload.data_inicio_gozo &&
+          g.data_fim_gozo === payload.data_fim_gozo
+      );
+
+      if (existingIndex >= 0) {
+        dbGozoTable[existingIndex] = {
+          ...dbGozoTable[existingIndex],
+          dias_gozados: payload.dias_gozados,
+          abono_pecuniario_dias: payload.abono_pecuniario_dias,
+          observacoes: payload.observacoes,
+        };
+        return { acao: "update", row: dbGozoTable[existingIndex] };
+      } else {
+        const newRow: FeriasGozoRow = {
+          id: `gozo-${dbGozoTable.length + 1}`,
+          ...payload,
+        };
+        dbGozoTable.push(newRow);
+        return { acao: "insert", row: newRow };
+      }
+    }
+
+    const payloadV1 = {
+      colaborador_id: "colab-123",
+      periodo_aquisitivo_id: "per-456",
+      data_inicio_gozo: "2024-06-01",
+      data_fim_gozo: "2024-06-20",
+      dias_gozados: 20,
+      abono_pecuniario_dias: 0,
+      observacoes: "Importado (CSV)",
+    };
+
+    // 1ª importação: registro não existe -> INSERT
+    const r1 = processarGozoIdempotente(payloadV1);
+    expect(r1.acao).toBe("insert");
+    expect(dbGozoTable).toHaveLength(1);
+    expect(dbGozoTable[0].abono_pecuniario_dias).toBe(0);
+
+    // 2ª importação da mesma chave natural (com abono corrigido) -> UPDATE
+    const payloadV2 = {
+      ...payloadV1,
+      abono_pecuniario_dias: 10,
+      observacoes: "Importado (CSV) – Abono pecuniário: 10 dia(s)",
+    };
+
+    const r2 = processarGozoIdempotente(payloadV2);
+    expect(r2.acao).toBe("update");
+    // Confirma que NÃO duplicou: continua exatamente 1 lançamento
+    expect(dbGozoTable).toHaveLength(1);
+    expect(dbGozoTable[0].id).toBe(r1.row.id);
+    expect(dbGozoTable[0].abono_pecuniario_dias).toBe(10);
+    expect(dbGozoTable[0].observacoes).toContain("Abono pecuniário: 10 dia(s)");
+  });
 });
 

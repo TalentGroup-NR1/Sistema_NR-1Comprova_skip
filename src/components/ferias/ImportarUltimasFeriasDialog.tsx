@@ -43,6 +43,7 @@ interface ParsedRow {
 
 interface ImportResult {
   gozos_criados: number;
+  gozos_atualizados: number;
   periodos_criados: number;
   nao_encontrados: string[];
   erros: { linha: number; motivo: string }[];
@@ -264,6 +265,7 @@ export function ImportarUltimasFeriasDialog({ open, onOpenChange }: Props) {
     setImporting(true);
     const res: ImportResult = {
       gozos_criados: 0,
+      gozos_atualizados: 0,
       periodos_criados: 0,
       nao_encontrados: [],
       erros: [],
@@ -354,20 +356,47 @@ export function ImportarUltimasFeriasDialog({ open, onOpenChange }: Props) {
         const obs =
           abonoDias > 0 ? `Importado (CSV) – Abono pecuniário: ${abonoDias} dia(s)` : "Importado (CSV)";
 
-        const { error: errGozo } = await supabase.from("ferias_gozo").insert({
-          colaborador_id: colaboradorId,
-          company_id: effectiveCompanyId,
-          periodo_aquisitivo_id: periodo.id,
-          data_inicio_gozo: row.data_inicio_gozo,
-          data_fim_gozo: row.data_fim_gozo,
-          dias_gozados: descansoDias,
-          data_pagamento: pagamento,
-          abono_pecuniario_dias: abonoDias,
-          status: "gozado",
-          observacoes: obs,
-        });
-        if (errGozo) throw errGozo;
-        res.gozos_criados++;
+        // Upsert idempotente baseado na chave natural: (colaborador_id, periodo_aquisitivo_id, data_inicio_gozo, data_fim_gozo)
+        const { data: existingGozo, error: errCheckGozo } = await supabase
+          .from("ferias_gozo")
+          .select("id")
+          .eq("colaborador_id", colaboradorId)
+          .eq("periodo_aquisitivo_id", periodo.id)
+          .eq("data_inicio_gozo", row.data_inicio_gozo)
+          .eq("data_fim_gozo", row.data_fim_gozo)
+          .maybeSingle();
+
+        if (errCheckGozo) throw errCheckGozo;
+
+        if (existingGozo) {
+          const { error: errUpdateGozo } = await supabase
+            .from("ferias_gozo")
+            .update({
+              dias_gozados: descansoDias,
+              data_pagamento: pagamento,
+              abono_pecuniario_dias: abonoDias,
+              status: "gozado",
+              observacoes: obs,
+            })
+            .eq("id", existingGozo.id);
+          if (errUpdateGozo) throw errUpdateGozo;
+          res.gozos_atualizados++;
+        } else {
+          const { error: errGozo } = await supabase.from("ferias_gozo").insert({
+            colaborador_id: colaboradorId,
+            company_id: effectiveCompanyId,
+            periodo_aquisitivo_id: periodo.id,
+            data_inicio_gozo: row.data_inicio_gozo,
+            data_fim_gozo: row.data_fim_gozo,
+            dias_gozados: descansoDias,
+            data_pagamento: pagamento,
+            abono_pecuniario_dias: abonoDias,
+            status: "gozado",
+            observacoes: obs,
+          });
+          if (errGozo) throw errGozo;
+          res.gozos_criados++;
+        }
       } catch (e: any) {
         res.erros.push({ linha: i + 2, motivo: e.message || String(e) });
       }
@@ -378,9 +407,10 @@ export function ImportarUltimasFeriasDialog({ open, onOpenChange }: Props) {
     queryClient.invalidateQueries({ queryKey: ["colaboradores-ferias"] });
     queryClient.invalidateQueries({ queryKey: ["ferias-colaborador"] });
     const resumoErros = res.erros.length > 0 ? `, ${res.erros.length} com erro` : "";
+    const resumoAtualizados = res.gozos_atualizados > 0 ? `, ${res.gozos_atualizados} atualizado(s)` : "";
     toast({
       title: "Importação concluída",
-      description: `${res.gozos_criados} lançamento(s) criados${resumoErros}, ${res.periodos_criados} período(s) novos.`,
+      description: `${res.gozos_criados} lançamento(s) criados${resumoAtualizados}${resumoErros}, ${res.periodos_criados} período(s) novos.`,
       variant: res.erros.length > 0 ? "destructive" : "default",
     });
   };
@@ -490,7 +520,10 @@ export function ImportarUltimasFeriasDialog({ open, onOpenChange }: Props) {
               <Alert>
                 <CheckCircle2 className="h-4 w-4" />
                 <AlertDescription>
-                  <strong>{result.gozos_criados}</strong> lançamento(s) criados ·{" "}
+                  <strong>{result.gozos_criados}</strong> lançamento(s) criados
+                  {result.gozos_atualizados > 0 && (
+                    <> · <strong>{result.gozos_atualizados}</strong> atualizado(s)</>
+                  )} ·{" "}
                   <strong>{result.periodos_criados}</strong> período(s) aquisitivo(s) novos
                   {result.erros.length > 0 && (
                     <span className="font-semibold text-destructive"> · {result.erros.length} com erro</span>
