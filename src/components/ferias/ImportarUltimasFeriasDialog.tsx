@@ -48,24 +48,38 @@ interface ImportResult {
   erros: { linha: number; motivo: string }[];
 }
 
-function normalizeHeader(h: string) {
+export function normalizeHeader(h: string) {
   return h
+    .replace(/^\uFEFF/, "")
     .toLowerCase()
     .trim()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
-    .replace(/\s+/g, "_");
+    .replace(/[^a-z0-9_]+/g, "_")
+    .replace(/^_+|_+$/g, "");
 }
 
-function parseCSV(text: string): { headers: string[]; rows: string[][] } {
-  const firstLine = text.split(/\r?\n/, 1)[0] || "";
+export function parseCSV(text: string): { headers: string[]; rows: string[][] } {
+  const cleanText = text.replace(/^\uFEFF/, "");
+  const firstLine = cleanText.split(/\r?\n/, 1)[0] || "";
   const sep = (firstLine.match(/;/g)?.length || 0) > (firstLine.match(/,/g)?.length || 0) ? ";" : ",";
-  const lines = text.split(/\r?\n/).filter((l) => l.trim().length > 0);
+  const lines = cleanText.split(/\r?\n/).filter((l) => l.trim().length > 0);
   const headers = (lines[0] || "").split(sep).map((h) => normalizeHeader(h.replace(/^"|"$/g, "")));
   const rows = lines.slice(1).map((line) =>
     line.split(sep).map((c) => c.trim().replace(/^"|"$/g, ""))
   );
   return { headers, rows };
+}
+
+export function parseDias(val: string | undefined): number {
+  if (!val) return 0;
+  const cleaned = val.trim().replace(",", ".");
+  const match = cleaned.match(/^-?\d+(\.\d+)?/);
+  if (match) {
+    const n = Math.round(Number(match[0]));
+    return isNaN(n) || n < 0 ? 0 : n;
+  }
+  return 0;
 }
 
 function toISO(dateStr: string): string | null {
@@ -83,8 +97,8 @@ function diasEntre(iniISO: string, fimISO: string): number {
 }
 
 const CSV_TEMPLATE = `cpf;nome;periodo_aquisitivo_inicio;periodo_aquisitivo_fim;data_inicio_gozo;data_fim_gozo;dias_descanso;dias_abono;data_pagamento
-000.000.000-00;Exemplo Colaborador;21/06/2024;20/06/2025;04/02/2026;18/02/2026;15;0;02/02/2026
-000.000.000-00;Exemplo Colaborador;21/06/2024;20/06/2025;23/06/2025;07/07/2025;15;0;21/06/2025
+000.000.000-00;Exemplo 30 Dias Gozados;01/01/2023;31/12/2023;05/02/2024;05/03/2024;30;0;01/02/2024
+000.000.000-00;Exemplo 20 Dias Descanso + 10 Abono;01/01/2023;31/12/2023;05/02/2024;24/02/2024;20;10;01/02/2024
 `;
 
 export function ImportarUltimasFeriasDialog({ open, onOpenChange }: Props) {
@@ -110,15 +124,71 @@ export function ImportarUltimasFeriasDialog({ open, onOpenChange }: Props) {
     const { headers, rows } = parseCSV(text);
 
     const idx = (names: string[]) => headers.findIndex((h) => names.includes(h));
-    const idxCpf = idx(["cpf"]);
-    const idxNome = idx(["nome", "full_name", "nome_completo"]);
-    const idxPerIni = idx(["periodo_aquisitivo_inicio", "periodo_inicio"]);
-    const idxPerFim = idx(["periodo_aquisitivo_fim", "periodo_fim"]);
-    const idxIni = idx(["data_inicio_gozo", "inicio", "data_inicio"]);
-    const idxFim = idx(["data_fim_gozo", "fim", "data_fim"]);
-    const idxDias = idx(["dias_descanso", "dias"]);
-    const idxAbono = idx(["dias_abono", "abono"]);
-    const idxPag = idx(["data_pagamento", "pagamento"]);
+    const idxCpf = idx(["cpf", "documento", "cpf_colaborador"]);
+    const idxNome = idx(["nome", "full_name", "nome_completo", "colaborador", "nome_do_colaborador"]);
+    const idxPerIni = idx([
+      "periodo_aquisitivo_inicio",
+      "periodo_inicio",
+      "inicio_periodo_aquisitivo",
+      "inicio_aquisitivo",
+      "data_inicio_aquisitivo",
+      "periodo_aquisitivo_ini",
+    ]);
+    const idxPerFim = idx([
+      "periodo_aquisitivo_fim",
+      "periodo_fim",
+      "fim_periodo_aquisitivo",
+      "fim_aquisitivo",
+      "data_fim_aquisitivo",
+      "periodo_aquisitivo_termino",
+    ]);
+    const idxIni = idx([
+      "data_inicio_gozo",
+      "inicio",
+      "data_inicio",
+      "inicio_gozo",
+      "data_inicio_ferias",
+      "inicio_das_ferias",
+      "data_inicial",
+    ]);
+    const idxFim = idx([
+      "data_fim_gozo",
+      "fim",
+      "data_fim",
+      "fim_gozo",
+      "data_fim_ferias",
+      "fim_das_ferias",
+      "data_final",
+    ]);
+    const idxDias = idx([
+      "dias_descanso",
+      "dias",
+      "dias_gozados",
+      "dias_de_descanso",
+      "dias_ferias",
+      "qtd_dias",
+      "quantidade_dias",
+      "dias_de_gozo",
+    ]);
+    const idxAbono = idx([
+      "dias_abono",
+      "abono",
+      "abono_pecuniario",
+      "dias_de_abono",
+      "abono_pecuniario_dias",
+      "dias_abono_pecuniario",
+      "dias_vendidos",
+      "abono_dias",
+      "qtd_abono",
+      "quantidade_abono",
+      "dias_de_abono_pecuniario",
+    ]);
+    const idxPag = idx([
+      "data_pagamento",
+      "pagamento",
+      "data_do_pagamento",
+      "dt_pagamento",
+    ]);
 
     if (idxPerIni < 0 || idxPerFim < 0 || idxIni < 0 || idxFim < 0 || (idxCpf < 0 && idxNome < 0)) {
       toast({
@@ -140,8 +210,8 @@ export function ImportarUltimasFeriasDialog({ open, onOpenChange }: Props) {
       const iniGozo = toISO(rawIni);
       const fimGozo = toISO(rawFim);
       const pag = idxPag >= 0 ? toISO(cols[idxPag] || "") : null;
-      const dias = idxDias >= 0 && cols[idxDias] ? Number((cols[idxDias] || "").replace(",", ".")) : 0;
-      const abono = idxAbono >= 0 && cols[idxAbono] ? Number((cols[idxAbono] || "").replace(",", ".")) : 0;
+      const diasParsed = idxDias >= 0 ? parseDias(cols[idxDias]) : 0;
+      const abonoParsed = idxAbono >= 0 ? parseDias(cols[idxAbono]) : 0;
 
       let error: string | undefined;
       if (!perIni || !perFim) error = "Período aquisitivo inválido";
@@ -149,7 +219,13 @@ export function ImportarUltimasFeriasDialog({ open, onOpenChange }: Props) {
       else if (fimGozo < iniGozo) error = "Fim do gozo anterior ao início";
       else if (perFim < perIni) error = "Fim do período anterior ao início";
 
-      const diasFinal = !iniGozo || !fimGozo ? 0 : dias > 0 ? dias : diasEntre(iniGozo, fimGozo);
+      const diasFinal = !iniGozo || !fimGozo ? 0 : diasParsed > 0 ? diasParsed : diasEntre(iniGozo, fimGozo);
+
+      if (!error) {
+        if (diasFinal <= 0) error = "Dias de descanso inválidos";
+        else if (abonoParsed < 0 || abonoParsed > 10) error = "Abono pecuniário deve ser entre 0 e 10 dias";
+        else if (diasFinal + abonoParsed > 30) error = `Total (${diasFinal + abonoParsed}d) excede 30 dias`;
+      }
 
       return {
         cpf: idxCpf >= 0 ? (cols[idxCpf] || "").replace(/\D/g, "") : undefined,
@@ -159,7 +235,7 @@ export function ImportarUltimasFeriasDialog({ open, onOpenChange }: Props) {
         data_inicio_gozo: iniGozo || "",
         data_fim_gozo: fimGozo || "",
         dias_descanso: diasFinal,
-        dias_abono: isNaN(abono) ? 0 : abono,
+        dias_abono: abonoParsed,
         data_pagamento: pag,
         rawInicioPer: rawPerIni,
         rawFimPer: rawPerFim,
@@ -229,12 +305,16 @@ export function ImportarUltimasFeriasDialog({ open, onOpenChange }: Props) {
         if (!periodosCache.has(colaboradorId)) {
           const { data: per } = await supabase
             .from("ferias_periodos_aquisitivos")
-            .select("id, data_inicio_aquisitivo")
+            .select("id, data_inicio_aquisitivo, status, dias_adquiridos")
             .eq("colaborador_id", colaboradorId);
           periodosCache.set(colaboradorId, per || []);
         }
         const periodos = periodosCache.get(colaboradorId)!;
         let periodo = periodos.find((p) => p.data_inicio_aquisitivo === row.periodo_aquisitivo_inicio);
+
+        const hojeISO = formatDateToISO(new Date());
+        const totalDias = (row.dias_descanso || 0) + (row.dias_abono || 0);
+        const deveFechar = totalDias >= 30 && row.data_fim_gozo < hojeISO;
 
         if (!periodo) {
           const fimDate = parseISODate(row.periodo_aquisitivo_fim);
@@ -248,19 +328,27 @@ export function ImportarUltimasFeriasDialog({ open, onOpenChange }: Props) {
               data_fim_aquisitivo: row.periodo_aquisitivo_fim,
               data_limite_gozo: formatDateToISO(limite),
               dias_adquiridos: 30,
-              status: "fechado",
+              status: deveFechar ? "fechado" : "aberto",
             })
-            .select("id, data_inicio_aquisitivo")
+            .select("id, data_inicio_aquisitivo, status, dias_adquiridos")
             .single();
           if (errPer) throw errPer;
           periodo = created;
           periodos.push(created);
           res.periodos_criados++;
+        } else if (deveFechar && (periodo as any).status !== "fechado") {
+          await supabase
+            .from("ferias_periodos_aquisitivos")
+            .update({ status: "fechado" })
+            .eq("id", periodo.id);
+          (periodo as any).status = "fechado";
         }
 
         const pagamento = row.data_pagamento || row.data_inicio_gozo;
+        const abonoDias = Math.max(0, Math.round(Number(row.dias_abono) || 0));
+        const descansoDias = Math.max(0, Math.round(Number(row.dias_descanso) || 0));
         const obs =
-          row.dias_abono > 0 ? `Importado (CSV) – Abono pecuniário: ${row.dias_abono} dia(s)` : "Importado (CSV)";
+          abonoDias > 0 ? `Importado (CSV) – Abono pecuniário: ${abonoDias} dia(s)` : "Importado (CSV)";
 
         const { error: errGozo } = await supabase.from("ferias_gozo").insert({
           colaborador_id: colaboradorId,
@@ -268,9 +356,9 @@ export function ImportarUltimasFeriasDialog({ open, onOpenChange }: Props) {
           periodo_aquisitivo_id: periodo.id,
           data_inicio_gozo: row.data_inicio_gozo,
           data_fim_gozo: row.data_fim_gozo,
-          dias_gozados: row.dias_descanso,
+          dias_gozados: descansoDias,
           data_pagamento: pagamento,
-          abono_pecuniario_dias: row.dias_abono,
+          abono_pecuniario_dias: abonoDias,
           status: "gozado",
           observacoes: obs,
         });
@@ -306,7 +394,8 @@ export function ImportarUltimasFeriasDialog({ open, onOpenChange }: Props) {
             Arquivo CSV com cabeçalho. Colunas obrigatórias: <strong>cpf</strong> (ou <strong>nome</strong>),{" "}
             <strong>periodo_aquisitivo_inicio</strong>, <strong>periodo_aquisitivo_fim</strong>,{" "}
             <strong>data_inicio_gozo</strong>, <strong>data_fim_gozo</strong>. Opcionais:{" "}
-            <strong>dias_descanso</strong>, <strong>dias_abono</strong>, <strong>data_pagamento</strong>. Datas em DD/MM/AAAA.
+            <strong>dias_descanso</strong>, <strong>dias_abono</strong> (abono pecuniário / venda de até 10 dias),{" "}
+            <strong>data_pagamento</strong>. Datas em DD/MM/AAAA.
           </DialogDescription>
         </DialogHeader>
 
@@ -349,7 +438,14 @@ export function ImportarUltimasFeriasDialog({ open, onOpenChange }: Props) {
                         {r.rawIniGozo} – {r.rawFimGozo}
                       </TableCell>
                       <TableCell className="text-xs">
-                        {r.dias_descanso}d{r.dias_abono > 0 ? ` + ${r.dias_abono} abono` : ""}
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span>{r.dias_descanso}d descanso</span>
+                          {r.dias_abono > 0 && (
+                            <Badge variant="outline" className="text-[10px] text-primary border-primary/30 font-medium">
+                              +{r.dias_abono}d abono
+                            </Badge>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell>
                         {r.error ? (

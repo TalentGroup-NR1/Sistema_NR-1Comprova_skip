@@ -531,8 +531,17 @@ export function FeriasColaboradorDetail({ colaboradorId, onBack, readOnly = fals
                             {format(parseISO(gozo.data_fim_gozo), "dd/MM/yyyy", { locale: ptBR })}
                           </TableCell>
                           <TableCell>
-                            <span className="font-semibold">{gozo.dias_gozados}</span>
-                            <span className="text-muted-foreground"> de descanso</span>
+                            <div className="flex flex-col">
+                              <span>
+                                <span className="font-semibold">{gozo.dias_gozados}</span>
+                                <span className="text-muted-foreground"> de descanso</span>
+                              </span>
+                              {(gozo.abono_pecuniario_dias || 0) > 0 && (
+                                <span className="text-xs text-primary font-medium">
+                                  + {gozo.abono_pecuniario_dias}d de abono
+                                </span>
+                              )}
+                            </div>
                           </TableCell>
                           <TableCell>
                             <Badge variant={statusColors[gozo.status]}>
@@ -707,7 +716,12 @@ export function FeriasColaboradorDetail({ colaboradorId, onBack, readOnly = fals
                         <div>
                           <p className="text-xs text-muted-foreground">Dias Utilizados</p>
                           <p className="font-medium">
-                            {diasUtilizados} de descanso
+                            {diasUtilizados} dias
+                            {gozosDoPeriodo.some((g) => (g.abono_pecuniario_dias || 0) > 0) && (
+                              <span className="text-xs text-muted-foreground block font-normal">
+                                ({gozosDoPeriodo.reduce((s, g) => s + g.dias_gozados, 0)}d descanso + {gozosDoPeriodo.reduce((s, g) => s + (g.abono_pecuniario_dias || 0), 0)}d abono)
+                              </span>
+                            )}
                           </p>
                         </div>
                       </div>

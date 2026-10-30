@@ -24,10 +24,10 @@ const allowedOrigins = [
 
 function getCorsHeaders(req: Request) {
   const origin = req.headers.get('origin') || '';
-  const isAllowed = allowedOrigins.some(allowed => 
+  const isAllowed = allowedOrigins.some(allowed =>
     origin === allowed || (allowed && origin.startsWith(allowed))
   );
-  
+
   return {
     'Access-Control-Allow-Origin': isAllowed ? origin : '',
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -36,7 +36,7 @@ function getCorsHeaders(req: Request) {
 
 serve(async (req) => {
   const corsHeaders = getCorsHeaders(req);
-  
+
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -221,30 +221,33 @@ serve(async (req) => {
       }
     }
 
-    // Update role: promoção a admin_empresa insere sem remover papéis existentes (ex: colaborador)
+    // Update role: papéis de gestão garantem a inserção do papel solicitado + 'colaborador', sem remover papéis existentes
     if (role) {
-      if (role === 'admin_empresa') {
-        const { data: hasAdmin } = await supabaseAdmin
+      const rolesToEnsure = [role];
+      const managementRoles = ['admin_master', 'admin_empresa', 'analista_rh', 'gestor_departamento'];
+      if (managementRoles.includes(role)) {
+        rolesToEnsure.push('colaborador');
+      }
+
+      for (const r of rolesToEnsure) {
+        const { data: existingRole } = await supabaseAdmin
           .from('user_roles')
           .select('id')
           .eq('user_id', user_id)
-          .eq('role', 'admin_empresa')
+          .eq('role', r)
           .maybeSingle();
 
-        if (!hasAdmin) {
-          await supabaseAdmin.from('user_roles').insert({
-            user_id,
-            role: 'admin_empresa',
-          });
-        }
-      } else {
-        const { error: roleError } = await supabaseAdmin
-          .from('user_roles')
-          .update({ role })
-          .eq('user_id', user_id);
+        if (!existingRole) {
+          const { error: roleError } = await supabaseAdmin
+            .from('user_roles')
+            .insert({
+              user_id,
+              role: r,
+            });
 
-        if (roleError) {
-          console.error('Error updating role:', roleError);
+          if (roleError) {
+            console.error(`Error assigning user role ${r}:`, roleError);
+          }
         }
       }
     }
