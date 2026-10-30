@@ -39,6 +39,24 @@ interface ParsedRow {
   rawIniGozo: string;
   rawFimGozo: string;
   error?: string;
+  dryRunAction?: "UPDATE" | "INSERT";
+}
+
+export interface DryRunItem {
+  colaboradorNome: string;
+  cpf?: string;
+  periodo: string;
+  gozo: string;
+  acao: "UPDATE" | "INSERT";
+  hasCsvCollision: boolean;
+}
+
+export interface DryRunSummary {
+  linhasUpdate: number;
+  linhasInsert: number;
+  hasBlockingCollision: boolean;
+  collisions: DryRunItem[];
+  inserts: DryRunItem[];
 }
 
 interface ImportResult {
@@ -58,6 +76,7 @@ export {
   isDescansoFallbackMatch,
   findColumnIndexWithFallback,
   diagnosticarCSV,
+  computeDryRunReport,
   ALIASES_CPF,
   ALIASES_NOME,
   ALIASES_PER_INI,
@@ -75,6 +94,7 @@ import {
   isDiasValido,
   isFormatoData,
   diagnosticarCSV,
+  computeDryRunReport,
 } from "@/lib/feriasCsvParser";
 
 function toISO(dateStr: string): string | null {
@@ -98,6 +118,7 @@ const CSV_TEMPLATE = `cpf;nome;periodo_aquisitivo_inicio;periodo_aquisitivo_fim;
 
 export function ImportarUltimasFeriasDialog({ open, onOpenChange }: Props) {
   const [parsed, setParsed] = useState<ParsedRow[]>([]);
+  const [dryRun, setDryRun] = useState<DryRunSummary | null>(null);
   const [warnings, setWarnings] = useState<string[]>([]);
   const [importing, setImporting] = useState(false);
   const [result, setResult] = useState<ImportResult | null>(null);
@@ -249,6 +270,38 @@ export function ImportarUltimasFeriasDialog({ open, onOpenChange }: Props) {
         error,
       };
     });
+
+    if (effectiveCompanyId) {
+      try {
+        const [resColabs, resPeriodos, resGozos] = await Promise.all([
+          supabase
+            .from("colaboradores")
+            .select("id, cpf, full_name")
+            .eq("company_id", effectiveCompanyId),
+          supabase
+            .from("ferias_periodos_aquisitivos")
+            .select("id, colaborador_id, data_inicio_aquisitivo")
+            .eq("company_id", effectiveCompanyId),
+          supabase
+            .from("ferias_gozo")
+            .select("id, colaborador_id, periodo_aquisitivo_id, data_inicio_gozo, data_fim_gozo, observacoes")
+            .eq("company_id", effectiveCompanyId),
+        ]);
+
+        const summary = computeDryRunReport(
+          parsedRows,
+          resColabs.data || [],
+          resPeriodos.data || [],
+          resGozos.data || []
+        );
+        setDryRun(summary);
+      } catch (err) {
+        console.warn("[dry-run] Erro ao executar previsão:", err);
+        setDryRun(null);
+      }
+    } else {
+      setDryRun(null);
+    }
 
     setParsed(parsedRows);
   };
@@ -407,10 +460,9 @@ export function ImportarUltimasFeriasDialog({ open, onOpenChange }: Props) {
     queryClient.invalidateQueries({ queryKey: ["colaboradores-ferias"] });
     queryClient.invalidateQueries({ queryKey: ["ferias-colaborador"] });
     const resumoErros = res.erros.length > 0 ? `, ${res.erros.length} com erro` : "";
-    const resumoAtualizados = res.gozos_atualizados > 0 ? `, ${res.gozos_atualizados} atualizado(s)` : "";
     toast({
       title: "Importação concluída",
-      description: `${res.gozos_criados} lançamento(s) criados${resumoAtualizados}${resumoErros}, ${res.periodos_criados} período(s) novos.`,
+      description: `${res.gozos_atualizados} atualizados · ${res.gozos_criados} criados${resumoErros}, ${res.periodos_criados} período(s) novos.`,
       variant: res.erros.length > 0 ? "destructive" : "default",
     });
   };
@@ -418,6 +470,7 @@ export function ImportarUltimasFeriasDialog({ open, onOpenChange }: Props) {
   const handleClose = () => {
     setParsed([]);
     setWarnings([]);
+    setDryRun(null);
     setResult(null);
     onOpenChange(false);
   };
@@ -464,6 +517,76 @@ export function ImportarUltimasFeriasDialog({ open, onOpenChange }: Props) {
             </Alert>
           )}
 
+          {dryRun?.hasBlockingCollision && !result && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription className="text-xs space-y-1.5">
+                <div className="font-semibold text-sm">
+                  Bloqueio de Segurança: Risco de Duplicidade Detectado ({dryRun.collisions.length} conflito(s))
+                </div>
+                <div>
+                  Foram detectadas novas linhas (INSERT) para colaboradores que já possuem férias importadas via CSV neste período aquisitivo. A importação está bloqueada para prevenir duplicidade de lançamentos:
+                </div>
+                <ul className="list-disc list-inside mt-1 max-h-36 overflow-auto font-mono text-[11px] bg-destructive/10 p-2 rounded">
+                  {dryRun.collisions.map((c, i) => (
+                    <li key={i}>
+                      <strong>{c.colaboradorNome}</strong> ({c.cpf || "sem CPF"}) · Período: {c.periodo} · Gozo: {c.gozo}
+                    </li>
+                  ))}
+                </ul>
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {dryRun && !dryRun.hasBlockingCollision && !result && (
+            <Alert
+              className={
+                dryRun.linhasInsert === 0
+                  ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-950 dark:text-emerald-100"
+                  : "border-amber-500/40 bg-amber-500/10 text-amber-950 dark:text-amber-100"
+              }
+            >
+              <CheckCircle2
+                className={`h-5 w-5 ${
+                  dryRun.linhasInsert === 0
+                    ? "text-emerald-600 dark:text-emerald-400"
+                    : "text-amber-600 dark:text-amber-400"
+                }`}
+              />
+              <AlertDescription className="space-y-1">
+                <div className="text-sm font-semibold">
+                  Prévia:{" "}
+                  <span className="text-emerald-700 dark:text-emerald-300">
+                    {dryRun.linhasUpdate} linhas serão ATUALIZADAS
+                  </span>{" "}
+                  ·{" "}
+                  <span
+                    className={
+                      dryRun.linhasInsert === 0
+                        ? "text-emerald-700 dark:text-emerald-300 font-bold"
+                        : "text-amber-700 dark:text-amber-300 font-bold"
+                    }
+                  >
+                    {dryRun.linhasInsert} linhas serão CRIADAS
+                  </span>
+                  {dryRun.linhasInsert === 0 && (
+                    <span className="ml-2 text-xs font-normal text-emerald-600 dark:text-emerald-400">
+                      (100% seguro: sem risco de duplicata)
+                    </span>
+                  )}
+                </div>
+                {dryRun.linhasInsert > 0 && (
+                  <div className="text-xs text-muted-foreground pt-1 border-t border-amber-500/20">
+                    <span className="font-medium text-amber-800 dark:text-amber-300">
+                      Atenção: Linhas que serão criadas (INSERT):
+                    </span>{" "}
+                    {dryRun.inserts.map((ins) => `${ins.colaboradorNome} (${ins.gozo})`).join(", ")}
+                  </div>
+                )}
+              </AlertDescription>
+            </Alert>
+          )}
+
           {parsed.length > 0 && !result && (
             <div className="border rounded-lg max-h-96 overflow-auto">
               <Table>
@@ -473,7 +596,7 @@ export function ImportarUltimasFeriasDialog({ open, onOpenChange }: Props) {
                     <TableHead>Período aquisitivo</TableHead>
                     <TableHead>Gozo</TableHead>
                     <TableHead>Dias</TableHead>
-                    <TableHead>Status</TableHead>
+                    <TableHead>Ação prevista</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -499,6 +622,14 @@ export function ImportarUltimasFeriasDialog({ open, onOpenChange }: Props) {
                       <TableCell>
                         {r.error ? (
                           <Badge variant="destructive">{r.error}</Badge>
+                        ) : r.dryRunAction === "UPDATE" ? (
+                          <Badge variant="outline" className="text-emerald-700 bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800 text-[10px] font-semibold">
+                            UPDATE
+                          </Badge>
+                        ) : r.dryRunAction === "INSERT" ? (
+                          <Badge variant="outline" className="text-amber-700 bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-800 text-[10px] font-semibold">
+                            INSERT
+                          </Badge>
                         ) : (
                           <Badge variant="secondary">OK</Badge>
                         )}
@@ -520,11 +651,9 @@ export function ImportarUltimasFeriasDialog({ open, onOpenChange }: Props) {
               <Alert>
                 <CheckCircle2 className="h-4 w-4" />
                 <AlertDescription>
-                  <strong>{result.gozos_criados}</strong> lançamento(s) criados
-                  {result.gozos_atualizados > 0 && (
-                    <> · <strong>{result.gozos_atualizados}</strong> atualizado(s)</>
-                  )} ·{" "}
-                  <strong>{result.periodos_criados}</strong> período(s) aquisitivo(s) novos
+                  <strong>{result.gozos_atualizados}</strong> atualizados ·{" "}
+                  <strong>{result.gozos_criados}</strong> criados ·{" "}
+                  <strong>{result.periodos_criados}</strong> período(s) novos
                   {result.erros.length > 0 && (
                     <span className="font-semibold text-destructive"> · {result.erros.length} com erro</span>
                   )}
@@ -563,7 +692,7 @@ export function ImportarUltimasFeriasDialog({ open, onOpenChange }: Props) {
             Fechar
           </Button>
           {parsed.length > 0 && !result && (
-            <Button onClick={handleImport} disabled={importing}>
+            <Button onClick={handleImport} disabled={importing || Boolean(dryRun?.hasBlockingCollision)}>
               {importing ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Importando…

@@ -285,3 +285,130 @@ export function diagnosticarCSV(text: string): DiagnosticoCSV {
   };
 }
 
+export interface ExistingColaboradorRecord {
+  id: string;
+  cpf: string | null;
+  full_name: string | null;
+}
+
+export interface ExistingPeriodoRecord {
+  id: string;
+  colaborador_id: string;
+  data_inicio_aquisitivo: string;
+}
+
+export interface ExistingGozoRecord {
+  id: string;
+  colaborador_id: string;
+  periodo_aquisitivo_id: string;
+  data_inicio_gozo: string;
+  data_fim_gozo: string;
+  observacoes: string | null;
+}
+
+export interface DryRunItem {
+  colaboradorNome: string;
+  cpf?: string;
+  periodo: string;
+  gozo: string;
+  acao: "UPDATE" | "INSERT";
+  hasCsvCollision: boolean;
+}
+
+export interface DryRunSummary {
+  linhasUpdate: number;
+  linhasInsert: number;
+  hasBlockingCollision: boolean;
+  collisions: DryRunItem[];
+  inserts: DryRunItem[];
+}
+
+export function computeDryRunReport(
+  parsedRows: {
+    cpf?: string;
+    nome?: string;
+    periodo_aquisitivo_inicio: string;
+    periodo_aquisitivo_fim: string;
+    data_inicio_gozo: string;
+    data_fim_gozo: string;
+    rawInicioPer: string;
+    rawFimPer: string;
+    rawIniGozo: string;
+    rawFimGozo: string;
+    error?: string;
+    dryRunAction?: "UPDATE" | "INSERT";
+  }[],
+  colabs: ExistingColaboradorRecord[],
+  periodos: ExistingPeriodoRecord[],
+  gozos: ExistingGozoRecord[]
+): DryRunSummary {
+  const summary: DryRunSummary = {
+    linhasUpdate: 0,
+    linhasInsert: 0,
+    hasBlockingCollision: false,
+    collisions: [],
+    inserts: [],
+  };
+
+  const byCpf = new Map<string, { id: string; name: string }>();
+  const byName = new Map<string, { id: string; name: string }>();
+  colabs.forEach((c) => {
+    if (c.cpf) byCpf.set(c.cpf.replace(/\D/g, ""), { id: c.id, name: c.full_name || "" });
+    if (c.full_name) byName.set(c.full_name.trim().toLowerCase(), { id: c.id, name: c.full_name });
+  });
+
+  const periodosMap = new Map<string, { id: string; data_inicio_aquisitivo: string }[]>();
+  periodos.forEach((p) => {
+    if (!periodosMap.has(p.colaborador_id)) periodosMap.set(p.colaborador_id, []);
+    periodosMap.get(p.colaborador_id)!.push(p);
+  });
+
+  const existingGozoSet = new Set<string>();
+  const periodosComCsvImportado = new Set<string>();
+
+  gozos.forEach((g) => {
+    existingGozoSet.add(`${g.colaborador_id}|${g.periodo_aquisitivo_id}|${g.data_inicio_gozo}|${g.data_fim_gozo}`);
+    if (g.observacoes && g.observacoes.startsWith("Importado (CSV)")) {
+      periodosComCsvImportado.add(`${g.colaborador_id}|${g.periodo_aquisitivo_id}`);
+    }
+  });
+
+  parsedRows.forEach((r) => {
+    if (r.error) return;
+    const colab = (r.cpf ? byCpf.get(r.cpf) : undefined) || (r.nome ? byName.get(r.nome.trim().toLowerCase()) : undefined);
+    if (!colab) return;
+
+    const colabPeriodos = periodosMap.get(colab.id) || [];
+    const per = colabPeriodos.find((p) => p.data_inicio_aquisitivo === r.periodo_aquisitivo_inicio);
+
+    const gozoKey = per ? `${colab.id}|${per.id}|${r.data_inicio_gozo}|${r.data_fim_gozo}` : null;
+    const isExisting = gozoKey ? existingGozoSet.has(gozoKey) : false;
+
+    if (isExisting) {
+      summary.linhasUpdate++;
+      r.dryRunAction = "UPDATE";
+    } else {
+      summary.linhasInsert++;
+      r.dryRunAction = "INSERT";
+      const colabNome = colab.name || r.nome || r.cpf || "Colaborador";
+      const item: DryRunItem = {
+        colaboradorNome: colabNome,
+        cpf: r.cpf,
+        periodo: `${r.rawInicioPer} – ${r.rawFimPer}`,
+        gozo: `${r.rawIniGozo} – ${r.rawFimGozo}`,
+        acao: "INSERT",
+        hasCsvCollision: false,
+      };
+
+      if (per && periodosComCsvImportado.has(`${colab.id}|${per.id}`)) {
+        item.hasCsvCollision = true;
+        summary.hasBlockingCollision = true;
+        summary.collisions.push(item);
+      }
+      summary.inserts.push(item);
+    }
+  });
+
+  return summary;
+}
+

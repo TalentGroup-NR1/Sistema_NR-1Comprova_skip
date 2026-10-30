@@ -10,6 +10,7 @@ import {
   ALIASES_DESCANSO,
   findColumnIndexWithFallback,
   diagnosticarCSV,
+  computeDryRunReport,
 } from "../ImportarUltimasFeriasDialog";
 
 describe("ImportarUltimasFeriasDialog — Parsing e Tratamento de Abono Pecuniário", () => {
@@ -346,6 +347,103 @@ describe("ImportarUltimasFeriasDialog — Parsing e Tratamento de Abono Pecuniá
     expect(dbGozoTable[0].id).toBe(r1.row.id);
     expect(dbGozoTable[0].abono_pecuniario_dias).toBe(10);
     expect(dbGozoTable[0].observacoes).toContain("Abono pecuniário: 10 dia(s)");
+  });
+
+  describe("computeDryRunReport (Simulação Prévia ao Importar)", () => {
+    const colabs = [
+      { id: "colab-1", cpf: "11122233344", full_name: "Colaborador Um" },
+      { id: "colab-2", cpf: "55566677788", full_name: "Colaborador Dois" },
+    ];
+
+    const periodos = [
+      { id: "per-1", colaborador_id: "colab-1", data_inicio_aquisitivo: "2023-01-01" },
+      { id: "per-2", colaborador_id: "colab-2", data_inicio_aquisitivo: "2023-01-01" },
+    ];
+
+    const gozos = [
+      {
+        id: "gozo-1",
+        colaborador_id: "colab-1",
+        periodo_aquisitivo_id: "per-1",
+        data_inicio_gozo: "2024-05-02",
+        data_fim_gozo: "2024-05-21",
+        observacoes: "Importado (CSV)",
+      },
+    ];
+
+    it("identifica linhas existentes como UPDATE (sem colisão)", () => {
+      const rows = [
+        {
+          cpf: "11122233344",
+          nome: "Colaborador Um",
+          periodo_aquisitivo_inicio: "2023-01-01",
+          periodo_aquisitivo_fim: "2023-12-31",
+          data_inicio_gozo: "2024-05-02",
+          data_fim_gozo: "2024-05-21",
+          rawInicioPer: "01/01/2023",
+          rawFimPer: "31/12/2023",
+          rawIniGozo: "02/05/2024",
+          rawFimGozo: "21/05/2024",
+        },
+      ];
+
+      const report = computeDryRunReport(rows, colabs, periodos, gozos);
+      expect(report.linhasUpdate).toBe(1);
+      expect(report.linhasInsert).toBe(0);
+      expect(report.hasBlockingCollision).toBe(false);
+      expect(rows[0].dryRunAction).toBe("UPDATE");
+    });
+
+    it("bloqueia com alerta vermelho se houver INSERT para colaborador que já possui CSV importado no mesmo período", () => {
+      // Linha com datas diferentes para colab-1 no mesmo período per-1 -> tentaria INSERT
+      const rows = [
+        {
+          cpf: "11122233344",
+          nome: "Colaborador Um",
+          periodo_aquisitivo_inicio: "2023-01-01",
+          periodo_aquisitivo_fim: "2023-12-31",
+          data_inicio_gozo: "2024-06-01",
+          data_fim_gozo: "2024-06-20",
+          rawInicioPer: "01/01/2023",
+          rawFimPer: "31/12/2023",
+          rawIniGozo: "01/06/2024",
+          rawFimGozo: "20/06/2024",
+        },
+      ];
+
+      const report = computeDryRunReport(rows, colabs, periodos, gozos);
+      expect(report.linhasInsert).toBe(1);
+      expect(report.linhasUpdate).toBe(0);
+      expect(report.hasBlockingCollision).toBe(true);
+      expect(report.collisions).toHaveLength(1);
+      expect(report.collisions[0].colaboradorNome).toBe("Colaborador Um");
+      expect(rows[0].dryRunAction).toBe("INSERT");
+    });
+
+    it("permite INSERT normal para colaborador novo sem colisão", () => {
+      // Colab-2 não possui nenhum gozo importado previamente
+      const rows = [
+        {
+          cpf: "55566677788",
+          nome: "Colaborador Dois",
+          periodo_aquisitivo_inicio: "2023-01-01",
+          periodo_aquisitivo_fim: "2023-12-31",
+          data_inicio_gozo: "2024-07-01",
+          data_fim_gozo: "2024-07-30",
+          rawInicioPer: "01/01/2023",
+          rawFimPer: "31/12/2023",
+          rawIniGozo: "01/07/2024",
+          rawFimGozo: "30/07/2024",
+        },
+      ];
+
+      const report = computeDryRunReport(rows, colabs, periodos, gozos);
+      expect(report.linhasInsert).toBe(1);
+      expect(report.linhasUpdate).toBe(0);
+      expect(report.hasBlockingCollision).toBe(false);
+      expect(report.collisions).toHaveLength(0);
+      expect(rows[0].dryRunAction).toBe("INSERT");
+    });
   });
 });
 
