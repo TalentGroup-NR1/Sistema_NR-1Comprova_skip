@@ -44,3 +44,12 @@ Consulte o documento completo de fechamento e especificação da Fase 2 em: docs
 - Refatoração N:N em user_companies (múltiplos papéis por empresa).
 - Reescrever has_role() para verificar o active_role contextualmente selecionado.
 - Revisão e granularização das 400+ policies de RLS do banco de dados.
+
+---
+
+## Convenção de tags de release
+- Criar UMA tag por release deployado (não por mudança semântica)
+- Formato: `v<MAJOR>.<MINOR>.<PATCH>-<slug-da-feature>`
+- Usar prefixo "pre-" APENAS quando houver alteração de código entre a tag anterior e o deploy. Se dois commits consecutivos são apenas documentação, não criar tag nova.
+- Por que: `v1.1.0` e `v1.1.1` apontaram para `bc6b5d9` por engano, causando confusão em rollback.
+
