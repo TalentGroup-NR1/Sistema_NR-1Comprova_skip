@@ -527,8 +527,16 @@ export function PgrImportadoDashboard({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Excluir risco</AlertDialogTitle>
-            <AlertDialogDescription>
-              Esta ação não pode ser desfeita.
+            <AlertDialogDescription asChild>
+              <div>
+                <p>
+                  Você vai excluir o risco:{" "}
+                  <strong>{riscoParaExcluir?.nome}</strong>
+                </p>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  A exclusão é permanente e não pode ser desfeita.
+                </p>
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

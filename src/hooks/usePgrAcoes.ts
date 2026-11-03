@@ -11,6 +11,7 @@ export interface PgrPlanoAcao {
   id: string;
   company_id: string;
   pgr_importacao_id: string;
+  risco_id?: string | null;
   acao: string;
   por_que: string | null;
   onde: string | null;
@@ -30,6 +31,32 @@ export interface PgrPlanoAcao {
   colaboradores?: {
     full_name: string | null;
   } | null;
+  // JOIN data — risco_id FK → pgr_riscos.id
+  pgr_riscos?: {
+    id: string;
+    nome: string;
+    categoria: string;
+  } | null;
+}
+
+export interface CreateAcaoInput {
+  pgr_importacao_id: string;
+  company_id: string;
+  acao: string;
+  prioridade?: "alta" | "media" | "baixa";
+  prazo?: string | null;
+  responsavel_id?: string | null;
+  cargo_responsavel?: string | null;
+  risco_id?: string | null;
+  por_que?: string | null;
+  onde?: string | null;
+  como?: string | null;
+  custo_estimado?: number;
+}
+
+export interface DeleteAcaoInput {
+  id: string;
+  pgr_importacao_id: string;
 }
 
 export interface PgrAcaoExecucao {
@@ -99,6 +126,7 @@ export function useAcoesPgr(pgrImportacaoId: string) {
         .select(`
           *,
           colaboradores:responsavel_id (full_name),
+          pgr_riscos:risco_id (id, nome, categoria),
           execucoes:pgr_acao_execucoes(
             *,
             colaboradores:quem_executou(full_name)
@@ -117,6 +145,61 @@ export function useAcoesPgr(pgrImportacaoId: string) {
   });
 }
 
+// ──────────────────────────────────────────────────────────────
+// useCreateAcao: Inserir nova ação no plano de ação do PGR
+// ──────────────────────────────────────────────────────────────
+export function useCreateAcao() {
+  const qc = useQueryClient();
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async (input: CreateAcaoInput) => {
+      const email = user?.email || (await supabase.auth.getUser()).data.user?.email || "desconhecido";
+
+      const payload = {
+        pgr_importacao_id: input.pgr_importacao_id,
+        company_id: input.company_id,
+        acao: input.acao,
+        prioridade: input.prioridade || "media",
+        prazo: input.prazo ?? null,
+        responsavel_id: input.responsavel_id ?? null,
+        cargo_responsavel: input.cargo_responsavel ?? null,
+        risco_id: input.risco_id ?? null,
+        por_que: input.por_que ?? null,
+        onde: input.onde ?? null,
+        como: input.como ?? null,
+        custo_estimado: input.custo_estimado ?? 0,
+        custo_real: 0,
+        status: "pendente",
+        historico: [
+          {
+            acao: "criado",
+            por: email,
+            em: new Date().toISOString(),
+          },
+        ],
+      };
+
+      const { data, error } = await (supabase as any)
+        .from("pgr_plano_acao")
+        .insert(payload)
+        .select()
+        .single();
+
+      if (error) throw new Error(mapPostgresError(error));
+      return data as PgrPlanoAcao;
+    },
+    onSuccess: (_, variables) => {
+      qc.invalidateQueries({ queryKey: ["pgr-acoes", variables.pgr_importacao_id] });
+      qc.invalidateQueries({ queryKey: ["pgr-importacoes"] });
+      qc.invalidateQueries({ queryKey: ["pgr-riscos", variables.pgr_importacao_id] });
+    },
+  });
+}
+
+// ──────────────────────────────────────────────────────────────
+// useUpdateAcao: Atualizar ação existente com sanitização e histórico
+// ──────────────────────────────────────────────────────────────
 export function useUpdateAcao() {
   const { user } = useAuth();
   const companyId = useEffectiveCompanyId();
@@ -136,6 +219,19 @@ export function useUpdateAcao() {
     }) => {
       if (!user) throw new Error("Não autenticado");
       
+      // Sanitização: não permitir alterar chaves de integridade/relacionamento estrito
+      const {
+        company_id: _c,
+        pgr_importacao_id: _p,
+        id: _i,
+        created_at: _ca,
+        updated_at: _ua,
+        colaboradores: _colab,
+        pgr_riscos: _pr,
+        execucoes: _ex,
+        ...cleanUpdates
+      } = updates as any;
+
       // Busca o histórico atual
       const { data: currentData, error: fetchErr } = await (supabase as any)
         .from("pgr_plano_acao")
@@ -152,7 +248,7 @@ export function useUpdateAcao() {
 
       const { data, error: updateErr } = await (supabase as any)
         .from("pgr_plano_acao")
-        .update({ ...updates, historico: novoHistorico })
+        .update({ ...cleanUpdates, historico: novoHistorico })
         .eq("id", id)
         .eq("company_id", companyId)
         .select();
@@ -185,6 +281,44 @@ export function useUpdateAcao() {
       if (data?.pgrImportacaoId) {
         qc.invalidateQueries({ queryKey: ["pgr-acoes", data.pgrImportacaoId] });
       }
+    },
+  });
+}
+
+// ──────────────────────────────────────────────────────────────
+// useDeleteAcao: Excluir ação com salvaguarda de execuções
+// ──────────────────────────────────────────────────────────────
+export function useDeleteAcao() {
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, pgr_importacao_id }: DeleteAcaoInput) => {
+      // 1. Verificar se há execuções vinculadas
+      const { count, error: countErr } = await (supabase as any)
+        .from("pgr_acao_execucoes")
+        .select("*", { count: "exact", head: true })
+        .eq("acao_id", id);
+
+      if (countErr) throw new Error(mapPostgresError(countErr));
+
+      if (typeof count === "number" && count > 0) {
+        throw new Error(
+          `Esta ação tem ${count} execução(ões) registrada(s). Remova as execuções antes de excluir.`
+        );
+      }
+
+      // 2. Deletar a ação
+      const { error: deleteErr } = await (supabase as any)
+        .from("pgr_plano_acao")
+        .delete()
+        .eq("id", id);
+
+      if (deleteErr) throw new Error(mapPostgresError(deleteErr));
+      return { success: true, id, pgr_importacao_id };
+    },
+    onSuccess: (_, variables) => {
+      qc.invalidateQueries({ queryKey: ["pgr-acoes", variables.pgr_importacao_id] });
+      qc.invalidateQueries({ queryKey: ["pgr-riscos", variables.pgr_importacao_id] });
     },
   });
 }
@@ -274,11 +408,6 @@ export function useCreateExecucao() {
 
       if (error) throw new Error(mapPostgresError(error));
       
-      // Update custo_real on the parent action (handled via frontend re-fetch or backend trigger, 
-      // here we do it via frontend to ensure reactivity if we don't have a trigger).
-      // Wait, we need to manually update `custo_real` in the parent since we didn't add a trigger for it.
-      // Wait, the prompt says "custo_real é derivado (soma dos custo das execuções) — não é editável na UI."
-      // Let's do it in a transaction-like or just update the action directly.
       const { data: currentAcao, error: fetchAcaoErr } = await (supabase as any)
         .from("pgr_plano_acao")
         .select("custo_real, historico")
@@ -306,8 +435,6 @@ export function useCreateExecucao() {
     },
     onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: ["pgr-execucoes", data.acao_id] });
-      // Invalidate the actions list to get the new custo_real
-      // We don't have the pgr_importacao_id here directly, so we invalidate all pgr-acoes for safety
       qc.invalidateQueries({ queryKey: ["pgr-acoes"] });
     },
     onError: (err) => {
@@ -340,7 +467,6 @@ export function useGerarRelatorioEvidenciaPgr() {
       if (errEmp) throw new Error("Falha no Supabase ao buscar empresa: " + errEmp.message);
       if (!emp) throw new Error("Empresa não encontrada");
 
-      // Buscar PGR base (pgr_documentos) como fallback de metadados
       const { data: pgrDoc } = await supabase
         .from("pgr_documentos")
         .select("created_at, vigencia_inicio, responsavel_tecnico")
