@@ -145,6 +145,14 @@ recuperável via JSONB de origem (não há soft delete em pgr_riscos).
 **Ação:** no Ciclo 3, incluir o nome do risco no corpo do AlertDialog
 e avaliar soft delete (coluna deleted_at) para permitir restauração.
 
+---
+
+## PDF de evidência lê risco do JSONB, não de pgr_riscos (MÉDIA)
+**Sintoma:** relatorioPgrPDF.ts usa acao.risco_referenciado (JSONB, sempre null) em vez de pgr_riscos.nome via join.
+**Impacto:** PDF de evidência para auditoria fiscal imprime "—" na coluna Risco mesmo após vínculos existirem.
+**Ação:** no próximo ciclo, trocar a fonte de dados do PDF para ler de pgr_riscos via join na query de ações.
+
+
 
 
 

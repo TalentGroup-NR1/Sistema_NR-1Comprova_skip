@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useEffectiveCompanyId } from "@/hooks/useEffectiveCompanyId";
 import { useAuth } from "@/hooks/useAuth";
 import { extractFunctionError } from "@/lib/functionsError";
+import { toast } from "sonner";
 
 export interface DadosEmpresaPgr {
   nome: string | null;
@@ -270,10 +271,10 @@ export function useIniciarImportacaoPgr() {
 }
 
 // ──────────────────────────────────────────────────────────────
-// Confirmar extração: salva dados revisados e ativa plano de ação
+// Confirmar extração: salva dados revisados e ativa plano de ação e riscos
 // ──────────────────────────────────────────────────────────────
 export function useConfirmarImportacaoPgr() {
-  const companyId = useEffectiveCompanyId();
+  const userContextCompanyId = useEffectiveCompanyId();
   const { user } = useAuth();
   const qc = useQueryClient();
 
@@ -290,7 +291,18 @@ export function useConfirmarImportacaoPgr() {
       planoAcao: AcaoExtraida[];
     }) => {
       if (!user?.id) throw new Error("Não autenticado.");
-      if (!companyId) throw new Error("Selecione uma empresa.");
+
+      // ── Resolução do company_id da importação (fonte da verdade) ──
+      const { data: impData, error: fetchImpErr } = await (supabase as any)
+        .from("pgr_importacoes")
+        .select("company_id")
+        .eq("id", importacaoId)
+        .single();
+
+      const targetCompanyId = impData?.company_id || userContextCompanyId;
+      if (!targetCompanyId) {
+        throw new Error("Selecione uma empresa.");
+      }
 
       // Salva os dados confirmados na importação
       const actionsWithDefaults = planoAcao.map(a => ({
@@ -323,7 +335,7 @@ export function useConfirmarImportacaoPgr() {
 
           return {
             id: a.id,
-            company_id: companyId,
+            company_id: targetCompanyId,
             pgr_importacao_id: importacaoId,
             acao: a.medida,
             responsavel_id: a.responsavel_id || null,
@@ -351,11 +363,45 @@ export function useConfirmarImportacaoPgr() {
         }
       }
 
+      // ── Persiste os Riscos na tabela viva `pgr_riscos` ──
+      const listaRiscos = Array.isArray(riscos) ? riscos : [];
+      if (listaRiscos.length > 0) {
+        const riscosPayload = listaRiscos.map((r, idx) => ({
+          pgr_importacao_id: importacaoId,
+          company_id: targetCompanyId,
+          ordem: idx,
+          categoria: r.categoria || "outros",
+          nome: r.nome || "Risco sem nome",
+          probabilidade: typeof r.probabilidade === "number" ? r.probabilidade : null,
+          severidade: typeof r.severidade === "number" ? r.severidade : null,
+          descricao: r.descricao || null,
+          medidas_existentes: r.medidas_existentes || null,
+          grupo_exposto: r.grupo_exposto || null,
+          fonte_origem: "ia",
+          criado_por: user.id,
+        }));
+
+        const { error: rError } = await (supabase as any)
+          .from("pgr_riscos")
+          .upsert(riscosPayload, {
+            onConflict: "pgr_importacao_id,ordem",
+            ignoreDuplicates: true,
+          });
+
+        if (rError) {
+          // NÃO abortar a confirmação — ações já foram gravadas
+          console.error("[usePgrImportacao] erro ao gravar riscos:", rError.message);
+          toast.warning("PGR confirmado, mas houve uma instabilidade ao salvar os riscos relacionais.");
+        }
+      }
+
       return { importacaoId, totalRiscos: riscos.length, totalAcoes: planoAcao.length };
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       qc.invalidateQueries({ queryKey: ["pgr-importacoes"] });
       qc.invalidateQueries({ queryKey: ["nr1-planos-risco"] });
+      qc.invalidateQueries({ queryKey: ["pgr-riscos", variables.importacaoId] });
+      qc.invalidateQueries({ queryKey: ["pgr-acoes", variables.importacaoId] });
     },
   });
 }
