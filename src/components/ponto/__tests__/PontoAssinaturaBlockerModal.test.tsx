@@ -107,3 +107,4 @@ describe('PontoAssinaturaBlockerModal com Guard de Módulo', () => {
     expect(supabase.from).not.toHaveBeenCalled();
   });
 });
+

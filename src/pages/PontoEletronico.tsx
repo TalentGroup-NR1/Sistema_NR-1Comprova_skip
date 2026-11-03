@@ -22,6 +22,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Lock, Calendar } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { PontoAvisoHomologacao } from "@/components/ponto/PontoAvisoHomologacao";
 
 export default function PontoEletronico() {
   const { role } = useAuth();
@@ -78,6 +79,7 @@ export default function PontoEletronico() {
     return (
       <MainLayout>
         <div className="space-y-6">
+          <PontoAvisoHomologacao />
           <h1 className="text-2xl font-bold text-foreground">Ponto Eletrônico</h1>
           <Card className={isRegimeNaoDefinido ? "border-amber-200 bg-amber-50/30" : undefined}>
             <CardContent className="py-12 flex flex-col items-center text-center gap-3">
@@ -105,6 +107,7 @@ export default function PontoEletronico() {
     <MainLayout>
       <div className="bg-white">
         <div className="space-y-6">
+          <PontoAvisoHomologacao />
           {/* Header - oculto para admin para ganhar espaço */}
           {!isAdmin && (
             <header className="pb-4 border-b border-[#F1F0ED]">
