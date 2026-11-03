@@ -133,6 +133,18 @@ migraram.
 **Ação:** validar e, se necessário, rodar o backfill novamente
 (idempotente).
 
+---
+
+## Confirmação de exclusão de risco deve ser mais explícita — MÉDIA
+**Sintoma:** durante o teste de bloqueio referencial, foi excluído um
+risco real por engano. O AlertDialog atual ("Esta ação não pode ser
+desfeita") não deixa claro qual risco será removido nem permite
+revisão.
+**Impacto:** exclusão acidental de risco do inventário NR-1. Só é
+recuperável via JSONB de origem (não há soft delete em pgr_riscos).
+**Ação:** no Ciclo 3, incluir o nome do risco no corpo do AlertDialog
+e avaliar soft delete (coluna deleted_at) para permitir restauração.
+
 
 
 
