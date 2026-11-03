@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import { 
-  ArrowLeft, FileText, Shield, KanbanSquare, CheckCircle, Loader2, 
-  Trash2, Plus, Clock, Edit2, Save, X, PieChart
+  ArrowLeft, FileText, Shield, KanbanSquare, Loader2, 
+  Trash2, Plus, Clock, Edit2, Save, X, PieChart, Pencil
 } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -11,36 +12,64 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
 
-import { usePgrImportacoes, useUpdatePgrActions, type AcaoExtraida, type RiscoExtraido } from "@/hooks/usePgrImportacao";
-import { classificacaoClasse } from "@/components/mapa-riscos/pgr/pgrRiscoUtils";
+import { usePgrImportacoes, useUpdatePgrActions, type AcaoExtraida, type PgrImportacao } from "@/hooks/usePgrImportacao";
+import {
+  usePgrRiscos,
+  useCreateRisco,
+  useUpdateRisco,
+  useDeleteRisco,
+  type PgrRisco,
+} from "@/hooks/usePgrRiscos";
+import { RiscoDialog, CATEGORIAS } from "./RiscoDialog";
 import { classifyRisk } from "@/lib/riskMatrix";
 import { PlanoAcaoKanban } from "./PlanoAcaoKanban";
 import { PgrDashboardTab } from "./PgrDashboardTab";
-import { type PgrImportacao } from "@/hooks/usePgrImportacao";
 
 const CONFIANCA_MINIMA_REVISAO = 70;
 
-const CATEGORIAS: { value: string; label: string }[] = [
-  { value: "fisico", label: "Físico" },
-  { value: "quimico", label: "Químico" },
-  { value: "biologico", label: "Biológico" },
-  { value: "ergonomico", label: "Ergonômico" },
-  { value: "acidente", label: "Acidente" },
-  { value: "psicossocial", label: "Psicossocial" },
-];
-
-export function PgrImportadoDashboard({ pgrId, onBack, onRevisar }: { pgrId: string; onBack: () => void; onRevisar?: (importacao: PgrImportacao) => void; }) {
+export function PgrImportadoDashboard({
+  pgrId,
+  onBack,
+  onRevisar,
+}: {
+  pgrId: string;
+  onBack: () => void;
+  onRevisar?: (importacao: PgrImportacao) => void;
+}) {
+  const queryClient = useQueryClient();
   const { data: importacoes } = usePgrImportacoes();
   const updateActions = useUpdatePgrActions();
 
-  const pgr = importacoes?.find(i => i.id === pgrId);
+  const pgr = importacoes?.find((i) => i.id === pgrId);
 
-  const riscos: RiscoExtraido[] = Array.isArray(pgr?.riscos) ? pgr.riscos : [];
+  // Riscos relacionais da tabela pgr_riscos
+  const { riscos = [], isLoading: isLoadingRiscos } = usePgrRiscos(pgrId);
+  const createRisco = useCreateRisco();
+  const updateRisco = useUpdateRisco();
+  const deleteRisco = useDeleteRisco();
+
+  // Estados locais para UI de riscos
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingRisco, setEditingRisco] = useState<PgrRisco | undefined>(undefined);
+  const [riscoParaExcluir, setRiscoParaExcluir] = useState<PgrRisco | null>(null);
+  const [isMigrating, setIsMigrating] = useState(false);
+
   const planoAcao: AcaoExtraida[] = Array.isArray(pgr?.plano_acao) ? pgr.plano_acao : [];
 
   const [editingAcaoId, setEditingAcaoId] = useState<string | null>(null);
@@ -51,14 +80,14 @@ export function PgrImportadoDashboard({ pgrId, onBack, onRevisar }: { pgrId: str
     if (pgr?.arquivo_storage) {
       const fetchUrl = async () => {
         const { data } = await supabase.storage
-          .from('documentos_analise')
+          .from("documentos_analise")
           .createSignedUrl(pgr.arquivo_storage, 60 * 60);
-        
+
         if (data?.signedUrl) {
           setPdfUrl(data.signedUrl);
         } else {
           const { data: pub } = supabase.storage
-            .from('documentos_analise')
+            .from("documentos_analise")
             .getPublicUrl(pgr.arquivo_storage);
           setPdfUrl(pub.publicUrl);
         }
@@ -69,13 +98,13 @@ export function PgrImportadoDashboard({ pgrId, onBack, onRevisar }: { pgrId: str
 
   if (!pgr) return <div>Carregando...</div>;
 
-  const acoesPendentes = planoAcao.filter(a => a.status !== "concluida");
-  const acoesConcluidas = planoAcao.filter(a => a.status === "concluida");
+  const acoesPendentes = planoAcao.filter((a) => a.status !== "concluida");
+  const acoesConcluidas = planoAcao.filter((a) => a.status === "concluida");
 
   const saveAction = (action: AcaoExtraida) => {
     let newActions = [...planoAcao];
-    if (action.id && planoAcao.some(a => a.id === action.id)) {
-      newActions = newActions.map(a => a.id === action.id ? action : a);
+    if (action.id && planoAcao.some((a) => a.id === action.id)) {
+      newActions = newActions.map((a) => (a.id === action.id ? action : a));
     } else {
       newActions.push({ ...action, id: crypto.randomUUID() });
     }
@@ -89,14 +118,14 @@ export function PgrImportadoDashboard({ pgrId, onBack, onRevisar }: { pgrId: str
         },
         onError: (err) => {
           toast.error(err.message ?? "Erro ao salvar ação.");
-        }
+        },
       }
     );
   };
 
   const deleteAction = (id: string) => {
     if (!confirm("Tem certeza que deseja remover esta ação?")) return;
-    const newActions = planoAcao.filter(a => a.id !== id);
+    const newActions = planoAcao.filter((a) => a.id !== id);
     updateActions.mutate(
       { importacaoId: pgrId, planoAcao: newActions },
       {
@@ -106,10 +135,10 @@ export function PgrImportadoDashboard({ pgrId, onBack, onRevisar }: { pgrId: str
   };
 
   const toggleStatus = (id: string, novoStatus: "pendente" | "concluida") => {
-    const action = planoAcao.find(a => a.id === id);
+    const action = planoAcao.find((a) => a.id === id);
     if (!action) return;
     const newAction = { ...action, status: novoStatus };
-    let newActions = planoAcao.map(a => a.id === id ? newAction : a);
+    let newActions = planoAcao.map((a) => (a.id === id ? newAction : a));
     updateActions.mutate(
       { importacaoId: pgrId, planoAcao: newActions },
       {
@@ -131,69 +160,123 @@ export function PgrImportadoDashboard({ pgrId, onBack, onRevisar }: { pgrId: str
         prazo_sugerido: null,
         responsavel_sugerido: null,
         risco_referenciado: null,
-        status: "pendente"
+        status: "pendente",
       });
     }
   };
 
-  const renderAcaoForm = (acao: AcaoExtraida) => (
-    <Card className="border-orange-200 bg-orange-50/50">
-      <CardContent className="pt-4 space-y-3">
-        <div className="space-y-1">
-          <Label>Medida / Ação</Label>
-          <Textarea 
-            value={draftAcao?.medida || ""} 
-            onChange={e => setDraftAcao(d => d ? {...d, medida: e.target.value} : null)} 
-            rows={2} 
-          />
-        </div>
-        <div className="grid gap-3 sm:grid-cols-3">
-          <div className="space-y-1">
-            <Label>Prioridade</Label>
-            <Select 
-              value={draftAcao?.prioridade || "media"} 
-              onValueChange={v => setDraftAcao(d => d ? {...d, prioridade: v as any} : null)}
-            >
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="alta">Alta</SelectItem>
-                <SelectItem value="media">Média</SelectItem>
-                <SelectItem value="baixa">Baixa</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1">
-            <Label>Prazo</Label>
-            <Input 
-              value={draftAcao?.prazo_sugerido || ""} 
-              onChange={e => setDraftAcao(d => d ? {...d, prazo_sugerido: e.target.value} : null)} 
-              placeholder="Ex: 30 dias"
-            />
-          </div>
-          <div className="space-y-1">
-            <Label>Responsável</Label>
-            <Input 
-              value={draftAcao?.responsavel_sugerido || ""} 
-              onChange={e => setDraftAcao(d => d ? {...d, responsavel_sugerido: e.target.value} : null)} 
-              placeholder="Nome ou cargo"
-            />
-          </div>
-        </div>
-        <div className="flex justify-end gap-2 mt-2">
-          <Button variant="ghost" size="sm" onClick={() => setEditingAcaoId(null)}>Cancelar</Button>
-          <Button size="sm" onClick={() => draftAcao && saveAction(draftAcao)}>
-            <Save className="h-4 w-4 mr-2" /> Salvar
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
-  );
-
-  const PRIORIDADE_COR: Record<string, string> = {
-    alta: "bg-red-100 text-red-800",
-    media: "bg-amber-100 text-amber-800",
-    baixa: "bg-emerald-100 text-emerald-800",
+  // ────────── Handlers de Riscos ──────────
+  const handleSalvarRisco = (dados: {
+    categoria: string;
+    nome: string;
+    probabilidade: number;
+    severidade: number;
+    descricao?: string | null;
+    medidas_existentes?: string | null;
+    grupo_exposto?: string | null;
+  }) => {
+    if (editingRisco) {
+      updateRisco.mutate(
+        {
+          id: editingRisco.id,
+          pgr_importacao_id: pgrId,
+          patch: dados,
+        },
+        {
+          onSuccess: () => {
+            toast.success("Risco atualizado.");
+            setDialogOpen(false);
+            setEditingRisco(undefined);
+          },
+          onError: (e) => toast.error(e.message),
+        }
+      );
+    } else {
+      createRisco.mutate(
+        {
+          pgr_importacao_id: pgrId,
+          company_id: pgr.company_id,
+          ...dados,
+        },
+        {
+          onSuccess: () => {
+            toast.success("Risco criado.");
+            setDialogOpen(false);
+            setEditingRisco(undefined);
+          },
+          onError: (e) => toast.error(e.message),
+        }
+      );
+    }
   };
+
+  const handleExcluirRiscoConfirmado = () => {
+    if (!riscoParaExcluir) return;
+    deleteRisco.mutate(
+      { id: riscoParaExcluir.id, pgr_importacao_id: pgrId },
+      {
+        onSuccess: () => {
+          toast.success("Risco excluído.");
+          setRiscoParaExcluir(null);
+        },
+        onError: (e) => {
+          toast.error(e.message);
+          setRiscoParaExcluir(null);
+        },
+      }
+    );
+  };
+
+  const handleMigrar = async () => {
+    if (!pgr || !Array.isArray(pgr.riscos) || pgr.riscos.length === 0) return;
+    setIsMigrating(true);
+    let ok = 0;
+    try {
+      for (let i = 0; i < pgr.riscos.length; i++) {
+        const r = pgr.riscos[i];
+        try {
+          const { error } = await (supabase as any)
+            .from("pgr_riscos")
+            .insert({
+              pgr_importacao_id: pgr.id,
+              company_id: pgr.company_id,
+              ordem: i,
+              categoria: r.categoria || "fisico",
+              nome: r.nome || "Risco importado",
+              probabilidade: r.probabilidade ?? 1,
+              severidade: r.severidade ?? 1,
+              descricao: r.descricao ?? null,
+              medidas_existentes: r.medidas_existentes ?? null,
+              grupo_exposto: r.grupo_exposto ?? null,
+              fonte_origem: "importacao",
+              historico: [
+                {
+                  acao: "migrado",
+                  por: "sistema_migracao",
+                  em: new Date().toISOString(),
+                },
+              ],
+            });
+          if (!error) ok++;
+        } catch {
+          // Segue em frente e conta sucessos
+        }
+      }
+      queryClient.invalidateQueries({ queryKey: ["pgr-riscos", pgrId] });
+      queryClient.invalidateQueries({ queryKey: ["pgr-importacoes"] });
+      toast.success(`${ok} riscos migrados.`);
+    } catch (err: any) {
+      toast.error(err.message ?? "Erro ao migrar riscos.");
+    } finally {
+      setIsMigrating(false);
+    }
+  };
+
+  const precisaMigracao =
+    !isLoadingRiscos &&
+    riscos.length === 0 &&
+    Array.isArray(pgr.riscos) &&
+    pgr.riscos.length > 0;
 
   return (
     <div className="space-y-6">
@@ -246,74 +329,161 @@ export function PgrImportadoDashboard({ pgrId, onBack, onRevisar }: { pgrId: str
                 Revisar agora
               </Button>
             </div>
-          ) : riscos.length === 0 ? (
-            <p className="text-muted-foreground text-sm py-4">Nenhum risco identificado.</p>
           ) : (
-            <div className="grid gap-3">
-              {riscos.map((r, i) => {
-                const { nivel, classificacao, cor, probLabel, sevLabel, bgClasse, textClasse } = classifyRisk(r.probabilidade, r.severidade, r.escala_matriz);
-                const needsReview = (r.confianca ?? 100) < CONFIANCA_MINIMA_REVISAO;
-                
-                return (
-                  <Card key={i} className={`border-border ${needsReview ? 'border-orange-300 bg-orange-50/20' : ''}`}>
-                    <CardHeader className="py-3 px-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2 flex-1 min-w-0">
-                          <Badge className={`${bgClasse} ${textClasse} text-xs shrink-0 hover:${bgClasse}`}>
-                            {classificacao}
-                          </Badge>
-                          <span className="text-sm font-medium">{r.nome || "Risco sem nome"}</span>
-                          <span className="text-xs text-muted-foreground ml-2">
-                            ({CATEGORIAS.find(c => c.value === r.categoria)?.label ?? r.categoria})
-                          </span>
-                        </div>
-                        <div className="flex flex-col items-end gap-1">
-                          {needsReview && (
-                            <Badge variant="outline" className="text-orange-600 border-orange-200 bg-orange-50 text-[10px] uppercase">
-                              Revisar extração
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="px-4 pb-4 pt-0 text-sm space-y-3">
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/50 p-2 rounded-md border border-border/50">
-                        <div className="flex items-center gap-1.5" style={{ color: cor }}>
-                          <Shield className="h-3.5 w-3.5" />
-                          <span className="font-semibold text-foreground">Nível: P × S = {nivel}</span>
-                        </div>
-                        <span className="text-border mx-1">•</span>
-                        <span>Probabilidade: <strong className="text-foreground">{probLabel}</strong> (P)</span>
-                        <span className="text-border mx-1">•</span>
-                        <span>Severidade: <strong className="text-foreground">{sevLabel}</strong> (S)</span>
-                        {r.escala_matriz && (
-                          <>
-                            <span className="text-border mx-1">•</span>
-                            <span className="text-muted-foreground/70">Escala: {r.escala_matriz}</span>
-                          </>
-                        )}
-                      </div>
-                      
-                      {(r.descricao || r.medidas_existentes) && (
-                        <div className="space-y-2 mt-3 pt-3 border-t border-border/50">
-                          {r.descricao && (
-                            <div>
-                              <span className="font-semibold block text-xs text-muted-foreground uppercase">Descrição</span>
-                              <p className="text-foreground mt-0.5">{r.descricao}</p>
-                            </div>
-                          )}
-                          {r.medidas_existentes && (
-                            <div>
-                              <span className="font-semibold block text-xs text-muted-foreground uppercase">Medidas Existentes</span>
-                              <p className="text-foreground mt-0.5">{r.medidas_existentes}</p>
-                            </div>
-                          )}
-                        </div>
+            <div className="space-y-4">
+              {/* Alerta de migração se houver riscos no JSONB mas tabela relacional vazia */}
+              {precisaMigracao && (
+                <Alert className="border-orange-200 bg-orange-50 text-orange-900 flex items-center justify-between">
+                  <AlertDescription className="flex items-center justify-between w-full">
+                    <span>Os riscos desta importação ainda estão no formato antigo.</span>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="border-orange-300 hover:bg-orange-100 text-orange-950 ml-4 shrink-0"
+                      onClick={handleMigrar}
+                      disabled={isMigrating}
+                    >
+                      {isMigrating ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Migrando...
+                        </>
+                      ) : (
+                        "Migrar agora"
                       )}
-                    </CardContent>
-                  </Card>
-                );
-              })}
+                    </Button>
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {/* Header da sub-aba de Riscos */}
+              <div className="flex items-center justify-between pb-1">
+                <h3 className="text-base font-semibold">Riscos ({riscos.length})</h3>
+                <Button
+                  onClick={() => {
+                    setEditingRisco(undefined);
+                    setDialogOpen(true);
+                  }}
+                  className="bg-orange-600 hover:bg-orange-700 text-white"
+                  size="sm"
+                >
+                  <Plus className="h-4 w-4 mr-1.5" /> Novo Risco
+                </Button>
+              </div>
+
+              {isLoadingRiscos ? (
+                <div className="flex items-center justify-center py-12 text-muted-foreground">
+                  <Loader2 className="h-6 w-6 animate-spin mr-2" />
+                  <span>Carregando riscos...</span>
+                </div>
+              ) : riscos.length === 0 ? (
+                <p className="text-muted-foreground text-sm py-4">Nenhum risco identificado.</p>
+              ) : (
+                <div className="grid gap-3">
+                  {riscos.map((r) => {
+                    const { nivel, classificacao, cor, probLabel, sevLabel, bgClasse, textClasse } = classifyRisk(
+                      r.probabilidade,
+                      r.severidade,
+                      "5x5"
+                    );
+
+                    const badgeOrigem =
+                      r.fonte_origem === "manual" ? (
+                        <Badge variant="outline" className="text-blue-700 bg-blue-50 border-blue-200 text-[10px]">
+                          Incluído manualmente
+                        </Badge>
+                      ) : r.fonte_origem === "importacao" ? (
+                        <Badge variant="outline" className="text-muted-foreground bg-muted/60 border-border text-[10px]">
+                          Migrado
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-slate-600 bg-slate-50 border-slate-200 text-[10px]">
+                          Extraído do PGR
+                        </Badge>
+                      );
+
+                    return (
+                      <Card key={r.id} className="border-border">
+                        <CardHeader className="py-3 px-4">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="space-y-1 flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                {badgeOrigem}
+                                <Badge className={`${bgClasse} ${textClasse} text-xs shrink-0 hover:${bgClasse}`}>
+                                  {classificacao}
+                                </Badge>
+                                <span className="text-xs text-muted-foreground">
+                                  ({CATEGORIAS.find((c) => c.value === r.categoria)?.label ?? r.categoria})
+                                </span>
+                              </div>
+                              <h4 className="text-sm font-medium pt-1 text-foreground">{r.nome || "Risco sem nome"}</h4>
+                            </div>
+
+                            <div className="flex items-center gap-1 shrink-0">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                                onClick={() => {
+                                  setEditingRisco(r);
+                                  setDialogOpen(true);
+                                }}
+                                title="Editar risco"
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                                onClick={() => setRiscoParaExcluir(r)}
+                                title="Excluir risco"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        </CardHeader>
+
+                        <CardContent className="px-4 pb-4 pt-0 text-sm space-y-3">
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/50 p-2 rounded-md border border-border/50 flex-wrap">
+                            <div className="flex items-center gap-1.5" style={{ color: cor }}>
+                              <Shield className="h-3.5 w-3.5" />
+                              <span className="font-semibold text-foreground">Nível: P × S = {nivel}</span>
+                            </div>
+                            <span className="text-border mx-1">•</span>
+                            <span>Probabilidade: <strong className="text-foreground">{probLabel}</strong> (P)</span>
+                            <span className="text-border mx-1">•</span>
+                            <span>Severidade: <strong className="text-foreground">{sevLabel}</strong> (S)</span>
+                            {r.grupo_exposto && (
+                              <>
+                                <span className="text-border mx-1">•</span>
+                                <span className="text-muted-foreground">Grupo: <strong className="text-foreground">{r.grupo_exposto}</strong></span>
+                              </>
+                            )}
+                          </div>
+                          
+                          {(r.descricao || r.medidas_existentes) && (
+                            <div className="space-y-2 mt-3 pt-3 border-t border-border/50">
+                              {r.descricao && (
+                                <div>
+                                  <span className="font-semibold block text-xs text-muted-foreground uppercase">Descrição</span>
+                                  <p className="text-foreground mt-0.5">{r.descricao}</p>
+                                </div>
+                              )}
+                              {r.medidas_existentes && (
+                                <div>
+                                  <span className="font-semibold block text-xs text-muted-foreground uppercase">Medidas Existentes</span>
+                                  <p className="text-foreground mt-0.5">{r.medidas_existentes}</p>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
         </TabsContent>
@@ -339,6 +509,43 @@ export function PgrImportadoDashboard({ pgrId, onBack, onRevisar }: { pgrId: str
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Diálogo de Criação/Edição de Risco */}
+      <RiscoDialog
+        open={dialogOpen}
+        onOpenChange={(open) => {
+          setDialogOpen(open);
+          if (!open) setEditingRisco(undefined);
+        }}
+        risco={editingRisco}
+        onSubmit={handleSalvarRisco}
+        isPending={createRisco.isPending || updateRisco.isPending}
+      />
+
+      {/* AlertDialog de Exclusão de Risco */}
+      <AlertDialog open={!!riscoParaExcluir} onOpenChange={(open) => !open && setRiscoParaExcluir(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir risco</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteRisco.isPending}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                handleExcluirRiscoConfirmado();
+              }}
+              disabled={deleteRisco.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteRisco.isPending ? "Excluindo..." : "Excluir"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
