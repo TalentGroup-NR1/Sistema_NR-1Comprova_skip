@@ -436,17 +436,33 @@ export function FeriasColaboradorDetail({ colaboradorId, onBack, readOnly = fals
             {showForm && (() => {
               const periodoForm = (data.periodos || []).find(p => p.id === (formPeriodoId || periodoAtivoDb?.id));
               if (!periodoForm) return null;
-              const usados = data.gozos
+              const direitoForm = calcularDiasDireitoProporcional(periodoForm.data_inicio_aquisitivo, periodoForm.data_fim_aquisitivo, new Date());
+
+              // Para criação: considera todos os lançamentos ativos já existentes
+              const usadosCriacao = data.gozos
+                .filter(g => g.periodo_aquisitivo_id === periodoForm.id && g.status !== 'cancelado')
+                .reduce((sum, g) => sum + g.dias_gozados + (g.abono_pecuniario_dias || 0), 0);
+              const restantesCriacao = Math.max(0, direitoForm - usadosCriacao);
+
+              // Para edição: NÃO inclui o próprio lançamento em edição (permite usar o saldo liberado por ele)
+              const usadosEdicao = data.gozos
                 .filter(g => g.periodo_aquisitivo_id === periodoForm.id && g.status !== 'cancelado' && (!editingGozo || g.id !== editingGozo.id))
                 .reduce((sum, g) => sum + g.dias_gozados + (g.abono_pecuniario_dias || 0), 0);
-              const direitoForm = calcularDiasDireitoProporcional(periodoForm.data_inicio_aquisitivo, periodoForm.data_fim_aquisitivo, new Date());
-              const restantes = direitoForm - usados;
+              const restantesEdicao = Math.max(0, direitoForm - usadosEdicao);
+
+              // Para validação de fracionamento (CLT art. 134 §1º): períodos ativos (excluindo o atual na edição)
+              const periodosExistentes = data.gozos
+                .filter(g => g.periodo_aquisitivo_id === periodoForm.id && g.status !== 'cancelado' && (!editingGozo || g.id !== editingGozo.id))
+                .map(g => ({ dias: g.dias_gozados }));
+
               return (
                 <FeriasGozoForm
                   colaboradorId={colaboradorId}
                   companyId={colaborador.company_id}
                   periodoAquisitivoId={periodoForm.id}
-                  diasRestantes={restantes}
+                  diasRestantes={restantesCriacao}
+                  diasRestantesParaEdicao={restantesEdicao}
+                  periodosExistentes={periodosExistentes}
                   editingGozo={editingGozo}
                   onCancel={() => {
                     setShowForm(false);
@@ -533,12 +549,14 @@ export function FeriasColaboradorDetail({ colaboradorId, onBack, readOnly = fals
                           <TableCell>
                             <div className="flex flex-col">
                               <span>
-                                <span className="font-semibold">{gozo.dias_gozados}</span>
-                                <span className="text-muted-foreground"> de descanso</span>
+                                <span className="font-semibold">
+                                  {gozo.dias_gozados + (gozo.abono_pecuniario_dias || 0)}
+                                </span>
+                                <span className="text-muted-foreground"> dias utilizados</span>
                               </span>
                               {(gozo.abono_pecuniario_dias || 0) > 0 && (
-                                <span className="text-xs text-primary font-medium">
-                                  + {gozo.abono_pecuniario_dias}d de abono
+                                <span className="text-xs text-muted-foreground">
+                                  ({gozo.dias_gozados}d descanso + {gozo.abono_pecuniario_dias}d abono)
                                 </span>
                               )}
                             </div>

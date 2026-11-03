@@ -15,6 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useSolicitarFerias } from "@/hooks/useMinhasFerias";
+import { validarFracionamento } from "@/lib/feriasEngine";
 
 interface SolicitarFeriasDialogProps {
   open: boolean;
@@ -28,7 +29,11 @@ interface SolicitarFeriasDialogProps {
   podeFracionar: boolean; // false se < 18 ou > 50 (CLT art. 134 §2 antiga regra) — mantido true por padrão
 }
 
-const buildSchema = (diasRestantes: number, fracionamentosAtuais: number) =>
+const buildSchema = (
+  diasRestantes: number,
+  fracionamentosAtuais: number,
+  jaTemPeriodoMaior14: boolean
+) =>
   z
     .object({
       data_inicio_gozo: z.date({ required_error: "Obrigatório" }),
@@ -41,16 +46,26 @@ const buildSchema = (diasRestantes: number, fracionamentosAtuais: number) =>
       message: "A data de fim deve ser igual ou posterior ao início",
       path: ["data_fim_gozo"],
     })
-    .refine(
-      (d) => {
-        const dias = differenceInDays(d.data_fim_gozo, d.data_inicio_gozo) + 1;
-        return dias >= 5 || fracionamentosAtuais === 0; // se único, pode ser <5? CLT exige mín 5 em fracionamento
-      },
-      {
-        message: "Cada período fracionado deve ter no mínimo 5 dias (CLT art. 134, §1º)",
-        path: ["data_fim_gozo"],
-      },
-    )
+    .superRefine((d, ctx) => {
+      const dias = differenceInDays(d.data_fim_gozo, d.data_inicio_gozo) + 1;
+      const periodosSimulados = jaTemPeriodoMaior14
+        ? [{ dias: 14 }]
+        : Array.from({ length: fracionamentosAtuais }, () => ({ dias: 5 }));
+
+      const res = validarFracionamento({
+        periodosExistentes: periodosSimulados,
+        novoPeriodo: { dias },
+        maxFracionamentos: 3,
+      });
+
+      if (!res.valido && res.erro) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: res.erro,
+          path: ["data_fim_gozo"],
+        });
+      }
+    })
     .refine(
       (d) => {
         const dias = differenceInDays(d.data_fim_gozo, d.data_inicio_gozo) + 1;
@@ -86,7 +101,7 @@ export function SolicitarFeriasDialog({
   const solicitar = useSolicitarFerias();
   const [diasCalculados, setDiasCalculados] = useState(0);
 
-  const schema = buildSchema(diasRestantes, fracionamentosAtuais);
+  const schema = buildSchema(diasRestantes, fracionamentosAtuais, jaTemPeriodoMaior14);
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: { abono_pecuniario_dias: 0, observacoes: "" },
@@ -111,13 +126,17 @@ export function SolicitarFeriasDialog({
 
   const onSubmit = async (values: FormValues) => {
     const dias = differenceInDays(values.data_fim_gozo, values.data_inicio_gozo) + 1;
-    // Se este será o último fracionamento permitido e nenhum período tem ≥14 dias, exigir aqui
-    const proximoSeriaUltimo = fracionamentosAtuais + 1 >= 3;
-    if (proximoSeriaUltimo && !jaTemPeriodoMaior14 && dias < 14) {
-      form.setError("data_fim_gozo", {
-        message:
-          "Pelo menos um dos fracionamentos deve ter 14 dias ou mais (CLT art. 134, §1º).",
-      });
+    const periodosSimulados = jaTemPeriodoMaior14
+      ? [{ dias: 14 }]
+      : Array.from({ length: fracionamentosAtuais }, () => ({ dias: 5 }));
+
+    const resFrac = validarFracionamento({
+      periodosExistentes: periodosSimulados,
+      novoPeriodo: { dias },
+      maxFracionamentos: 3,
+    });
+    if (!resFrac.valido && resFrac.erro) {
+      form.setError("data_fim_gozo", { message: resFrac.erro });
       return;
     }
     await solicitar.mutateAsync({

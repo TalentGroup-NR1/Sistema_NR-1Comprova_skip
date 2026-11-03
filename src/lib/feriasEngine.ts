@@ -207,3 +207,55 @@ export function calcularDiasDireitoProporcional(
 
   return Math.min(30, Math.floor(mesesEfetivos * 2.5));
 }
+
+export interface ValidarFracionamentoParams {
+  periodosExistentes: Array<{ dias: number }>;
+  novoPeriodo: { dias: number };
+  maxFracionamentos?: number;
+}
+
+export interface ValidarFracionamentoResult {
+  valido: boolean;
+  erro?: string;
+}
+
+/**
+ * Validação de fracionamento de férias segundo CLT art. 134, §1º.
+ * Regras:
+ *  1. Cada período deve ter no mínimo 5 dias corridos.
+ *  2. Ao atingir o limite máximo de fracionamentos (3), ao menos um deve ter 14 dias ou mais.
+ *  3. Fracionamento livre para todas as idades (art. 134, §2º revogado pela Lei 13.467/2017).
+ */
+export function validarFracionamento({
+  periodosExistentes,
+  novoPeriodo,
+  maxFracionamentos = 3,
+}: ValidarFracionamentoParams): ValidarFracionamentoResult {
+  const totalPeriodos = periodosExistentes.length + 1;
+  if (totalPeriodos > maxFracionamentos) {
+    return {
+      valido: false,
+      erro: `Limite de ${maxFracionamentos} períodos atingido para este período aquisitivo`,
+    };
+  }
+
+  if (novoPeriodo.dias < 5) {
+    return {
+      valido: false,
+      erro: "Período mínimo de 5 dias corridos (CLT art. 134, §1º)",
+    };
+  }
+
+  if (totalPeriodos >= maxFracionamentos) {
+    const temMaiorOuIgual14 =
+      novoPeriodo.dias >= 14 || periodosExistentes.some((p) => p.dias >= 14);
+    if (!temMaiorOuIgual14) {
+      return {
+        valido: false,
+        erro: "Ao dividir em 3 períodos, ao menos um deve ter 14 dias ou mais (CLT art. 134, §1º)",
+      };
+    }
+  }
+
+  return { valido: true };
+}
