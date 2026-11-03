@@ -10,7 +10,7 @@
  * deslocamento de fuso horário.
  */
 
-import { addDays, addMonths, addYears, differenceInDays, isAfter, isBefore } from "date-fns";
+import { addDays, addMonths, addYears, differenceInDays, isAfter, isBefore, startOfDay, parseISO } from "date-fns";
 import { parseISODate } from "@/lib/validators/colaborador";
 
 /**
@@ -258,4 +258,140 @@ export function validarFracionamento({
   }
 
   return { valido: true };
+}
+
+export type StatusFerias = 'em_dia' | 'a_vencer' | 'vencida';
+
+export interface PeriodoComGozos {
+  id: string;
+  data_inicio_aquisitivo: string;
+  data_fim_aquisitivo: string;
+  data_limite_gozo: string;
+  dias_adquiridos: number;
+  gozos?: Array<{
+    dias_gozados: number;
+    abono_pecuniario_dias?: number | null;
+    status: string;
+  }>;
+}
+
+function parseDateInput(d: string | Date): Date {
+  if (d instanceof Date) return startOfDay(d);
+  if (typeof d === "string" && d.includes("-")) {
+    return startOfDay(parseISODate(d));
+  }
+  return startOfDay(new Date(d));
+}
+
+/**
+ * Calcula o status de um período aquisitivo individual.
+ * Regras:
+ * - usados = soma de (dias_gozados + abono_pecuniario_dias) dos gozos com status !== 'cancelado'
+ * - direito = calcularDiasDireitoProporcional(...)
+ * - restantes = direito - usados
+ * - se restantes <= 0 → 'em_dia' (nada a vencer)
+ * - se limite < hoje → 'vencida'
+ * - se limite <= hoje + janelaDias → 'a_vencer'
+ * - senão → 'em_dia'
+ */
+export function calcularStatusPeriodo(
+  periodo: PeriodoComGozos,
+  hoje: Date = new Date(),
+  janelaDias: number = 90
+): { status: StatusFerias; diasRestantes: number; diasUsados: number } {
+  const hojeNormalizado = startOfDay(hoje);
+  const gozosAtivos = (periodo.gozos || []).filter((g) => g.status !== 'cancelado');
+  const usados = gozosAtivos.reduce(
+    (sum, g) => sum + (Number(g.dias_gozados) || 0) + (Number(g.abono_pecuniario_dias) || 0),
+    0
+  );
+  const direito = calcularDiasDireitoProporcional(
+    periodo.data_inicio_aquisitivo,
+    periodo.data_fim_aquisitivo,
+    hojeNormalizado
+  );
+  const restantes = Math.max(0, direito - usados);
+
+  if (restantes <= 0) {
+    return { status: 'em_dia', diasRestantes: 0, diasUsados: usados };
+  }
+
+  const limite = parseDateInput(periodo.data_limite_gozo);
+
+  if (limite < hojeNormalizado) {
+    return { status: 'vencida', diasRestantes: restantes, diasUsados: usados };
+  }
+
+  if (limite <= addDays(hojeNormalizado, janelaDias)) {
+    return { status: 'a_vencer', diasRestantes: restantes, diasUsados: usados };
+  }
+
+  return { status: 'em_dia', diasRestantes: restantes, diasUsados: usados };
+}
+
+export type StatusColaborador = {
+  vencidos: number;
+  aVencer: number;
+};
+
+/**
+ * Helper de apresentação: calcula a quantidade de períodos vencidos e a vencer de um colaborador.
+ */
+export function calcularStatusColaborador(
+  periodos: PeriodoComGozos[],
+  hoje: Date = new Date(),
+  janelaDias: number = 90
+): StatusColaborador {
+  let vencidos = 0;
+  let aVencer = 0;
+  for (const p of periodos) {
+    const { status } = calcularStatusPeriodo(p, hoje, janelaDias);
+    if (status === 'vencida') vencidos++;
+    else if (status === 'a_vencer') aVencer++;
+  }
+  return { vencidos, aVencer };
+}
+
+/**
+ * Contabiliza o status de férias consolidado por colaborador único (D1) e por período.
+ */
+export function contarPorColaborador(
+  colaboradores: Array<{ id: string; periodos: PeriodoComGozos[] }>,
+  hoje: Date = new Date(),
+  janelaDias: number = 90
+): {
+  colaboradoresVencidos: number;
+  colaboradoresAVencer: number;
+  periodosVencidos: number;
+  periodosAVencer: number;
+  porColaborador: Map<string, { vencidos: number; aVencer: number }>;
+} {
+  let colaboradoresVencidos = 0;
+  let colaboradoresAVencer = 0;
+  let periodosVencidos = 0;
+  let periodosAVencer = 0;
+  const porColaborador = new Map<string, { vencidos: number; aVencer: number }>();
+
+  colaboradores.forEach((colab) => {
+    const { vencidos, aVencer } = calcularStatusColaborador(colab.periodos || [], hoje, janelaDias);
+    periodosVencidos += vencidos;
+    periodosAVencer += aVencer;
+
+    porColaborador.set(colab.id, { vencidos, aVencer });
+
+    if (vencidos > 0) {
+      colaboradoresVencidos++;
+    }
+    if (aVencer > 0) {
+      colaboradoresAVencer++;
+    }
+  });
+
+  return {
+    colaboradoresVencidos,
+    colaboradoresAVencer,
+    periodosVencidos,
+    periodosAVencer,
+    porColaborador,
+  };
 }

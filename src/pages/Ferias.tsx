@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { MainLayout } from "@/components/layout/MainLayout";
-import { ColaboradoresFeriasList } from "@/components/ferias/ColaboradoresFeriasList";
+import { ColaboradoresFeriasList, FiltroFerias } from "@/components/ferias/ColaboradoresFeriasList";
 import { FeriasColaboradorDetail } from "@/components/ferias/FeriasColaboradorDetail";
 import { FeriasDashboard } from "@/components/ferias/FeriasDashboard";
 import { AprovacoesPendentesList } from "@/components/ferias/AprovacoesPendentesList";
@@ -12,6 +12,7 @@ import { useFeriasPendentesAprovacao } from "@/hooks/useFerias";
 export default function Ferias() {
   const [selectedColaboradorId, setSelectedColaboradorId] = useState<string | null>(null);
   const [tab, setTab] = useState("dashboard");
+  const [filtroFerias, setFiltroFerias] = useState<FiltroFerias>("todas");
   const { role } = useAuth();
   const isReadOnly = role === 'gestor_departamento' || role === 'colaborador';
   const { data: pendentes } = useFeriasPendentesAprovacao();
@@ -47,7 +48,14 @@ export default function Ferias() {
         <TabsContent value="dashboard">
           <FeriasDashboard
             onGoAprovacoes={() => setTab("aprovacoes")}
-            onGoColaboradores={() => setTab("colaboradores")}
+            onGoColaboradoresVencidas={() => {
+              setFiltroFerias("vencidas");
+              setTab("colaboradores");
+            }}
+            onGoColaboradoresAVencer={() => {
+              setFiltroFerias("a_vencer");
+              setTab("colaboradores");
+            }}
           />
         </TabsContent>
 
@@ -56,7 +64,11 @@ export default function Ferias() {
         </TabsContent>
 
         <TabsContent value="colaboradores">
-          <ColaboradoresFeriasList onSelectColaborador={setSelectedColaboradorId} />
+          <ColaboradoresFeriasList
+            onSelectColaborador={setSelectedColaboradorId}
+            filtroFerias={filtroFerias}
+            onLimparFiltro={() => setFiltroFerias("todas")}
+          />
         </TabsContent>
       </Tabs>
     </MainLayout>

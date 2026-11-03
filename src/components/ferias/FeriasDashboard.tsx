@@ -1,5 +1,10 @@
 import { useMemo } from "react";
-import { calcularDiasDireitoProporcional } from "@/lib/feriasEngine";
+import {
+  calcularDiasDireitoProporcional,
+  contarPorColaborador,
+  calcularStatusPeriodo,
+  PeriodoComGozos,
+} from "@/lib/feriasEngine";
 import { parseISO, differenceInDays, isWithinInterval, addDays } from "date-fns";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -11,42 +16,59 @@ import { useColaboradoresComFerias, useFeriasPendentesAprovacao } from "@/hooks/
 
 interface Props {
   onGoAprovacoes: () => void;
-  onGoColaboradores: () => void;
+  onGoColaboradoresVencidas: () => void;
+  onGoColaboradoresAVencer: () => void;
 }
 
-export function FeriasDashboard({ onGoAprovacoes, onGoColaboradores }: Props) {
+export function FeriasDashboard({
+  onGoAprovacoes,
+  onGoColaboradoresVencidas,
+  onGoColaboradoresAVencer,
+}: Props) {
   const { data: colaboradores, isLoading } = useColaboradoresComFerias();
   const { data: pendentes } = useFeriasPendentesAprovacao();
 
   const metricas = useMemo(() => {
     const hoje = new Date();
     const hojeStr = format(hoje, "yyyy-MM-dd");
-    const em90 = addDays(hoje, 90);
 
-    let vencidas = 0;
-    let aVencer = 0;
     const emCurso: any[] = [];
     const proximas: any[] = [];
     const agendadas: any[] = []; // todas as férias futuras planejadas/aprovadas
     const saldosAbertos: any[] = []; // colaboradores com saldo de férias em aberto
+    const colaboradoresComPeriodos: Array<{ id: string; periodos: PeriodoComGozos[] }> = [];
 
+    // Única iteração sobre colaboradores (Correção 2)
     (colaboradores || []).forEach((c) => {
       const gozosAtivos = (c.ferias_gozo || []).filter(g => g.status !== 'cancelado');
 
-      // saldo por período aquisitivo
-      (c.periodos_aquisitivos || []).forEach((p) => {
-        const gozosPeriodo = gozosAtivos.filter(g => g.periodo_aquisitivo_id === p.id);
-        const usados = gozosPeriodo.reduce((s, g) => s + g.dias_gozados + (g.abono_pecuniario_dias || 0), 0);
+      const periodosColab: PeriodoComGozos[] = (c.periodos_aquisitivos || []).map((p) => {
+        const gozosPeriodo = (c.ferias_gozo || []).filter((g) => g.periodo_aquisitivo_id === p.id);
+        const gozosPeriodoAtivos = gozosPeriodo.filter((g) => g.status !== 'cancelado');
+
+        // Correção 1: usados calculado diretamente dos gozos reais (sem truncamento por direito - restantes)
+        const usados = gozosPeriodoAtivos.reduce(
+          (s, g) => s + (Number(g.dias_gozados) || 0) + (Number(g.abono_pecuniario_dias) || 0),
+          0
+        );
         const direito = calcularDiasDireitoProporcional(p.data_inicio_aquisitivo, p.data_fim_aquisitivo, hoje);
-        const restantes = direito - usados;
+        const restantes = Math.max(0, direito - usados);
         const limite = parseISO(p.data_limite_gozo);
+
+        const periodoFormatado: PeriodoComGozos = {
+          id: p.id,
+          data_inicio_aquisitivo: p.data_inicio_aquisitivo,
+          data_fim_aquisitivo: p.data_fim_aquisitivo,
+          data_limite_gozo: p.data_limite_gozo,
+          dias_adquiridos: p.dias_adquiridos,
+          gozos: gozosPeriodo,
+        };
+
         if (restantes > 0) {
-          if (limite < hoje) vencidas++;
-          else if (limite <= em90) aVencer++;
-          // dias agendados em gozos futuros (planejado/aprovado) deste período
-          const agendadosDias = gozosPeriodo
+          const agendadosDias = gozosPeriodoAtivos
             .filter(g => (g.status === 'planejado' || g.status === 'aprovado') && parseISO(g.data_fim_gozo) >= hoje)
             .reduce((s, g) => s + g.dias_gozados + (g.abono_pecuniario_dias || 0), 0);
+
           saldosAbertos.push({
             colaborador: c,
             periodo: p,
@@ -57,32 +79,46 @@ export function FeriasDashboard({ onGoAprovacoes, onGoColaboradores }: Props) {
             limite,
           });
         }
+
+        return periodoFormatado;
+      });
+
+      colaboradoresComPeriodos.push({
+        id: c.id,
+        periodos: periodosColab,
       });
 
       // em curso, próximas e agendadas
-      (c.ferias_gozo || [])
-        .filter(g => g.status !== 'cancelado')
-        .forEach(g => {
-          const iniStr = String(g.data_inicio_gozo).slice(0, 10);
-          const fimStr = String(g.data_fim_gozo).slice(0, 10);
-          const ini = parseISO(iniStr);
-          // Em curso: comparação por DATA (inclui o último dia de gozo)
-          if (iniStr <= hojeStr && hojeStr <= fimStr) {
-            emCurso.push({ ...g, colaborador: c });
-          } else if ((g.status === 'aprovado' || g.status === 'planejado') && iniStr > hojeStr && differenceInDays(ini, hoje) <= 30) {
-            proximas.push({ ...g, colaborador: c });
-          }
-          if ((g.status === 'aprovado' || g.status === 'planejado') && fimStr >= hojeStr) {
-            agendadas.push({ ...g, colaborador: c });
-          }
-        });
-
+      gozosAtivos.forEach(g => {
+        const iniStr = String(g.data_inicio_gozo).slice(0, 10);
+        const fimStr = String(g.data_fim_gozo).slice(0, 10);
+        const ini = parseISO(iniStr);
+        if (iniStr <= hojeStr && hojeStr <= fimStr) {
+          emCurso.push({ ...g, colaborador: c });
+        } else if ((g.status === 'aprovado' || g.status === 'planejado') && iniStr > hojeStr && differenceInDays(ini, hoje) <= 30) {
+          proximas.push({ ...g, colaborador: c });
+        }
+        if ((g.status === 'aprovado' || g.status === 'planejado') && fimStr >= hojeStr) {
+          agendadas.push({ ...g, colaborador: c });
+        }
+      });
     });
+
+    const contagem = contarPorColaborador(colaboradoresComPeriodos, hoje, 90);
 
     agendadas.sort((a, b) => a.data_inicio_gozo.localeCompare(b.data_inicio_gozo));
     saldosAbertos.sort((a, b) => a.limite.getTime() - b.limite.getTime());
 
-    return { vencidas, aVencer, emCurso, proximas, agendadas, saldosAbertos };
+    return {
+      vencidas: contagem.colaboradoresVencidos,
+      aVencer: contagem.colaboradoresAVencer,
+      periodosVencidos: contagem.periodosVencidos,
+      periodosAVencer: contagem.periodosAVencer,
+      emCurso,
+      proximas,
+      agendadas,
+      saldosAbertos,
+    };
   }, [colaboradores]);
 
   if (isLoading) {
@@ -106,14 +142,14 @@ export function FeriasDashboard({ onGoAprovacoes, onGoColaboradores }: Props) {
       value: metricas.vencidas,
       icon: AlertTriangle,
       color: 'text-destructive bg-destructive/10',
-      onClick: onGoColaboradores,
+      onClick: onGoColaboradoresVencidas,
     },
     {
       title: 'A Vencer (90 dias)',
       value: metricas.aVencer,
       icon: AlertTriangle,
       color: 'text-yellow-600 bg-yellow-100',
-      onClick: onGoColaboradores,
+      onClick: onGoColaboradoresAVencer,
     },
     {
       title: 'Férias em Curso',

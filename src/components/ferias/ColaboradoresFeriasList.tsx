@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Search, Calendar, AlertTriangle, CheckCircle, Clock, XCircle, Upload } from "lucide-react";
+import { Search, Calendar, AlertTriangle, CheckCircle, Clock, XCircle, Upload, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,27 +11,88 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useColaboradoresComFerias, getStatusFerias } from "@/hooks/useFerias";
 import { useAuth } from "@/hooks/useAuth";
 import { ImportarUltimasFeriasDialog } from "./ImportarUltimasFeriasDialog";
-import { calcularPeriodoAquisitivoAtual } from "@/lib/feriasEngine";
+import {
+  calcularPeriodoAquisitivoAtual,
+  calcularStatusColaborador,
+  contarPorColaborador,
+} from "@/lib/feriasEngine";
+
+export type FiltroFerias = 'todas' | 'vencidas' | 'a_vencer';
 
 interface ColaboradoresFeriasListProps {
   onSelectColaborador: (id: string) => void;
+  filtroFerias?: FiltroFerias;
+  onLimparFiltro?: () => void;
+  totalEsperadoDivergencia?: number;
 }
 
-export function ColaboradoresFeriasList({ onSelectColaborador }: ColaboradoresFeriasListProps) {
+export function ColaboradoresFeriasList({
+  onSelectColaborador,
+  filtroFerias = 'todas',
+  onLimparFiltro,
+  totalEsperadoDivergencia,
+}: ColaboradoresFeriasListProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [importOpen, setImportOpen] = useState(false);
   const { data: colaboradores, isLoading } = useColaboradoresComFerias();
   const { role } = useAuth();
   const canImport = role === 'admin_master' || role === 'admin_empresa' || role === 'analista_rh';
 
-  const filteredColaboradores = colaboradores?.filter(c =>
-    c.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    c.department?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    c.job_title?.toLowerCase().includes(searchTerm.toLowerCase())
-  ) || [];
+  const colaboradoresComStatus = useMemo(() =>
+    (colaboradores || []).map((c) => ({
+      ...c,
+      statusFeriasCalculado: calcularStatusColaborador(
+        (c.periodos_aquisitivos || []).map((p: any) => ({
+          ...p,
+          gozos: (c.ferias_gozo || []).filter(
+            (g: any) => g.periodo_aquisitivo_id === p.id && g.status !== 'cancelado'
+          ),
+        }))
+      ),
+    })),
+    [colaboradores]
+  );
 
-  // Período aquisitivo agora usa a engine (considera última férias / data de corte)
+  const colaboradoresFiltrados = useMemo(() => {
+    let lista = colaboradoresComStatus;
+    if (filtroFerias === 'vencidas') {
+      lista = lista.filter((c) => c.statusFeriasCalculado.vencidos > 0);
+    } else if (filtroFerias === 'a_vencer') {
+      lista = lista.filter((c) => c.statusFeriasCalculado.aVencer > 0);
+    }
 
+    if (searchTerm.trim()) {
+      const t = searchTerm.toLowerCase();
+      lista = lista.filter(
+        (c) =>
+          c.full_name?.toLowerCase().includes(t) ||
+          c.department?.toLowerCase().includes(t) ||
+          c.job_title?.toLowerCase().includes(t)
+      );
+    }
+    return lista;
+  }, [colaboradoresComStatus, filtroFerias, searchTerm]);
+
+  const totalDashboardEsperado = useMemo(() => {
+    if (totalEsperadoDivergencia !== undefined) {
+      return totalEsperadoDivergencia;
+    }
+    if (filtroFerias === 'todas') return 0;
+    const colabsFormatados = (colaboradores || []).map((c) => ({
+      id: c.id,
+      periodos: (c.periodos_aquisitivos || []).map((p: any) => ({
+        ...p,
+        gozos: (c.ferias_gozo || []).filter(
+          (g: any) => g.periodo_aquisitivo_id === p.id && g.status !== 'cancelado'
+        ),
+      })),
+    }));
+    const contagem = contarPorColaborador(colabsFormatados);
+    return filtroFerias === 'vencidas' ? contagem.colaboradoresVencidos : contagem.colaboradoresAVencer;
+  }, [colaboradores, filtroFerias, totalEsperadoDivergencia]);
+
+  const temDivergencia =
+    filtroFerias !== 'todas' && colaboradoresFiltrados.length === 0 && totalDashboardEsperado > 0;
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -56,7 +117,7 @@ export function ColaboradoresFeriasList({ onSelectColaborador }: ColaboradoresFe
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {[1, 2, 3, 4, 5].map(i => (
+          {[1, 2, 3, 4, 5].map((i) => (
             <Skeleton key={i} className="h-12 w-full" />
           ))}
         </CardContent>
@@ -78,8 +139,8 @@ export function ColaboradoresFeriasList({ onSelectColaborador }: ColaboradoresFe
             </Button>
           )}
         </div>
-        <div className="mt-4">
-          <div className="relative">
+        <div className="mt-4 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+          <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Buscar por nome, cargo ou departamento..."
@@ -88,14 +149,93 @@ export function ColaboradoresFeriasList({ onSelectColaborador }: ColaboradoresFe
               className="pl-10"
             />
           </div>
+          {filtroFerias !== 'todas' && (
+            <div className="flex items-center">
+              {filtroFerias === 'vencidas' ? (
+                <Badge
+                  variant="destructive"
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold shadow-sm cursor-pointer"
+                  onClick={onLimparFiltro}
+                  data-testid="chip-filtro-vencidas"
+                >
+                  <span>Férias vencidas</span>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onLimparFiltro?.();
+                    }}
+                    className="hover:opacity-75 focus:outline-none"
+                    aria-label="Limpar filtro de férias vencidas"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </Badge>
+              ) : (
+                <Badge
+                  variant="outline"
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold shadow-sm bg-yellow-50 text-yellow-800 border-yellow-300 hover:bg-yellow-100 cursor-pointer"
+                  onClick={onLimparFiltro}
+                  data-testid="chip-filtro-avencer"
+                >
+                  <span>A vencer (90 dias)</span>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onLimparFiltro?.();
+                    }}
+                    className="hover:opacity-75 focus:outline-none"
+                    aria-label="Limpar filtro de férias a vencer"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </Badge>
+              )}
+            </div>
+          )}
         </div>
       </CardHeader>
       <CardContent>
-        {filteredColaboradores.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">
-            <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p>Nenhum colaborador encontrado</p>
+        {temDivergencia && (
+          <div
+            role="alert"
+            data-testid="alerta-divergencia"
+            className="p-3 mb-4 rounded-md bg-yellow-50 border border-yellow-300 text-yellow-800 text-sm font-medium flex items-center gap-2"
+          >
+            <span>
+              ⚠️ Divergência detectada: o painel indica {totalDashboardEsperado} colaborador(es) mas a lista está vazia. Reporte este caso ao suporte.
+            </span>
           </div>
+        )}
+
+        {colaboradoresFiltrados.length === 0 ? (
+          filtroFerias === 'vencidas' ? (
+            <div className="text-center py-8 text-muted-foreground space-y-3" data-testid="empty-vencidas">
+              <Calendar className="h-12 w-12 mx-auto mb-2 opacity-50" />
+              <p className="font-medium text-foreground">Nenhum colaborador com férias vencidas.</p>
+              {onLimparFiltro && (
+                <Button variant="outline" size="sm" onClick={onLimparFiltro}>
+                  Limpar filtro
+                </Button>
+              )}
+            </div>
+          ) : filtroFerias === 'a_vencer' ? (
+            <div className="text-center py-8 text-muted-foreground space-y-3" data-testid="empty-avencer">
+              <Calendar className="h-12 w-12 mx-auto mb-2 opacity-50" />
+              <p className="font-medium text-foreground">Nenhum colaborador com férias a vencer nos próximos 90 dias.</p>
+              {onLimparFiltro && (
+                <Button variant="outline" size="sm" onClick={onLimparFiltro}>
+                  Limpar filtro
+                </Button>
+              )}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground" data-testid="empty-todas">
+              <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p>Nenhum colaborador encontrado</p>
+            </div>
+          )
         ) : (
           <div className="w-full overflow-x-auto">
             <Table>
@@ -110,14 +250,14 @@ export function ColaboradoresFeriasList({ onSelectColaborador }: ColaboradoresFe
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredColaboradores.map((colaborador) => {
+                {colaboradoresFiltrados.map((colaborador) => {
                   const periodo = calcularPeriodoAquisitivoAtual({
                     admission_date: colaborador.admission_date,
                     ultima_ferias_inicio: (colaborador as any).ultima_ferias_inicio,
                     ultima_ferias_fim: (colaborador as any).ultima_ferias_fim,
                     data_corte_ferias: (colaborador as any).data_corte_ferias,
                   });
-                  const statusFerias = getStatusFerias(
+                  const statusFeriasLegado = getStatusFerias(
                     {
                       admission_date: colaborador.admission_date,
                       ultima_ferias_inicio: (colaborador as any).ultima_ferias_inicio,
@@ -127,6 +267,9 @@ export function ColaboradoresFeriasList({ onSelectColaborador }: ColaboradoresFe
                     colaborador.periodos_aquisitivos,
                     colaborador.ferias_gozo
                   );
+
+                  const { vencidos, aVencer } = colaborador.statusFeriasCalculado;
+                  const temBadgesCalculados = vencidos > 0 || aVencer > 0;
 
                   return (
                     <TableRow
@@ -146,10 +289,28 @@ export function ColaboradoresFeriasList({ onSelectColaborador }: ColaboradoresFe
                         </span>
                       </TableCell>
                       <TableCell>
-                        <Badge variant={statusFerias.color} className="flex items-center gap-1 w-fit">
-                          {getStatusIcon(statusFerias.status)}
-                          {statusFerias.label}
-                        </Badge>
+                        {temBadgesCalculados ? (
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            {vencidos > 0 && (
+                              <Badge variant="destructive" className="w-fit">
+                                {vencidos === 1 ? "Férias vencidas" : `${vencidos} períodos vencidos`}
+                              </Badge>
+                            )}
+                            {aVencer > 0 && (
+                              <Badge
+                                variant="outline"
+                                className="w-fit bg-yellow-50 text-yellow-800 border-yellow-300"
+                              >
+                                {aVencer === 1 ? "A vencer (90d)" : `${aVencer} períodos a vencer`}
+                              </Badge>
+                            )}
+                          </div>
+                        ) : (
+                          <Badge variant={statusFeriasLegado.color} className="flex items-center gap-1 w-fit">
+                            {getStatusIcon(statusFeriasLegado.status)}
+                            {statusFeriasLegado.label}
+                          </Badge>
+                        )}
                       </TableCell>
                     </TableRow>
                   );
