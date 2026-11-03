@@ -71,6 +71,16 @@ export const MODULOS_CONTRATAVEIS: ModuloContratavel[] = [
     ordem: 4,
   },
   {
+    key: '/ponto-eletronico',
+    nome: 'Ponto Eletrônico',
+    pilar: 'Departamento Pessoal',
+    descricao: 'Banco de horas por ciclo, abonos por dia ou hora e fechamento com assinatura digital.',
+    rota: '/ponto-eletronico',
+    subRotas: [],
+    isBase: false,
+    ordem: 5,
+  },
+  {
     key: '/minhas-tarefas',
     nome: 'Tarefas & Produtividade',
     pilar: 'Departamento Pessoal',
@@ -78,7 +88,7 @@ export const MODULOS_CONTRATAVEIS: ModuloContratavel[] = [
     rota: '/minhas-tarefas',
     subRotas: ['/minhas-atividades'],
     isBase: false,
-    ordem: 5,
+    ordem: 6,
   },
   {
     key: '/comunicados',
@@ -88,7 +98,7 @@ export const MODULOS_CONTRATAVEIS: ModuloContratavel[] = [
     rota: '/comunicados',
     subRotas: [],
     isBase: false,
-    ordem: 6,
+    ordem: 7,
   },
 
   // --- DESENVOLVIMENTO & PERFORMANCE ---

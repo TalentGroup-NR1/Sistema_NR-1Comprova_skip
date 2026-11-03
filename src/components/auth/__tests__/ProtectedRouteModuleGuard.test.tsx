@@ -207,4 +207,41 @@ describe('ProtectedRoute com Guarda de Módulos (moduleKey)', () => {
     expect(screen.getByText('Painel Cuidar+')).toBeInTheDocument();
     expect(screen.getByText(/Visualizando como Super Admin/)).toBeInTheDocument();
   });
+
+  it('bloqueia rota /ponto-eletronico com ModuleNotContractedScreen quando desabilitado para o tenant', () => {
+    vi.mocked(AuthHook.useAuth).mockReturnValue({
+      isAuthenticated: true,
+      loading: false,
+      role: 'admin_empresa',
+      isAdmin: true,
+      isBlocked: false,
+      mustChangePassword: false,
+    } as any);
+
+    vi.mocked(VisibleModulesHook.useIsModuleVisible).mockReturnValue({
+      isVisible: false,
+      isLoading: false,
+      isError: false,
+      isSuperAdminBypass: false,
+      refetch: vi.fn(),
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/ponto-eletronico']}>
+        <Routes>
+          <Route
+            path="/ponto-eletronico"
+            element={
+              <ProtectedRoute moduleKey="/ponto-eletronico">
+                <div>Tela do Ponto Eletrônico</div>
+              </ProtectedRoute>
+            }
+          />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    expect(screen.queryByText('Tela do Ponto Eletrônico')).not.toBeInTheDocument();
+    expect(screen.getByText('Módulo não contratado')).toBeInTheDocument();
+  });
 });

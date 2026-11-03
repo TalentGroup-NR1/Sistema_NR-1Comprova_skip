@@ -6,13 +6,14 @@ import {
 } from '../modulosContrataveis';
 
 describe('Catálogo de Módulos Contratáveis (modulosContrataveis)', () => {
-  it('deve conter exatamente os 15 módulos canônicos da plataforma', () => {
-    expect(MODULOS_CONTRATAVEIS).toHaveLength(15);
+  it('deve conter exatamente os 16 módulos canônicos da plataforma', () => {
+    expect(MODULOS_CONTRATAVEIS).toHaveLength(16);
     const keys = MODULOS_CONTRATAVEIS.map((m) => m.key);
     expect(keys).toContain('/colaboradores');
     expect(keys).toContain('/ferias');
     expect(keys).toContain('/demissoes');
     expect(keys).toContain('/beneficios');
+    expect(keys).toContain('/ponto-eletronico');
     expect(keys).toContain('/minhas-tarefas');
     expect(keys).toContain('/comunicados');
     expect(keys).toContain('/avaliacoes');

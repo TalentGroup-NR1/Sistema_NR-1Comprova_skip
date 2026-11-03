@@ -200,7 +200,11 @@ const App = () => (
                   <AnalisePerfil />
                 </ProtectedRoute>
               } />
-              <Route path="/ponto-eletronico" element={<Navigate to="/" replace />} />
+              <Route path="/ponto-eletronico" element={
+                <ProtectedRoute moduleKey="/ponto-eletronico">
+                  <PontoEletronico />
+                </ProtectedRoute>
+              } />
               <Route path="/denuncias" element={
                 <ProtectedRoute allowedRoles={['admin_master', 'admin_empresa', 'analista_rh']} moduleKey="/denuncias">
                   <Denuncias />
