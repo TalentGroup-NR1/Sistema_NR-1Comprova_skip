@@ -292,16 +292,23 @@ export function useConfirmarImportacaoPgr() {
     }) => {
       if (!user?.id) throw new Error("Não autenticado.");
 
-      // ── Resolução do company_id da importação (fonte da verdade) ──
+      // ── Resolução estrita do company_id da importação (fonte da verdade) ──
       const { data: impData, error: fetchImpErr } = await (supabase as any)
         .from("pgr_importacoes")
         .select("company_id")
         .eq("id", importacaoId)
         .single();
 
-      const targetCompanyId = impData?.company_id || userContextCompanyId;
+      if (fetchImpErr || !impData) {
+        throw new Error(
+          `Não foi possível identificar a empresa do PGR: ${
+            fetchImpErr?.message || "importação não encontrada"
+          }`
+        );
+      }
+      const targetCompanyId = impData.company_id;
       if (!targetCompanyId) {
-        throw new Error("Selecione uma empresa.");
+        throw new Error("A importação não tem company_id associado.");
       }
 
       // Salva os dados confirmados na importação
