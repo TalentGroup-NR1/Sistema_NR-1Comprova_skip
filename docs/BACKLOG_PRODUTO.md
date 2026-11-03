@@ -75,14 +75,29 @@ pgr-confirmar (já corrigida e pronta).
 
 ---
 
-## Verificar ordem Storage vs banco na exclusão — BAIXA
-Confirmar em pgr-excluir/index.ts qual é a ordem:
-- Se remove Storage ANTES do DELETE: se o Storage falhar, aborta e o
-  registro fica (correto)
-- Se DELETE ANTES do Storage: se o Storage falhar, fica arquivo órfão
-  pago no bucket (incorreto)
+## Arquivos órfãos no Storage quando a exclusão do PGR falha — MÉDIA
+**Sintoma:** pgr-excluir remove do Storage primeiro, mas se o Storage
+retornar erro, apenas emite console.warn e prossegue com o DELETE do
+registro em pgr_importacoes. O arquivo permanece no bucket
+documentos_analise sem nenhuma referência no banco.
 
-Se estiver incorreto, ajustar para remover Storage primeiro e abortar
-em caso de erro.
+**Riscos:**
+- Custo: PDFs órfãos acumulam e são cobrados indefinidamente
+- LGPD: PGR contém avaliação de riscos psicossociais (dado sensível);
+  arquivo sem titular identificável no sistema dificulta resposta a
+  requisição de exclusão
+- Governança: nenhuma trilha aponta para o arquivo
+
+**Ação sugerida:**
+1. Criar rotina de reconciliação periódica:
+   listar objetos em documentos_analise, cruzar com arquivo_storage em
+   pgr_importacoes, e logar/alertar sobre órfãos.
+2. Registrar em tabela de auditoria toda exclusão que tenha falhado no
+   Storage, com o path e timestamp, para limpeza posterior.
+3. Avaliar retenção automática (lifecycle policy no bucket) para
+   objetos sem referência por > 90 dias.
+
+**Prioridade:** MÉDIA (era BAIXA antes da análise de LGPD).
+
 
 
