@@ -37,6 +37,11 @@ export interface AcaoExtraida {
   responsavel_sugerido: string | null;
   responsavel_id?: string | null;
   prioridade: "alta" | "media" | "baixa";
+  /**
+   * @deprecated Não implementado no banco relacional (`pgr_plano_acao` não possui esta coluna).
+   * Mantido apenas para compatibilidade com payloads legados em JSONB.
+   * No Ciclo 2, utilizar o vínculo relacional `risco_id` (`pgr_plano_acao.risco_id -> pgr_riscos.id`).
+   */
   risco_referenciado: string | null;
   status?: "pendente" | "em_andamento" | "concluida" | "validada";
   evidencia_url?: string | null;

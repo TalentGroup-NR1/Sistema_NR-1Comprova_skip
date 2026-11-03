@@ -99,5 +99,40 @@ documentos_analise sem nenhuma referência no banco.
 
 **Prioridade:** MÉDIA (era BAIXA antes da análise de LGPD).
 
+---
+
+## Vínculo risco→ação nunca existiu (ALTA)
+**Sintoma:** a coluna risco_referenciado nunca existiu em
+pgr_plano_acao. O campo existe apenas na interface TypeScript
+AcaoExtraida, mas nada o popula (nem a IA, nem formulário). As 22 ações
+existentes ficaram com risco_id = NULL no backfill.
+**Impacto:** não há como saber qual ação mitiga qual risco sem
+intervenção humana. Ao excluir um risco, nenhuma ação é afetada — mas
+também não há rastreabilidade de mitigação, exigida pela NR-1.
+**Ação (Ciclo 2):** adicionar seletor de risco no AcaoDialog e no
+formulário de criação de ação. Não há vínculo herdado a migrar.
+
+---
+
+## Dois mecanismos de papel convivem (MÉDIA)
+**Sintoma:** as policies usam public.get_my_role() = role OR
+public.has_role(uid, role). Há duas fontes de verdade: profiles.active_role
+e a tabela user_roles.
+**Impacto:** foi a causa raiz do BOOT_ERROR em pgr-excluir/pgr-confirmar
+(bug dbRoles). A dupla checagem nas policies é defesa, mas a ambiguidade
+permanece.
+**Ação:** unificar a resolução de papéis em uma única função e ajustar
+policies. Não urgente, mas é dívida que já causou incidente.
+
+---
+
+## Confirmar status das importações após backfill (BAIXA)
+**Sintoma:** o backfill filtra WHERE status='confirmado'. Se houver
+importações em processando/aguardando_revisao com riscos, elas não
+migraram.
+**Ação:** validar e, se necessário, rodar o backfill novamente
+(idempotente).
+
+
 
 
