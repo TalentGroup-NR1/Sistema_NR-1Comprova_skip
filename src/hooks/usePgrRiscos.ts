@@ -161,6 +161,7 @@ export function useCreateRisco() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["pgr-riscos", variables.pgr_importacao_id] });
       queryClient.invalidateQueries({ queryKey: ["pgr-importacoes"] });
+      queryClient.invalidateQueries({ queryKey: ["pgr-acoes"] });
     },
   });
 }
@@ -228,6 +229,7 @@ export function useUpdateRisco() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["pgr-riscos", variables.pgr_importacao_id] });
       queryClient.invalidateQueries({ queryKey: ["pgr-importacoes"] });
+      queryClient.invalidateQueries({ queryKey: ["pgr-acoes"] });
     },
   });
 }
@@ -271,6 +273,7 @@ export function useDeleteRisco() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["pgr-riscos", variables.pgr_importacao_id] });
       queryClient.invalidateQueries({ queryKey: ["pgr-importacoes"] });
+      queryClient.invalidateQueries({ queryKey: ["pgr-acoes"] });
     },
   });
 }
