@@ -58,17 +58,26 @@ serve(async (req) => {
     }
     const caller = userData.user;
 
-    // ── Role check via get_my_role() (which evaluates profiles.active_role) ──
-    const { data: activeRoleRpc, error: roleRpcErr } = await supabaseUser.rpc("get_my_role");
-    let callerRole: string | null = activeRoleRpc as string | null;
+    const allowedRoles = ["admin_master", "admin_empresa", "analista_rh"];
 
-    if (roleRpcErr || !callerRole) {
-      const { data: roleRows } = await supabaseAdmin
-        .from("user_roles").select("role").eq("user_id", caller.id);
-      callerRole = roleRows?.[0]?.role ?? null;
+    // ── Resolução de permissões via user_roles ──
+    const { data: rolesData, error: rolesErr } = await supabaseAdmin
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", caller.id);
+
+    if (rolesErr) {
+      console.error(`[pgr-excluir][${requestId}] Error fetching roles:`, rolesErr);
+      return new Response(JSON.stringify({ error: "Erro ao consultar permissões" }), { status: 200, headers: jsonHeaders });
     }
 
-    const allowedRoles = ["admin_master", "admin_empresa", "analista_rh"];
+    const dbRoles: string[] = (rolesData ?? [])
+      .map((r: { role: string }) => r.role)
+      .filter(Boolean);
+
+    const callerRole: string | null =
+      dbRoles.find((r) => allowedRoles.includes(r)) ?? dbRoles[0] ?? null;
+
     if (!callerRole || !allowedRoles.includes(callerRole)) {
       return new Response(JSON.stringify({ error: "Forbidden: insufficient permissions" }), { status: 403, headers: jsonHeaders });
     }
@@ -87,7 +96,6 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: "Importação não encontrada" }), { status: 200, headers: jsonHeaders });
     }
 
-    const callerRole = dbRoles.find((r: string) => allowedRoles.includes(r)) || dbRoles[0];
     if (callerRole !== "admin_master") {
       const { data: profileRow } = await supabaseAdmin
         .from("profiles").select("company_id").eq("user_id", caller.id).maybeSingle();
