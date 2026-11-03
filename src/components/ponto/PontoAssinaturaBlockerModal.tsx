@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useIsModuleVisible } from "@/hooks/useVisibleModules";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -33,6 +34,13 @@ export function PontoAssinaturaBlockerModal() {
   const location = useLocation();
   const [open, setOpen] = useState(false);
 
+  // Guarda Comercial de Módulo (Fail-Closed)
+  const pontoModuleVisible = useIsModuleVisible('/ponto-eletronico');
+  const isPontoVisible = pontoModuleVisible?.isVisible ?? false;
+  const isModLoading = pontoModuleVisible?.isLoading ?? false;
+  const isModError = pontoModuleVisible?.isError ?? false;
+  const deveExecutar = isPontoVisible && !isModLoading && !isModError;
+
   // Colaborador atual
   const colabQ = useQuery({
     queryKey: ["assinatura-blocker-colab", user?.id],
@@ -46,7 +54,7 @@ export function PontoAssinaturaBlockerModal() {
         .maybeSingle();
       return data;
     },
-    enabled: !!user?.id,
+    enabled: !!user?.id && deveExecutar,
     staleTime: 60_000,
   });
 
@@ -61,7 +69,7 @@ export function PontoAssinaturaBlockerModal() {
       if (error) throw error;
       return (data || []) as Array<{ id: string; status: string; periodo_inicio: string; periodo_fim: string }>;
     },
-    enabled: !!colaboradorId,
+    enabled: !!colaboradorId && deveExecutar,
     staleTime: 60_000,
   });
 
@@ -72,7 +80,7 @@ export function PontoAssinaturaBlockerModal() {
       if (error) throw error;
       return (data || []) as Array<{ id: string; status: string; ano: number; mes: number; periodo_inicio: string; periodo_fim: string }>;
     },
-    enabled: !!colaboradorId,
+    enabled: !!colaboradorId && deveExecutar,
     staleTime: 60_000,
   });
 
@@ -83,13 +91,14 @@ export function PontoAssinaturaBlockerModal() {
   }, [fechQ.data, espQ.data]);
 
   useEffect(() => {
+    if (!deveExecutar) return;
     if (!user?.id || pendentes.total === 0) return;
     // não abrir se já está na tela de assinatura
     if (location.pathname === "/ponto-eletronico") return;
     const dismissed = sessionStorage.getItem(DISMISS_KEY);
     if (dismissed) return;
     setOpen(true);
-  }, [user?.id, pendentes.total, location.pathname]);
+  }, [user?.id, pendentes.total, location.pathname, deveExecutar]);
 
   const handleAssinar = () => {
     sessionStorage.setItem(DISMISS_KEY, "1");
@@ -102,6 +111,8 @@ export function PontoAssinaturaBlockerModal() {
     setOpen(false);
   };
 
+  // Fail-Closed: módulo indisponível, carregando ou erro
+  if (!deveExecutar) return null;
   if (!open || pendentes.total === 0) return null;
 
   const primeiro = pendentes.fechamentos[0] || pendentes.espelhos[0];

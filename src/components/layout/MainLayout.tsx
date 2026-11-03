@@ -144,7 +144,7 @@ export function MainLayout({ children }: MainLayoutProps) {
         <PulseBlockerModal />
       </LayoutModalErrorBoundary>
       <LayoutModalErrorBoundary>
-        {/* <PontoAssinaturaBlockerModal /> */}
+        <PontoAssinaturaBlockerModal />
       </LayoutModalErrorBoundary>
       <LayoutModalErrorBoundary>
         <WelcomeWizard />
