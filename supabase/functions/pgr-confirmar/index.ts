@@ -15,6 +15,14 @@ function maskName(emailOrId: string): string {
   return `${name.slice(0, 3)}***@${domain}`;
 }
 
+/**
+ * @deprecated
+ * Este fluxo NÃO é usado pelo frontend atualmente.
+ * A confirmação de importações é feita via cliente PostgREST direto
+ * (useConfirmarImportacaoPgr em src/hooks/usePgrImportacao.ts).
+ * Mantida corrigida e deployada para futura migração transacional
+ * para o servidor. Não remover sem antes migrar o fluxo do cliente.
+ */
 serve(async (req) => {
   const requestId = crypto.randomUUID().slice(0, 8);
   const corsHeaders = buildCorsHeaders(req);

@@ -53,3 +53,36 @@ Consulte o documento completo de fechamento e especificação da Fase 2 em: docs
 - Usar prefixo "pre-" APENAS quando houver alteração de código entre a tag anterior e o deploy. Se dois commits consecutivos são apenas documentação, não criar tag nova.
 - Por que: `v1.1.0` e `v1.1.1` apontaram para `bc6b5d9` por engano, causando confusão em rollback.
 
+---
+
+## Confirmação de PGR sem validação de servidor — ALTA
+**Sintoma:** useConfirmarImportacaoPgr grava em pgr_importacoes e
+pgr_plano_acao diretamente via cliente PostgREST, sem passar pela Edge
+Function pgr-confirmar.
+
+**Riscos:**
+- Sem validação de payload no servidor (browser envia o que quiser)
+- Sem log de auditoria transacional (quem confirmou o quê e quando)
+- Operação não atômica (grava importação e falha em plano_acao deixa
+  estado inconsistente)
+- RLS é a única barreira de isolamento multi-tenant
+
+**Impacto NR-1:** impossibilita responder com confiança "quem confirmou
+este mapa de riscos" em auditoria fiscal.
+
+**Ação:** migrar a confirmação para Edge Function transacional usando
+pgr-confirmar (já corrigida e pronta).
+
+---
+
+## Verificar ordem Storage vs banco na exclusão — BAIXA
+Confirmar em pgr-excluir/index.ts qual é a ordem:
+- Se remove Storage ANTES do DELETE: se o Storage falhar, aborta e o
+  registro fica (correto)
+- Se DELETE ANTES do Storage: se o Storage falhar, fica arquivo órfão
+  pago no bucket (incorreto)
+
+Se estiver incorreto, ajustar para remover Storage primeiro e abortar
+em caso de erro.
+
+
