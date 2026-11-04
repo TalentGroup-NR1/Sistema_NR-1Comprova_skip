@@ -123,7 +123,18 @@ export default function ComportamentosOfensivos() {
     }
   };
 
-  if (!isLoadingResp && !isResponsavel) {
+  if (isLoadingResp) {
+    return (
+      <MainLayout>
+        <div className="p-6 space-y-4 max-w-4xl mx-auto my-8">
+          <Skeleton className="h-8 w-64" />
+          <Skeleton className="h-24 w-full" />
+        </div>
+      </MainLayout>
+    );
+  }
+
+  if (!isResponsavel) {
     return (
       <MainLayout>
         <div className="p-6">

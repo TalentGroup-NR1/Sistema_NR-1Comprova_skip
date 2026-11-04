@@ -73,8 +73,8 @@ const configuracoesItems: NavItem[] = [
   { icon: Building2, label: "Cadastro de Empresa", href: "/empresas", roles: ['admin_master'] },
   { icon: FileText, label: "Relatórios Executivos", href: "/relatorios-executivos", roles: ['admin_master', 'admin_empresa', 'analista_rh'] },
   { icon: Shield, label: "Gerenciar Usuários", href: "/acessos", roles: ['admin_master', 'admin_empresa'] },
-  { icon: ShieldCheck, label: "Fale Conosco", href: "/denuncias", roles: ['admin_master', 'admin_empresa', 'analista_rh'] },
-  { icon: ShieldAlert, label: "Comportamentos Ofensivos", href: "/comportamentos-ofensivos", roles: ['admin_master', 'admin_empresa', 'analista_rh'] },
+  { icon: ShieldCheck, label: "Fale Conosco", href: "/denuncias" },
+  { icon: ShieldAlert, label: "Comportamentos Ofensivos", href: "/comportamentos-ofensivos" },
 ];
 
 const roleLabels: Record<string, string> = ROLE_LABELS;
@@ -153,8 +153,6 @@ export function Sidebar() {
         '/empresas',
         '/relatorios-executivos',
         '/estrutura-organizacional',
-        '/denuncias',
-        '/comportamentos-ofensivos',
       ];
       if (adminExclusiveRoutes.some(route => location.pathname.startsWith(route))) {
         navigate('/');
@@ -272,7 +270,7 @@ export function Sidebar() {
     ...filterByRole(configuracoesItems),
   ].filter(item => {
     if (item.href === "/denuncias" || item.href === "/comportamentos-ofensivos") {
-      return !!isResponsavel;
+      return isResponsavel === true;
     }
     return true;
   }).map(item => {

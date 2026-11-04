@@ -1,11 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { Sidebar } from '../Sidebar';
 import * as AuthHook from '@/hooks/useAuth';
 import * as VisibleModulesHook from '@/hooks/useVisibleModules';
 import * as CompanyContext from '@/contexts/CompanyContext';
+import * as DenunciasHook from '@/hooks/useDenuncias';
 
 vi.mock('@/hooks/useAuth', () => ({
   useAuth: vi.fn(),
@@ -45,7 +46,7 @@ vi.mock('@/hooks/useAdminNotifications', () => ({
 
 vi.mock('@/hooks/useDenuncias', () => ({
   useDenunciasMonitor: () => ({ barcodeNovas: 0, denunciasNovas: 0, faleConoscoNovos: 0 }),
-  useIsResponsavelDenuncia: () => ({ data: false, isLoading: false }),
+  useIsResponsavelDenuncia: vi.fn(() => ({ data: false, isLoading: false })),
 }));
 
 vi.mock('@/hooks/usePulseSurvey', () => ({
@@ -232,5 +233,109 @@ describe('Sidebar - Visibilidade e Governança Comercial de Módulos', () => {
     expect(screen.queryByText('Demissões')).not.toBeInTheDocument();
     // Módulo base (/colaboradores) continua acessível
     expect(screen.getByText('Colaboradores')).toBeInTheDocument();
+  });
+
+  it('colaborador designado vê os itens de denúncias independente do cargo', () => {
+    vi.mocked(AuthHook.useAuth).mockReturnValue({
+      isAuthenticated: true,
+      role: 'colaborador',
+      isSuperAdmin: false,
+      user: { email: 'colaborador@empresa.com' },
+      signOut: vi.fn(),
+    } as any);
+
+    vi.mocked(CompanyContext.useCompanyContext).mockReturnValue({
+      selectedCompanyId: 'comp-1',
+    } as any);
+
+    vi.mocked(VisibleModulesHook.useVisibleModules).mockReturnValue({
+      data: [
+        { module_key: '/denuncias', visible: true },
+        { module_key: '/comportamentos-ofensivos', visible: true },
+      ],
+      isLoading: false,
+      isError: false,
+    } as any);
+
+    vi.mocked(DenunciasHook.useIsResponsavelDenuncia).mockReturnValue({
+      data: true,
+      isLoading: false,
+    } as any);
+
+    renderSidebar();
+
+    // O grupo "Configurações" passa a existir para o colaborador designado
+    expect(screen.getByText('Configurações')).toBeInTheDocument();
+
+    // Ao expandir o grupo Configurações
+    fireEvent.click(screen.getByText('Configurações'));
+
+    expect(screen.getByText('Comportamentos Ofensivos')).toBeInTheDocument();
+    // Há o link de gestão no menu e o botão do drawer no rodapé
+    expect(screen.getAllByText('Fale Conosco').length).toBe(2);
+  });
+
+  it('colaborador NÃO designado NÃO vê os itens de denúncias', () => {
+    vi.mocked(AuthHook.useAuth).mockReturnValue({
+      isAuthenticated: true,
+      role: 'colaborador',
+      isSuperAdmin: false,
+      user: { email: 'colaborador@empresa.com' },
+      signOut: vi.fn(),
+    } as any);
+
+    vi.mocked(CompanyContext.useCompanyContext).mockReturnValue({
+      selectedCompanyId: 'comp-1',
+    } as any);
+
+    vi.mocked(VisibleModulesHook.useVisibleModules).mockReturnValue({
+      data: [
+        { module_key: '/denuncias', visible: true },
+        { module_key: '/comportamentos-ofensivos', visible: true },
+      ],
+      isLoading: false,
+      isError: false,
+    } as any);
+
+    vi.mocked(DenunciasHook.useIsResponsavelDenuncia).mockReturnValue({
+      data: false,
+      isLoading: false,
+    } as any);
+
+    renderSidebar();
+
+    expect(screen.queryByText('Comportamentos Ofensivos')).not.toBeInTheDocument();
+  });
+
+  it('admin_empresa NÃO designado NÃO vê o item Comportamentos Ofensivos', () => {
+    vi.mocked(AuthHook.useAuth).mockReturnValue({
+      isAuthenticated: true,
+      role: 'admin_empresa',
+      isSuperAdmin: false,
+      user: { email: 'admin@empresa.com' },
+      signOut: vi.fn(),
+    } as any);
+
+    vi.mocked(CompanyContext.useCompanyContext).mockReturnValue({
+      selectedCompanyId: 'comp-1',
+    } as any);
+
+    vi.mocked(VisibleModulesHook.useVisibleModules).mockReturnValue({
+      data: [
+        { module_key: '/denuncias', visible: true },
+        { module_key: '/comportamentos-ofensivos', visible: true },
+      ],
+      isLoading: false,
+      isError: false,
+    } as any);
+
+    vi.mocked(DenunciasHook.useIsResponsavelDenuncia).mockReturnValue({
+      data: false,
+      isLoading: false,
+    } as any);
+
+    renderSidebar();
+
+    expect(screen.queryByText('Comportamentos Ofensivos')).not.toBeInTheDocument();
   });
 });

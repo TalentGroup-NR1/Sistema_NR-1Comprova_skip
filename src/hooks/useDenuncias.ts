@@ -258,7 +258,7 @@ export function useHistoricoDenuncia(denunciaId: string | null) {
 
 export function useIsResponsavelDenuncia() {
   const { user, isAuthenticated } = useAuth();
-  return useQuery({
+  const query = useQuery({
     queryKey: ["is-responsavel-denuncia", user?.id ?? "guest"],
     enabled: !!isAuthenticated && !!user?.id,
     staleTime: 60 * 1000,
@@ -270,6 +270,11 @@ export function useIsResponsavelDenuncia() {
       return !!data;
     },
   });
+
+  return {
+    ...query,
+    data: query.data ?? false,
+  };
 }
 
 export function useResponsaveisDenuncias() {

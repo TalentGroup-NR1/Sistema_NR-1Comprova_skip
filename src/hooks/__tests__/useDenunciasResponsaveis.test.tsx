@@ -136,3 +136,4 @@ describe("useDenunciasResponsaveis - Gestão de Designados (Lei 14.457/2022)", (
     expect(supabase.rpc).toHaveBeenCalledWith("contagem_denuncias_sem_responsavel");
   });
 });
+

@@ -206,12 +206,12 @@ const App = () => (
                 </ProtectedRoute>
               } />
               <Route path="/denuncias" element={
-                <ProtectedRoute allowedRoles={['admin_master', 'admin_empresa', 'analista_rh']} moduleKey="/denuncias">
+                <ProtectedRoute moduleKey="/denuncias">
                   <Denuncias />
                 </ProtectedRoute>
               } />
               <Route path="/comportamentos-ofensivos" element={
-                <ProtectedRoute allowedRoles={['admin_master', 'admin_empresa', 'analista_rh']} moduleKey="/denuncias">
+                <ProtectedRoute moduleKey="/denuncias">
                   <ComportamentosOfensivos />
                 </ProtectedRoute>
               } />

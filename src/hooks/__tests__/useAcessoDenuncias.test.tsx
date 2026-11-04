@@ -106,3 +106,4 @@ describe("useAcessoDenuncias - Restrição Estrita de Acesso", () => {
     expect(supabase.rpc).not.toHaveBeenCalledWith("listar_denuncias_admin");
   });
 });
+
