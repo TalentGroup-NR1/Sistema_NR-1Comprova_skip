@@ -53,6 +53,7 @@ import Denuncias from "./pages/Denuncias";
 import ComportamentosOfensivos from "./pages/ComportamentosOfensivos";
 import AdminPlataforma from "./pages/AdminPlataforma";
 import NotFound from "./pages/NotFound";
+import AcompanharProtocolo from "./pages/AcompanharProtocolo";
 import LaudoAepPage from "./pages/LaudoAepPage";
 import ConfiguracoesEmpresa from "./pages/ConfiguracoesEmpresa";
 import Evidencias from "./pages/Evidencias";
@@ -82,7 +83,8 @@ const App = () => (
                   </ProtectedRoute>
                 } />
                 <Route path="/termos" element={<Termos />} />
-              <Route path="/privacidade" element={<Privacidade />} />
+                <Route path="/privacidade" element={<Privacidade />} />
+                <Route path="/acompanhar" element={<AcompanharProtocolo />} />
               <Route path="/atualizar-senha" element={<AtualizarSenha />} />
               <Route path="/unsubscribe" element={<Unsubscribe />} />
               <Route path="/alterar-senha" element={<ProtectedRoute><AlterarSenha /></ProtectedRoute>} />

@@ -33,6 +33,11 @@ export interface DenunciaAdmin {
   prazo_primeira_resposta?: string | null;
   prazo_conclusao?: string | null;
   primeira_resposta_em?: string | null;
+  protocolo?: string;
+  data_fato?: string | null;
+  resumo_publico?: string | null;
+  ultima_mensagem_denunciante_em?: string | null;
+  mensagens_nao_lidas_comite?: number;
 }
 
 export interface HistoricoDenunciaItem {
@@ -70,6 +75,7 @@ export function useCriarDenuncia() {
       tipo: FaleConoscoTipo;
       categoria?: string | null;
       origem?: string | null;
+      data_fato?: string | null;
     }) => {
       const { data, error } = await supabase.rpc("criar_denuncia", {
         p_titulo: input.titulo,
@@ -78,6 +84,7 @@ export function useCriarDenuncia() {
         p_tipo: input.tipo,
         p_categoria: input.categoria ?? null,
         p_origem: input.origem ?? null,
+        p_data_fato: input.data_fato ?? null,
       } as any);
       if (error) {
         if (error.message?.includes("rate_limit_exceeded")) {
@@ -85,7 +92,7 @@ export function useCriarDenuncia() {
         }
         throw error;
       }
-      return data as string;
+      return data as string; // Retorna o protocolo gerado (ex: DEN-2026-XXXXXXXX)
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["denuncias-admin"] });
@@ -220,12 +227,14 @@ export function useAtualizarStatusDenuncia() {
       status: DenunciaStatus;
       parecer?: string | null;
       justificativa?: string | null;
+      resumo_publico?: string | null;
     }) => {
       const parecerTexto = input.parecer ?? input.justificativa ?? null;
       const { error } = await supabase.rpc("atualizar_status_denuncia", {
         p_id: input.id,
         p_novo_status: input.status,
         p_parecer: parecerTexto,
+        p_resumo_publico: input.resumo_publico ?? null,
       } as any);
       if (error) {
         if (error.message?.includes("assuma_a_denuncia_primeiro")) {
@@ -242,6 +251,7 @@ export function useAtualizarStatusDenuncia() {
       qc.invalidateQueries({ queryKey: ["denuncia-historico"] });
       qc.invalidateQueries({ queryKey: ["denuncias-vencidas"] });
       qc.invalidateQueries({ queryKey: ["denuncias-contagem-sem-resp"] });
+      qc.invalidateQueries({ queryKey: ["denuncia-mensagens-comite"] });
     },
   });
 }
@@ -470,6 +480,138 @@ export function useListarDenunciasVencidas() {
         total_vencidas: (row?.total_vencidas as number) ?? 0,
         denuncias_vencidas: (row?.denuncias_vencidas as DenunciaVencidaItem[]) ?? [],
       };
+    },
+  });
+}
+
+export interface MensagemProtocolo {
+  id: string;
+  autor: "denunciante" | "comite";
+  autor_nome?: string;
+  mensagem: string;
+  created_at: string;
+}
+
+export interface ConsultaProtocoloResultado {
+  protocolo: string;
+  status_externo: "Recebida" | "Em análise" | "Em apuração" | "Concluída";
+  criado_em: string;
+  data_fato: string | null;
+  mensagens: MensagemProtocolo[];
+  resumo_publico: string | null;
+  permite_resposta: boolean;
+  erro?: string;
+}
+
+export function useConsultarProtocolo() {
+  return useMutation({
+    mutationFn: async ({
+      protocolo,
+      dataFato,
+    }: {
+      protocolo: string;
+      dataFato?: string | null;
+    }): Promise<ConsultaProtocoloResultado> => {
+      const { data, error } = await supabase.rpc("consultar_denuncia_por_protocolo", {
+        p_protocolo: protocolo.trim(),
+        p_data_fato: dataFato ? dataFato : null,
+      } as any);
+
+      if (error) {
+        if (error.message?.includes("rate_limit_exceeded")) {
+          throw new Error("Muitas tentativas de consulta. Aguarde um minuto.");
+        }
+        throw new Error("Protocolo inválido ou não encontrado.");
+      }
+
+      const res = data as ConsultaProtocoloResultado;
+      if (res?.erro) {
+        throw new Error("Protocolo inválido ou não encontrado.");
+      }
+
+      return res;
+    },
+  });
+}
+
+export function useResponderProtocolo() {
+  return useMutation({
+    mutationFn: async ({
+      protocolo,
+      dataFato,
+      mensagem,
+    }: {
+      protocolo: string;
+      dataFato?: string | null;
+      mensagem: string;
+    }) => {
+      const { data, error } = await supabase.rpc("responder_denuncia_por_protocolo", {
+        p_protocolo: protocolo.trim(),
+        p_data_fato: dataFato ? dataFato : null,
+        p_mensagem: mensagem.trim(),
+      } as any);
+
+      if (error) {
+        if (error.message?.includes("rate_limit_exceeded")) {
+          throw new Error("Muitas tentativas de envio. Aguarde um momento.");
+        }
+        throw error;
+      }
+
+      const res = data as any;
+      if (res?.erro) {
+        throw new Error("Não foi possível enviar a mensagem.");
+      }
+
+      return res;
+    },
+  });
+}
+
+export function useComiteMensagens(denunciaId: string | null) {
+  return useQuery({
+    queryKey: ["denuncia-mensagens-comite", denunciaId],
+    enabled: !!denunciaId,
+    refetchInterval: 15000,
+    queryFn: async () => {
+      if (!denunciaId) return [];
+      const { data, error } = await supabase.rpc("comite_listar_mensagens", {
+        p_denuncia_id: denunciaId,
+      } as any);
+      if (error) throw error;
+      return (data ?? []) as MensagemProtocolo[];
+    },
+  });
+}
+
+export function useComiteEnviarMensagem() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      denunciaId,
+      mensagem,
+    }: {
+      denunciaId: string;
+      mensagem: string;
+    }) => {
+      const { error } = await supabase.rpc("comite_enviar_mensagem", {
+        p_denuncia_id: denunciaId,
+        p_mensagem: mensagem.trim(),
+      } as any);
+      if (error) {
+        if (error.message?.includes("assuma_a_denuncia_primeiro")) {
+          throw new Error("Você precisa assumir a denúncia para responder ao denunciante.");
+        }
+        throw error;
+      }
+    },
+    onSuccess: (_, vars) => {
+      qc.invalidateQueries({ queryKey: ["denuncia-mensagens-comite", vars.denunciaId] });
+      qc.invalidateQueries({ queryKey: ["denuncias-admin"] });
+      toast.success("Mensagem enviada com sucesso ao denunciante.");
+    },
+    onError: (err: any) => {
+      toast.error(err?.message || "Erro ao enviar mensagem.");
     },
   });
 }

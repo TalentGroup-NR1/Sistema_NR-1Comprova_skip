@@ -24,7 +24,7 @@ describe("useAtualizarStatusDenuncia - Trilha de Auditoria & Parecer", () => {
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   );
 
-  it("calls atualizar_status_denuncia with id, status and optional parecer", async () => {
+  it("calls atualizar_status_denuncia with id, status, optional parecer and resumo_publico", async () => {
     vi.mocked(supabase.rpc).mockResolvedValueOnce({ data: null, error: null });
 
     const { result } = renderHook(() => useAtualizarStatusDenuncia(), { wrapper });
@@ -43,6 +43,7 @@ describe("useAtualizarStatusDenuncia - Trilha de Auditoria & Parecer", () => {
       p_id: "denuncia-uuid-1",
       p_novo_status: "em_analise",
       p_parecer: "Início de apuração pelo comitê CIPA+A",
+      p_resumo_publico: null,
     });
   });
 
@@ -64,6 +65,7 @@ describe("useAtualizarStatusDenuncia - Trilha de Auditoria & Parecer", () => {
       p_id: "denuncia-uuid-2",
       p_novo_status: "concluido",
       p_parecer: null,
+      p_resumo_publico: null,
     });
   });
 

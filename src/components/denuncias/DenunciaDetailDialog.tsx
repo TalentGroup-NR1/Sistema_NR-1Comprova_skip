@@ -41,6 +41,8 @@ import {
   Clock,
   History,
   Lock,
+  MessageSquare,
+  Send,
   UserCheck,
   UserX,
 } from "lucide-react";
@@ -50,6 +52,8 @@ import {
   DenunciaStatus,
   useAssumirDenuncia,
   useAtualizarStatusDenuncia,
+  useComiteEnviarMensagem,
+  useComiteMensagens,
   useHistoricoDenuncia,
   useLiberarDenuncia,
 } from "@/hooks/useDenuncias";
@@ -74,15 +78,21 @@ export function DenunciaDetailDialog({ denuncia, onOpenChange, extraHeader }: Pr
   const assumir = useAssumirDenuncia();
   const liberar = useLiberarDenuncia();
   const historicoQuery = useHistoricoDenuncia(denuncia?.id ?? null);
+  const mensagensQuery = useComiteMensagens(denuncia?.id ?? null);
+  const enviarMensagem = useComiteEnviarMensagem();
 
   const [status, setStatus] = useState<DenunciaStatus>("novo");
   const [parecer, setParecer] = useState<string>("");
+  const [resumoPublico, setResumoPublico] = useState<string>("");
+  const [mensagemComite, setMensagemComite] = useState<string>("");
   const [historicoAberto, setHistoricoAberto] = useState<boolean>(false);
 
   useEffect(() => {
     if (denuncia) {
       setStatus(denuncia.status);
       setParecer(denuncia.parecer_atual ?? "");
+      setResumoPublico(denuncia.resumo_publico ?? "");
+      setMensagemComite("");
       setHistoricoAberto(false);
     }
   }, [denuncia]);
@@ -100,7 +110,8 @@ export function DenunciaDetailDialog({ denuncia, onOpenChange, extraHeader }: Pr
 
   const hasChanges =
     status !== denuncia.status ||
-    (parecer.trim() !== (denuncia.parecer_atual ?? "").trim() && parecerLength > 0);
+    (parecer.trim() !== (denuncia.parecer_atual ?? "").trim() && parecerLength > 0) ||
+    resumoPublico.trim() !== (denuncia.resumo_publico ?? "").trim();
 
   const handleAssumir = async () => {
     try {
@@ -131,10 +142,30 @@ export function DenunciaDetailDialog({ denuncia, onOpenChange, extraHeader }: Pr
         id: denuncia.id,
         status,
         parecer: parecer.trim() || null,
+        resumo_publico: resumoPublico.trim() || null,
       });
       toast.success("Tratamento da denúncia atualizado com sucesso.");
     } catch (err: any) {
       toast.error("Erro ao atualizar denúncia", { description: err?.message });
+    }
+  };
+
+  const handleEnviarMensagemComite = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const txt = mensagemComite.trim();
+    if (!txt) {
+      toast.error("Digite a mensagem para o denunciante.");
+      return;
+    }
+
+    try {
+      await enviarMensagem.mutateAsync({
+        denunciaId: denuncia.id,
+        mensagem: txt,
+      });
+      setMensagemComite("");
+    } catch {
+      // erro tratado no hook
     }
   };
 
@@ -144,7 +175,14 @@ export function DenunciaDetailDialog({ denuncia, onOpenChange, extraHeader }: Pr
         <DialogHeader>
           <div className="flex items-start justify-between gap-4">
             <div className="space-y-1">
-              <DialogTitle className="text-xl">{denuncia.titulo}</DialogTitle>
+              <div className="flex items-center gap-2 flex-wrap">
+                <DialogTitle className="text-xl">{denuncia.titulo}</DialogTitle>
+                {denuncia.protocolo && (
+                  <Badge variant="outline" className="font-mono text-xs font-semibold">
+                    {denuncia.protocolo}
+                  </Badge>
+                )}
+              </div>
               <DialogDescription>
                 Recebida em{" "}
                 {format(new Date(denuncia.criado_em), "dd/MM/yyyy 'às' HH:mm", {
@@ -163,6 +201,11 @@ export function DenunciaDetailDialog({ denuncia, onOpenChange, extraHeader }: Pr
             <Badge variant={denuncia.anonimo ? "secondary" : "outline"}>
               {denuncia.anonimo ? "Anônimo" : denuncia.autor_nome ?? "Identificado"}
             </Badge>
+            {denuncia.data_fato && (
+              <Badge variant="outline" className="text-xs">
+                Data do fato: {format(new Date(denuncia.data_fato + "T00:00:00"), "dd/MM/yyyy")}
+              </Badge>
+            )}
           </div>
 
           {extraHeader}
@@ -360,7 +403,7 @@ export function DenunciaDetailDialog({ denuncia, onOpenChange, extraHeader }: Pr
               <div className="space-y-2">
                 <div className="flex items-center justify-between gap-2">
                   <Label htmlFor="parecer-apuracao">
-                    Parecer de Apuração / Justificativa
+                    Parecer Interno de Apuração / Justificativa
                     {isConcluindo && (
                       <span className="text-destructive ml-1">* (obrigatório)</span>
                     )}
@@ -400,6 +443,30 @@ export function DenunciaDetailDialog({ denuncia, onOpenChange, extraHeader }: Pr
                 )}
               </div>
 
+              {/* Campo Resumo Público para o Denunciante (ao concluir) */}
+              {isConcluindo && isAssumidoPorMim && (
+                <div className="space-y-2 rounded-lg border p-3 bg-muted/20">
+                  <div className="flex items-center justify-between gap-2">
+                    <Label htmlFor="resumo-publico" className="text-xs font-semibold">
+                      Resumo da Conclusão para o Denunciante (Público)
+                    </Label>
+                    <span className="text-[11px] text-muted-foreground">Visível via protocolo</span>
+                  </div>
+                  <Textarea
+                    id="resumo-publico"
+                    value={resumoPublico}
+                    onChange={(e) => setResumoPublico(e.target.value)}
+                    placeholder="Ex: A apuração foi concluída pelo comitê e as medidas administrativas foram tomadas para garantir a integridade do ambiente. Agradecemos sua manifestação."
+                    rows={3}
+                    maxLength={500}
+                    className="text-xs resize-y"
+                  />
+                  <p className="text-[11px] text-muted-foreground">
+                    Este é o texto que a pessoa que denunciou verá ao consultar o protocolo. Seja acolhedor e não exponha dados sigilosos ou nomes de pessoas.
+                  </p>
+                </div>
+              )}
+
               {isAssumidoPorMim && (
                 <div className="flex justify-end pt-2">
                   <Button
@@ -415,6 +482,98 @@ export function DenunciaDetailDialog({ denuncia, onOpenChange, extraHeader }: Pr
                 </div>
               )}
             </div>
+          </div>
+
+          {/* MENSAGERIA BIDIRECIONAL COM O DENUNCIANTE */}
+          <div className="rounded-lg border bg-card p-4 space-y-4">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <MessageSquare className="h-4 w-4 text-primary" />
+                <Label className="text-sm font-semibold uppercase tracking-wide">
+                  Comunicação Anônima com o Denunciante
+                </Label>
+              </div>
+              {denuncia.ultima_mensagem_denunciante_em && (
+                <span className="text-[11px] text-muted-foreground">
+                  Última resposta do denunciante:{" "}
+                  {format(new Date(denuncia.ultima_mensagem_denunciante_em), "dd/MM HH:mm")}
+                </span>
+              )}
+            </div>
+
+            {/* Lista de mensagens */}
+            <div className="space-y-2.5 max-h-64 overflow-y-auto pr-1">
+              {mensagensQuery.isLoading ? (
+                <p className="text-xs text-muted-foreground py-2">Carregando mensagens...</p>
+              ) : !mensagensQuery.data || mensagensQuery.data.length === 0 ? (
+                <p className="text-xs text-muted-foreground py-2 italic">
+                  Nenhuma mensagem trocada ainda com o denunciante.
+                </p>
+              ) : (
+                mensagensQuery.data.map((msg) => {
+                  const isComite = msg.autor === "comite";
+                  return (
+                    <div
+                      key={msg.id}
+                      className={`flex flex-col ${isComite ? "items-end" : "items-start"}`}
+                    >
+                      <div
+                        className={`max-w-[85%] rounded-lg p-3 text-xs space-y-1 ${
+                          isComite
+                            ? "bg-primary/10 border border-primary/20 text-foreground"
+                            : "bg-muted border border-border text-foreground"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-3 text-[10px] text-muted-foreground">
+                          <span className="font-semibold uppercase tracking-wider">
+                            {isComite ? msg.autor_nome || "Comitê" : "Denunciante (Anônimo)"}
+                          </span>
+                          <span>
+                            {format(new Date(msg.created_at), "dd/MM 'às' HH:mm", {
+                              locale: ptBR,
+                            })}
+                          </span>
+                        </div>
+                        <div className="whitespace-pre-wrap leading-relaxed">{msg.mensagem}</div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            {/* Form de envio do comitê */}
+            {isAssumidoPorMim ? (
+              <form onSubmit={handleEnviarMensagemComite} className="space-y-2 pt-2 border-t">
+                <Textarea
+                  value={mensagemComite}
+                  onChange={(e) => setMensagemComite(e.target.value)}
+                  placeholder="Solicite esclarecimentos ou responda ao denunciante com total sigilo..."
+                  rows={2}
+                  maxLength={2000}
+                  className="text-xs resize-y"
+                  disabled={enviarMensagem.isPending}
+                />
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[11px] text-muted-foreground">
+                    O denunciante verá esta mensagem ao consultar o protocolo.
+                  </span>
+                  <Button
+                    type="submit"
+                    size="sm"
+                    disabled={enviarMensagem.isPending || !mensagemComite.trim()}
+                    className="gap-1.5 text-xs h-8"
+                  >
+                    <Send className="h-3.5 w-3.5" />
+                    {enviarMensagem.isPending ? "Enviando..." : "Enviar ao denunciante"}
+                  </Button>
+                </div>
+              </form>
+            ) : (
+              <p className="text-xs text-muted-foreground italic pt-2 border-t">
+                Apenas o responsável que assumiu o caso pode enviar mensagens ao denunciante.
+              </p>
+            )}
           </div>
 
           {/* PAINEL DE HISTÓRICO DE APURAÇÃO (Trilha de Auditoria) */}
