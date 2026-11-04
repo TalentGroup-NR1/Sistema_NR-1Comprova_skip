@@ -13,10 +13,13 @@ import {
   UserX,
   Plus,
   Clock,
+  AlertTriangle,
 } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useAuth } from "@/hooks/useAuth";
 import { useUsers, useUserStats } from "@/hooks/useUsers";
 import { useColaboradoresPendentes } from "@/hooks/useColaboradoresPendentes";
+import { useContagemDenunciasSemResponsavel } from "@/hooks/useDenuncias";
 import { UserTable } from "@/components/users/UserTable";
 import { UserForm } from "@/components/users/UserForm";
 import { PendingColaboradoresTable } from "@/components/users/PendingColaboradoresTable";
@@ -25,6 +28,7 @@ export default function GerenciamentoAcessos() {
   const { isAdminMaster, isAdminEmpresa } = useAuth();
   const { data: users, isLoading } = useUsers();
   const { data: pendingColaboradores } = useColaboradoresPendentes();
+  const { data: contagemSemResp } = useContagemDenunciasSemResponsavel();
   const stats = useUserStats();
   const [searchTerm, setSearchTerm] = useState("");
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -126,6 +130,20 @@ export default function GerenciamentoAcessos() {
             </CardContent>
           </Card>
         </div>
+
+        {isAdminEmpresa && contagemSemResp && (!contagemSemResp.tem_designados || contagemSemResp.total_sem_responsavel > 0) && (
+          <Alert variant="destructive" className="border-amber-500/50 bg-amber-500/10 text-amber-900 dark:text-amber-200">
+            <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+            <AlertTitle className="font-semibold">Atenção: Designação do Canal de Denúncias</AlertTitle>
+            <AlertDescription className="text-sm">
+              {!contagemSemResp.tem_designados ? (
+                <span>Sua empresa ainda não possui responsáveis designados pelo Canal de Denúncias (Lei 14.457/2022). Designe até 3 colaboradores na tabela abaixo para garantir a apuração imparcial e em conformidade legal.</span>
+              ) : (
+                <span>Existem <strong>{contagemSemResp.total_sem_responsavel}</strong> denúncia(s) sem responsável atribuído. Designe membros na tabela abaixo para que as demandas possam ser apuradas.</span>
+              )}
+            </AlertDescription>
+          </Alert>
+        )}
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">

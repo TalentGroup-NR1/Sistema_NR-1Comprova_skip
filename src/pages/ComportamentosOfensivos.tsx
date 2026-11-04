@@ -21,11 +21,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ShieldAlert } from "lucide-react";
+import { ShieldAlert, AlertCircle } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   DenunciaAdmin,
   DenunciaStatus,
   useDenunciasAdmin,
+  useIsResponsavelDenuncia,
   useRegistrarCienciaCipa,
 } from "@/hooks/useDenuncias";
 import { DenunciaDetailDialog } from "@/components/denuncias/DenunciaDetailDialog";
@@ -51,7 +53,8 @@ const STATUS_VARIANT: Record<DenunciaStatus, "default" | "secondary" | "outline"
 };
 
 export default function ComportamentosOfensivos() {
-  const { data, isLoading } = useDenunciasAdmin();
+  const { data: isResponsavel, isLoading: isLoadingResp } = useIsResponsavelDenuncia();
+  const { data, isLoading } = useDenunciasAdmin(!!isResponsavel);
   const registrarCiencia = useRegistrarCienciaCipa();
 
   const [statusFiltro, setStatusFiltro] = useState<DenunciaStatus | "todos">("todos");
@@ -119,6 +122,22 @@ export default function ComportamentosOfensivos() {
       }
     }
   };
+
+  if (!isLoadingResp && !isResponsavel) {
+    return (
+      <MainLayout>
+        <div className="p-6">
+          <Alert variant="destructive" className="max-w-2xl mx-auto my-8">
+            <AlertCircle className="h-5 w-5" />
+            <AlertTitle className="text-lg font-semibold">Acesso Restrito</AlertTitle>
+            <AlertDescription className="mt-2 text-sm leading-relaxed">
+              O acesso às denúncias de comportamentos ofensivos (Lei 14.457/2022 — CIPA+A) é restrito aos responsáveis nominalmente designados pela empresa. Nem administradores da empresa nem administradores da plataforma possuem acesso caso não tenham sido formalmente designados.
+            </AlertDescription>
+          </Alert>
+        </div>
+      </MainLayout>
+    );
+  }
 
   return (
     <MainLayout>

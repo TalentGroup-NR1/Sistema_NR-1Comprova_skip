@@ -88,3 +88,4 @@ describe("useAtualizarStatusDenuncia - Trilha de Auditoria", () => {
     expect(result.current.error?.message).toMatch(/forbidden/);
   });
 });
+

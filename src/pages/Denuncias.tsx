@@ -24,9 +24,12 @@ import {
   DenunciaStatus,
   FaleConoscoTipo,
   useDenunciasAdmin,
+  useIsResponsavelDenuncia,
 } from "@/hooks/useDenuncias";
 import { DenunciaDetailDialog } from "@/components/denuncias/DenunciaDetailDialog";
 import { TIPO_LABEL, TipoBadge } from "@/components/denuncias/TipoBadge";
+import { AlertCircle } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const STATUS_LABEL: Record<DenunciaStatus, string> = {
   novo: "Novo",
@@ -41,7 +44,8 @@ const STATUS_VARIANT: Record<DenunciaStatus, "default" | "secondary" | "outline"
 };
 
 export default function Denuncias() {
-  const { data, isLoading } = useDenunciasAdmin();
+  const { data: isResponsavel, isLoading: isLoadingResp } = useIsResponsavelDenuncia();
+  const { data, isLoading } = useDenunciasAdmin(!!isResponsavel);
   const [statusFiltro, setStatusFiltro] = useState<DenunciaStatus | "todos">("todos");
   const [tipoFiltro, setTipoFiltro] = useState<FaleConoscoTipo | "todos">("todos");
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -60,6 +64,22 @@ export default function Denuncias() {
     () => data?.find((d) => d.id === selectedId) ?? null,
     [data, selectedId]
   );
+
+  if (!isLoadingResp && !isResponsavel) {
+    return (
+      <MainLayout>
+        <div className="p-6">
+          <Alert variant="destructive" className="max-w-2xl mx-auto my-8">
+            <AlertCircle className="h-5 w-5" />
+            <AlertTitle className="text-lg font-semibold">Acesso Restrito</AlertTitle>
+            <AlertDescription className="mt-2 text-sm leading-relaxed">
+              O acesso às mensagens do Canal de Denúncias e Fale Conosco é restrito aos responsáveis nominalmente designados pela empresa, garantindo apuração imparcial e sigilo conforme a Lei 14.457/2022 (Art. 23, II). Caso necessite de acesso, solicite a designação ao Administrador da Empresa.
+            </AlertDescription>
+          </Alert>
+        </div>
+      </MainLayout>
+    );
+  }
 
   return (
     <MainLayout>

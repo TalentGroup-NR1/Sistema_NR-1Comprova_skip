@@ -21,6 +21,9 @@ export interface DenunciaAdmin {
   origem_ofensa: string | null;
   ciencia_cipa_em?: string | null;
   ciencia_cipa_por?: string | null;
+  responsavel_id?: string | null;
+  transferido_de?: string | null;
+  atribuido_em?: string | null;
 }
 
 export interface HistoricoDenunciaItem {
@@ -31,6 +34,21 @@ export interface HistoricoDenunciaItem {
   alterado_por: string;
   alterado_por_nome: string;
   created_at: string;
+}
+
+export interface ResponsavelDenunciaItem {
+  user_id: string;
+  nome: string;
+  email: string;
+  ativo: boolean;
+  created_at: string;
+  designado_por_nome: string;
+}
+
+export interface ContagemSemResponsavel {
+  total_sem_responsavel: number;
+  total_em_aberto: number;
+  tem_designados: boolean;
 }
 
 export function useCriarDenuncia() {
@@ -88,16 +106,16 @@ export function useDenunciasAdmin(enabled = true) {
 const LS_LAST_SEEN_KEY = "denuncias:last-seen-id";
 
 /**
- * Hook global para admins/RH: monitora novas denúncias, dispara toast e
+ * Hook global para responsáveis designados: monitora novas denúncias, dispara toast e
  * retorna a contagem de denúncias com status "novo" (para badge no menu).
+ * Restrito estritamente a quem for responsável designado (Lei 14.457/2022).
  */
 export function useDenunciasMonitor() {
-  const { role, isAuthenticated, user } = useAuth();
-  const isAdminLike =
-    isAuthenticated &&
-    (role === "admin_master" || role === "admin_empresa" || role === "analista_rh");
+  const { isAuthenticated, user } = useAuth();
+  const { data: isResponsavel } = useIsResponsavelDenuncia();
+  const shouldMonitor = !!isAuthenticated && !!isResponsavel;
 
-  const query = useDenunciasAdmin(isAdminLike);
+  const query = useDenunciasAdmin(shouldMonitor);
   const initializedRef = useRef(false);
   const storageKey = useMemo(
     () => (user?.id ? `${LS_LAST_SEEN_KEY}:${user.id}` : LS_LAST_SEEN_KEY),
@@ -105,7 +123,7 @@ export function useDenunciasMonitor() {
   );
 
   useEffect(() => {
-    if (!isAdminLike) {
+    if (!shouldMonitor) {
       initializedRef.current = false;
       return;
     }
@@ -172,7 +190,7 @@ export function useDenunciasMonitor() {
       }
       localStorage.setItem(storageKey, newest.id);
     }
-  }, [query.data, isAdminLike, storageKey]);
+  }, [query.data, shouldMonitor, storageKey]);
 
   const denunciasNovas = (query.data ?? []).filter(
     (d) => d.status === "novo" && d.tipo === "denuncia"
@@ -182,7 +200,7 @@ export function useDenunciasMonitor() {
   ).length;
   const novoCount = (query.data ?? []).filter((d) => d.status === "novo").length;
 
-  return { novoCount, denunciasNovas, faleConoscoNovos, enabled: isAdminLike };
+  return { novoCount, denunciasNovas, faleConoscoNovos, enabled: shouldMonitor };
 }
 
 export function useAtualizarStatusDenuncia() {
@@ -234,6 +252,115 @@ export function useHistoricoDenuncia(denunciaId: string | null) {
       } as any);
       if (error) throw error;
       return (data ?? []) as HistoricoDenunciaItem[];
+    },
+  });
+}
+
+export function useIsResponsavelDenuncia() {
+  const { user, isAuthenticated } = useAuth();
+  return useQuery({
+    queryKey: ["is-responsavel-denuncia", user?.id ?? "guest"],
+    enabled: !!isAuthenticated && !!user?.id,
+    staleTime: 60 * 1000,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("sou_responsavel_denuncia");
+      if (error) {
+        return false;
+      }
+      return !!data;
+    },
+  });
+}
+
+export function useResponsaveisDenuncias() {
+  const { user, role } = useAuth();
+  const canList = role === "admin_empresa" || role === "admin_master";
+  return useQuery({
+    queryKey: ["denuncias-responsaveis", user?.id],
+    enabled: !!user && canList,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("listar_responsaveis_denuncias");
+      if (error) throw error;
+      return (data ?? []) as ResponsavelDenunciaItem[];
+    },
+  });
+}
+
+export function useDesignarResponsavelDenuncia() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (userId: string) => {
+      const { error } = await supabase.rpc("designar_responsavel_denuncia", {
+        p_user_id: userId,
+      } as any);
+      if (error) {
+        if (error.message?.includes("limite_designados_atingido")) {
+          throw new Error("Limite de 3 responsáveis ativos por empresa atingido.");
+        }
+        if (error.message?.includes("forbidden")) {
+          throw new Error("Apenas o Administrador da Empresa pode designar responsáveis.");
+        }
+        throw error;
+      }
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["denuncias-responsaveis"] });
+      qc.invalidateQueries({ queryKey: ["is-responsavel-denuncia"] });
+      qc.invalidateQueries({ queryKey: ["denuncias-contagem-sem-resp"] });
+      qc.invalidateQueries({ queryKey: ["denuncias-admin"] });
+      toast.success("Responsável pelo Canal de Denúncias designado com sucesso.");
+    },
+    onError: (err: any) => {
+      toast.error(err?.message || "Erro ao designar responsável.");
+    },
+  });
+}
+
+export function useRemoverResponsavelDenuncia() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      userId,
+      transferirPara,
+    }: {
+      userId: string;
+      transferirPara?: string;
+    }) => {
+      const { error } = await supabase.rpc("remover_responsavel_denuncia", {
+        p_user_id: userId,
+        p_transferir_para: transferirPara ?? null,
+      } as any);
+      if (error) {
+        if (error.message?.includes("nenhum_designado_restante")) {
+          throw new Error("Não há outro responsável ativo para receber as denúncias abertas. Designe outro membro antes de remover.");
+        }
+        throw error;
+      }
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["denuncias-responsaveis"] });
+      qc.invalidateQueries({ queryKey: ["is-responsavel-denuncia"] });
+      qc.invalidateQueries({ queryKey: ["denuncias-contagem-sem-resp"] });
+      qc.invalidateQueries({ queryKey: ["denuncias-admin"] });
+      toast.success("Responsável removido com sucesso.");
+    },
+    onError: (err: any) => {
+      toast.error(err?.message || "Erro ao remover responsável.");
+    },
+  });
+}
+
+export function useContagemDenunciasSemResponsavel() {
+  const { user, role } = useAuth();
+  const canView = role === "admin_empresa" || role === "admin_master";
+  return useQuery({
+    queryKey: ["denuncias-contagem-sem-resp", user?.id],
+    enabled: !!user && canView,
+    refetchInterval: 30000,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("contagem_denuncias_sem_responsavel");
+      if (error) throw error;
+      return data as ContagemSemResponsavel;
     },
   });
 }

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -38,6 +38,12 @@ import { useAuth, AppRole } from '@/hooks/useAuth';
 import { ChangeUserRoleDialog } from './ChangeUserRoleDialog';
 import { LinkCompanyDialog } from './LinkCompanyDialog';
 import { useResendAcessoByUserId } from '@/hooks/useColaboradoresPendentes';
+import {
+  useResponsaveisDenuncias,
+  useDesignarResponsavelDenuncia,
+  ResponsavelDenunciaItem,
+} from '@/hooks/useDenuncias';
+import { RemoverResponsavelDialog } from './RemoverResponsavelDialog';
 
 const roleBadgeConfig: Record<AppRole, { className: string; icon: React.ComponentType<{ className?: string }> }> = {
   admin_master: {
@@ -73,6 +79,22 @@ export function UserTable({ users, isLoading }: UserTableProps) {
   const resendAcesso = useResendAcessoByUserId();
   const [changingRoleUser, setChangingRoleUser] = useState<UserProfile | null>(null);
   const [linkingCompanyUser, setLinkingCompanyUser] = useState<UserProfile | null>(null);
+  const [removerTargetUser, setRemoverTargetUser] = useState<UserProfile | null>(null);
+
+  const { data: responsaveis = [] } = useResponsaveisDenuncias();
+  const designarResponsavel = useDesignarResponsavelDenuncia();
+
+  const responsaveisAtivosMap = useMemo(() => {
+    const map = new Map<string, ResponsavelDenunciaItem>();
+    for (const r of responsaveis) {
+      if (r.ativo) {
+        map.set(r.user_id, r);
+      }
+    }
+    return map;
+  }, [responsaveis]);
+
+  const activeResponsaveisCount = responsaveisAtivosMap.size;
 
   const canLinkCompany = isAdminMaster || isSuperAdmin || isAdminEmpresa;
 
@@ -165,24 +187,36 @@ export function UserTable({ users, isLoading }: UserTableProps) {
                 </div>
               </TableCell>
               <TableCell>
-                {user.role && (() => {
-                  const config = roleBadgeConfig[user.role];
-                  const Icon = config?.icon;
-                  const label = ROLE_LABELS[user.role] ?? user.role;
-                  return (
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {user.role && (() => {
+                    const config = roleBadgeConfig[user.role];
+                    const Icon = config?.icon;
+                    const label = ROLE_LABELS[user.role] ?? user.role;
+                    return (
+                      <Badge
+                        variant="outline"
+                        className={cn(
+                          "inline-flex items-center gap-1.5 font-medium px-2.5 py-0.5 text-xs whitespace-nowrap shadow-none border",
+                          config?.className
+                        )}
+                        title={label}
+                      >
+                        {Icon && <Icon className="h-3 w-3 shrink-0" />}
+                        <span className="truncate max-w-[170px] sm:max-w-none">{label}</span>
+                      </Badge>
+                    );
+                  })()}
+                  {responsaveisAtivosMap.has(user.user_id) && (
                     <Badge
                       variant="outline"
-                      className={cn(
-                        "inline-flex items-center gap-1.5 font-medium px-2.5 py-0.5 text-xs whitespace-nowrap shadow-none border",
-                        config?.className
-                      )}
-                      title={label}
+                      className="inline-flex items-center gap-1.5 font-medium px-2.5 py-0.5 text-xs whitespace-nowrap shadow-none border bg-purple-500/10 text-purple-700 dark:text-purple-300 border-purple-500/30"
+                      title="Responsável Designado pelo Canal de Denúncias (Lei 14.457/2022)"
                     >
-                      {Icon && <Icon className="h-3 w-3 shrink-0" />}
-                      <span className="truncate max-w-[170px] sm:max-w-none">{label}</span>
+                      <ShieldAlert className="h-3 w-3 shrink-0" />
+                      <span>Canal de Denúncias</span>
                     </Badge>
-                  );
-                })()}
+                  )}
+                </div>
               </TableCell>
               {isAdminMaster && (
                 <TableCell className="text-muted-foreground text-sm">
@@ -206,7 +240,9 @@ export function UserTable({ users, isLoading }: UserTableProps) {
                   const allowRoleAndStatus = canModifyRoleAndStatus(user);
                   const allowResend = canResendInvite(user);
                   const allowLinkCompany = canLinkUserToCompany(user);
-                  const hasAnyAction = allowRoleAndStatus || allowResend || allowLinkCompany;
+                  const isDesignado = responsaveisAtivosMap.has(user.user_id);
+                  const allowDesignar = isAdminEmpresa;
+                  const hasAnyAction = allowRoleAndStatus || allowResend || allowLinkCompany || allowDesignar;
 
                   return (
                     <div className="flex items-center justify-end gap-2">
@@ -243,6 +279,24 @@ export function UserTable({ users, isLoading }: UserTableProps) {
                               >
                                 <Mail className="h-4 w-4 mr-2" /> Reenviar convite de senha
                               </DropdownMenuItem>
+                            )}
+
+                            {isAdminEmpresa && (
+                              isDesignado ? (
+                                <DropdownMenuItem
+                                  className="text-destructive"
+                                  onClick={() => setRemoverTargetUser(user)}
+                                >
+                                  <ShieldAlert className="h-4 w-4 mr-2" /> Remover do Canal de Denúncias
+                                </DropdownMenuItem>
+                              ) : (
+                                <DropdownMenuItem
+                                  disabled={designarResponsavel.isPending || activeResponsaveisCount >= 3 || !user.is_active}
+                                  onClick={() => designarResponsavel.mutate(user.user_id)}
+                                >
+                                  <ShieldCheck className="h-4 w-4 mr-2 text-primary" /> Designar para Canal de Denúncias
+                                </DropdownMenuItem>
+                              )
                             )}
 
                             {allowRoleAndStatus && (
@@ -289,6 +343,15 @@ export function UserTable({ users, isLoading }: UserTableProps) {
           user={linkingCompanyUser}
         />
       )}
+
+      <RemoverResponsavelDialog
+        open={!!removerTargetUser}
+        onClose={() => setRemoverTargetUser(null)}
+        user={removerTargetUser}
+        outrosDesignados={responsaveis.filter(
+          (r) => r.ativo && r.user_id !== removerTargetUser?.user_id
+        )}
+      />
     </>
   );
 }

@@ -40,6 +40,7 @@ vi.mock('@/hooks/useAdminNotifications', () => ({
 
 vi.mock('@/hooks/useDenuncias', () => ({
   useDenunciasMonitor: () => ({ denunciasNovas: 0, faleConoscoNovos: 0 }),
+  useIsResponsavelDenuncia: () => ({ data: false, isLoading: false }),
 }));
 
 vi.mock('@/hooks/usePulseSurvey', () => ({

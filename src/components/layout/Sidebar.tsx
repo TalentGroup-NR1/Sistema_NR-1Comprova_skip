@@ -23,7 +23,7 @@ import { PerfilDialog } from "./PerfilDialog";
 import { PreferenciasDialog } from "./PreferenciasDialog";
 import { useUnreadCount } from "@/hooks/useNotifications";
 import { useAdminNotifications } from "@/hooks/useAdminNotifications";
-import { useDenunciasMonitor } from "@/hooks/useDenuncias";
+import { useDenunciasMonitor, useIsResponsavelDenuncia } from "@/hooks/useDenuncias";
 import { useToast } from "@/hooks/use-toast";
 import { useMyPulseStatus } from "@/hooks/usePulseSurvey";
 import { useBranding } from "@/hooks/useBranding";
@@ -100,6 +100,7 @@ export function Sidebar() {
   const unreadCount = useUnreadCount();
   const { data: adminNotifications } = useAdminNotifications();
   const totalUnread = unreadCount + (adminNotifications ?? []).filter((n) => !n.is_read).length;
+  const { data: isResponsavel } = useIsResponsavelDenuncia();
   const { denunciasNovas, faleConoscoNovos } = useDenunciasMonitor();
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
     departamentoPessoal: true,
@@ -269,7 +270,12 @@ export function Sidebar() {
       ]
       : []),
     ...filterByRole(configuracoesItems),
-  ].map(item => {
+  ].filter(item => {
+    if (item.href === "/denuncias" || item.href === "/comportamentos-ofensivos") {
+      return !!isResponsavel;
+    }
+    return true;
+  }).map(item => {
     if (item.href === "/denuncias" && faleConoscoNovos > 0) {
       return { ...item, badge: faleConoscoNovos };
     }

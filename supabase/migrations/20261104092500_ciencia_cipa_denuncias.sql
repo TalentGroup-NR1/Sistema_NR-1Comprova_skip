@@ -133,3 +133,4 @@ BEGIN
   ORDER BY d.criado_em DESC;
 END;
 $function$;
+

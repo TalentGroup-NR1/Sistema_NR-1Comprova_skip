@@ -173,3 +173,4 @@ BEGIN
   ORDER BY h.created_at DESC;
 END;
 $function$;
+
