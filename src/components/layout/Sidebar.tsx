@@ -23,7 +23,7 @@ import { PerfilDialog } from "./PerfilDialog";
 import { PreferenciasDialog } from "./PreferenciasDialog";
 import { useUnreadCount } from "@/hooks/useNotifications";
 import { useAdminNotifications } from "@/hooks/useAdminNotifications";
-import { useDenunciasMonitor, useIsResponsavelDenuncia } from "@/hooks/useDenuncias";
+import { useDenunciasMonitor, useIsResponsavelDenuncia, useContarDenunciasNaoAssumidas } from "@/hooks/useDenuncias";
 import { useToast } from "@/hooks/use-toast";
 import { useMyPulseStatus } from "@/hooks/usePulseSurvey";
 import { useBranding } from "@/hooks/useBranding";
@@ -39,6 +39,7 @@ interface NavItem {
   href: string;
   badge?: number;
   roles?: AppRole[];
+  alertState?: "normal" | "alerta" | "critico";
 }
 
 const dashboardItem: NavItem = { icon: LayoutDashboard, label: "Dashboard", href: "/" };
@@ -102,6 +103,7 @@ export function Sidebar() {
   const totalUnread = unreadCount + (adminNotifications ?? []).filter((n) => !n.is_read).length;
   const { data: isResponsavel } = useIsResponsavelDenuncia();
   const { denunciasNovas, faleConoscoNovos } = useDenunciasMonitor();
+  const { data: contadoresDenuncias } = useContarDenunciasNaoAssumidas();
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
     departamentoPessoal: true,
     desenvolvimento: true,
@@ -277,8 +279,23 @@ export function Sidebar() {
     if (item.href === "/denuncias" && faleConoscoNovos > 0) {
       return { ...item, badge: faleConoscoNovos };
     }
-    if (item.href === "/comportamentos-ofensivos" && denunciasNovas > 0) {
-      return { ...item, badge: denunciasNovas };
+    if (item.href === "/comportamentos-ofensivos") {
+      const totalVencidas = contadoresDenuncias?.total_vencidas ?? 0;
+      const totalNaoAssumidas = contadoresDenuncias?.total_nao_assumidas ?? 0;
+      const alertState: "normal" | "alerta" | "critico" =
+        totalVencidas > 0 ? "critico" : totalNaoAssumidas > 0 ? "alerta" : "normal";
+      const badgeCount =
+        totalVencidas > 0
+          ? totalVencidas
+          : totalNaoAssumidas > 0
+          ? totalNaoAssumidas
+          : (denunciasNovas > 0 ? denunciasNovas : 0);
+
+      return {
+        ...item,
+        badge: badgeCount > 0 ? badgeCount : undefined,
+        alertState,
+      };
     }
     return item;
   });
@@ -290,40 +307,57 @@ export function Sidebar() {
   const NavLinkItem = ({ item }: { item: NavItem }) => {
     const isActive = location.pathname === item.href;
     const Icon = item.icon;
+    const isCritico = item.alertState === "critico";
+    const isAlerta = item.alertState === "alerta";
+
     const linkContent = (
       <Link
         to={item.href}
         className={cn(
           "flex items-center gap-3 px-3 py-2 rounded-md transition-all duration-200 group relative font-medium text-[14px]",
-          isActive
+          isCritico
+            ? "bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300 border border-red-200 dark:border-red-900/50 hover:bg-red-100 dark:hover:bg-red-950/60 font-semibold"
+            : isAlerta
+            ? "text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 font-semibold"
+            : isActive
             ? "bg-[hsl(var(--sidebar-active))] text-sidebar-foreground"
             : "text-sidebar-foreground hover:bg-[hsl(var(--sidebar-hover))]"
         )}
       >
         <span
           className={cn(
-            "absolute left-0 top-1/2 -translate-y-1/2 h-6 w-[3px] rounded-r bg-[hsl(var(--sidebar-primary))] transition-all duration-200 origin-left",
-            isActive ? "scale-x-100 opacity-100" : "scale-x-0 opacity-0"
+            "absolute left-0 top-1/2 -translate-y-1/2 h-6 w-[3px] rounded-r transition-all duration-200 origin-left",
+            isCritico || isAlerta
+              ? "bg-[#DC2626] scale-x-100 opacity-100"
+              : isActive
+              ? "bg-[hsl(var(--sidebar-primary))] scale-x-100 opacity-100"
+              : "scale-x-0 opacity-0"
           )}
         />
         <Icon
           className={cn(
             "h-[18px] w-[18px] flex-shrink-0 transition-colors",
-            isActive ? "text-[hsl(var(--sidebar-primary))]" : "text-[hsl(var(--sidebar-icon))] group-hover:text-sidebar-foreground"
+            isCritico
+              ? "text-red-600 dark:text-red-400 animate-pulse motion-reduce:animate-none"
+              : isAlerta
+              ? "text-red-600 dark:text-red-400"
+              : isActive
+              ? "text-[hsl(var(--sidebar-primary))]"
+              : "text-[hsl(var(--sidebar-icon))] group-hover:text-sidebar-foreground"
           )}
         />
         {!collapsed && (
           <>
-            <span>{item.label}</span>
-            {item.badge && (
-              <span className="ml-auto bg-[#DC2626] text-white text-[10px] font-semibold w-5 h-5 flex items-center justify-center rounded-full">
+            <span className="truncate">{item.label}</span>
+            {item.badge !== undefined && item.badge > 0 && (
+              <span className="ml-auto bg-[#DC2626] text-white text-[11px] font-bold min-w-[20px] h-5 px-1.5 flex items-center justify-center rounded-full shadow-xs">
                 {item.badge}
               </span>
             )}
           </>
         )}
-        {collapsed && item.badge && (
-          <span className="absolute -top-0.5 -right-0.5 bg-[#DC2626] text-white text-[9px] font-semibold w-4 h-4 flex items-center justify-center rounded-full">
+        {collapsed && item.badge !== undefined && item.badge > 0 && (
+          <span className="absolute -top-1 -right-1 bg-[#DC2626] text-white text-[10px] font-bold min-w-[20px] h-5 px-1 flex items-center justify-center rounded-full shadow-xs ring-2 ring-background">
             {item.badge}
           </span>
         )}
@@ -335,7 +369,7 @@ export function Sidebar() {
           <TooltipTrigger asChild>{linkContent}</TooltipTrigger>
           <TooltipContent side="right" className="font-medium bg-popover text-popover-foreground border border-border shadow-md">
             {item.label}
-            {item.badge && <span className="ml-2 text-primary">({item.badge})</span>}
+            {item.badge && <span className="ml-2 text-destructive font-bold">({item.badge})</span>}
           </TooltipContent>
         </Tooltip>
       );
@@ -349,6 +383,7 @@ export function Sidebar() {
     if (items.length === 0) return null;
     const isOpen = openGroups[groupKey];
     const hasActiveItem = isGroupActive(items);
+    const totalBadges = items.reduce((acc, it) => acc + (it.badge ?? 0), 0);
 
     if (collapsed) {
       return <div className="space-y-1">{items.map(item => <NavLinkItem key={item.href} item={item} />)}</div>;
@@ -364,6 +399,11 @@ export function Sidebar() {
             )}
           >
             <span className="text-[10px] uppercase tracking-wider font-semibold flex-1">{label}</span>
+            {!isOpen && totalBadges > 0 && (
+              <span className="mr-1.5 bg-[#DC2626] text-white text-[10px] font-bold min-w-[18px] h-[18px] px-1 flex items-center justify-center rounded-full">
+                {totalBadges}
+              </span>
+            )}
             <ChevronDown className={cn("h-3.5 w-3.5 transition-transform duration-200", isOpen ? "rotate-0" : "-rotate-90")} />
           </button>
         </CollapsibleTrigger>

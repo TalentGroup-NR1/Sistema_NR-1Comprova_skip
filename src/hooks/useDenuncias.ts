@@ -96,6 +96,15 @@ export function useCriarDenuncia() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["denuncias-admin"] });
+      qc.invalidateQueries({ queryKey: ["denuncias-alertas-contagem"] });
+      qc.invalidateQueries({ queryKey: ["denuncias-alertas-lista"] });
+      supabase.functions
+        .invoke("notify-denuncia-designados", {
+          body: { mode: "nova_denuncia" },
+        })
+        .catch((err) => {
+          console.warn("[notify-denuncia-designados] Envio em background:", err?.message);
+        });
     },
   });
 }
@@ -608,10 +617,66 @@ export function useComiteEnviarMensagem() {
     onSuccess: (_, vars) => {
       qc.invalidateQueries({ queryKey: ["denuncia-mensagens-comite", vars.denunciaId] });
       qc.invalidateQueries({ queryKey: ["denuncias-admin"] });
+      qc.invalidateQueries({ queryKey: ["denuncias-alertas-contagem"] });
+      qc.invalidateQueries({ queryKey: ["denuncias-alertas-lista"] });
       toast.success("Mensagem enviada com sucesso ao denunciante.");
     },
     onError: (err: any) => {
       toast.error(err?.message || "Erro ao enviar mensagem.");
+    },
+  });
+}
+
+export interface ContadorDenunciasAlertas {
+  total_nao_assumidas: number;
+  total_vencidas: number;
+  total_novas_24h: number;
+}
+
+export interface DenunciaAlertaItem {
+  id: string;
+  protocolo: string;
+  criado_em: string;
+  prazo_primeira_resposta: string | null;
+  vencida: boolean;
+  dias_para_vencer: number;
+}
+
+export function useContarDenunciasNaoAssumidas() {
+  const { user, isAuthenticated } = useAuth();
+  const { data: isResponsavel } = useIsResponsavelDenuncia();
+
+  return useQuery({
+    queryKey: ["denuncias-alertas-contagem", user?.id],
+    enabled: !!isAuthenticated && !!isResponsavel,
+    refetchInterval: 60 * 1000,
+    refetchOnWindowFocus: true,
+    queryFn: async (): Promise<ContadorDenunciasAlertas> => {
+      const { data, error } = await supabase.rpc("contar_denuncias_nao_assumidas");
+      if (error) throw error;
+      const res = (data as any) || {};
+      return {
+        total_nao_assumidas: Number(res.total_nao_assumidas) || 0,
+        total_vencidas: Number(res.total_vencidas) || 0,
+        total_novas_24h: Number(res.total_novas_24h) || 0,
+      };
+    },
+  });
+}
+
+export function useListarDenunciasParaAlerta() {
+  const { user, isAuthenticated } = useAuth();
+  const { data: isResponsavel } = useIsResponsavelDenuncia();
+
+  return useQuery({
+    queryKey: ["denuncias-alertas-lista", user?.id],
+    enabled: !!isAuthenticated && !!isResponsavel,
+    refetchInterval: 60 * 1000,
+    refetchOnWindowFocus: true,
+    queryFn: async (): Promise<DenunciaAlertaItem[]> => {
+      const { data, error } = await supabase.rpc("listar_denuncias_para_alerta");
+      if (error) throw error;
+      return (data ?? []) as DenunciaAlertaItem[];
     },
   });
 }

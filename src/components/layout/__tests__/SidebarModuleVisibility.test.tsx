@@ -47,6 +47,7 @@ vi.mock('@/hooks/useAdminNotifications', () => ({
 vi.mock('@/hooks/useDenuncias', () => ({
   useDenunciasMonitor: () => ({ barcodeNovas: 0, denunciasNovas: 0, faleConoscoNovos: 0 }),
   useIsResponsavelDenuncia: vi.fn(() => ({ data: false, isLoading: false })),
+  useContarDenunciasNaoAssumidas: vi.fn(() => ({ data: { total_vencidas: 0, total_novas_24h: 0, total_nao_assumidas: 0 }, isLoading: false })),
 }));
 
 vi.mock('@/hooks/usePulseSurvey', () => ({
