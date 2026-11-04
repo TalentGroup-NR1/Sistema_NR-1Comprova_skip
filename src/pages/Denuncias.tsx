@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
+  DenunciaAdmin,
   DenunciaStatus,
   FaleConoscoTipo,
   useDenunciasAdmin,
@@ -28,7 +29,8 @@ import {
 } from "@/hooks/useDenuncias";
 import { DenunciaDetailDialog } from "@/components/denuncias/DenunciaDetailDialog";
 import { TIPO_LABEL, TipoBadge } from "@/components/denuncias/TipoBadge";
-import { AlertCircle } from "lucide-react";
+import { PrazoBadge, calcularPrazoDenuncia } from "@/components/denuncias/PrazoBadge";
+import { AlertCircle, UserCheck } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const STATUS_LABEL: Record<DenunciaStatus, string> = {
@@ -43,10 +45,12 @@ const STATUS_VARIANT: Record<DenunciaStatus, "default" | "secondary" | "outline"
   concluido: "outline",
 };
 
+type StatusFiltro = DenunciaStatus | "todos" | "vencidos";
+
 export default function Denuncias() {
   const { data: isResponsavel, isLoading: isLoadingResp } = useIsResponsavelDenuncia();
   const { data, isLoading } = useDenunciasAdmin(!!isResponsavel);
-  const [statusFiltro, setStatusFiltro] = useState<DenunciaStatus | "todos">("todos");
+  const [statusFiltro, setStatusFiltro] = useState<StatusFiltro>("todos");
   const [tipoFiltro, setTipoFiltro] = useState<FaleConoscoTipo | "todos">("todos");
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
@@ -54,7 +58,12 @@ export default function Denuncias() {
     if (!data) return [];
     return data.filter((d) => {
       if (d.tipo === "denuncia") return false; // denúncias vão para a aba "Comportamentos Ofensivos"
-      if (statusFiltro !== "todos" && d.status !== statusFiltro) return false;
+      if (statusFiltro === "vencidos") {
+        const prazo = calcularPrazoDenuncia(d);
+        if (!prazo.isVencido) return false;
+      } else if (statusFiltro !== "todos" && d.status !== statusFiltro) {
+        return false;
+      }
       if (tipoFiltro !== "todos" && d.tipo !== tipoFiltro) return false;
       return true;
     });
@@ -122,13 +131,14 @@ export default function Denuncias() {
               </Select>
               <Select
                 value={statusFiltro}
-                onValueChange={(v) => setStatusFiltro(v as any)}
+                onValueChange={(v) => setStatusFiltro(v as StatusFiltro)}
               >
                 <SelectTrigger className="w-[180px]">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="todos">Todos os status</SelectItem>
+                  <SelectItem value="vencidos">⚠️ Prazo vencido</SelectItem>
                   <SelectItem value="novo">Novo</SelectItem>
                   <SelectItem value="em_analise">Em análise</SelectItem>
                   <SelectItem value="concluido">Concluído</SelectItem>
@@ -155,7 +165,8 @@ export default function Denuncias() {
                     <TableHead>Tipo</TableHead>
                     <TableHead>Título</TableHead>
                     <TableHead>Prévia</TableHead>
-                    <TableHead>Anônimo</TableHead>
+                    <TableHead>Responsável</TableHead>
+                    <TableHead>Prazo</TableHead>
                     <TableHead>Status</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -175,13 +186,23 @@ export default function Denuncias() {
                         <TipoBadge tipo={d.tipo} />
                       </TableCell>
                       <TableCell className="font-medium">{d.titulo}</TableCell>
-                      <TableCell className="max-w-md truncate text-sm text-muted-foreground">
+                      <TableCell className="max-w-xs truncate text-sm text-muted-foreground">
                         {d.mensagem}
                       </TableCell>
-                      <TableCell>
-                        <Badge variant={d.anonimo ? "secondary" : "outline"}>
-                          {d.anonimo ? "Sim" : "Não"}
-                        </Badge>
+                      <TableCell className="text-sm whitespace-nowrap">
+                        {d.assumido_por_nome ? (
+                          <div className="flex items-center gap-1.5 font-medium text-xs">
+                            <UserCheck className="h-3.5 w-3.5 text-primary" />
+                            <span>{d.assumido_por_nome}</span>
+                          </div>
+                        ) : (
+                          <Badge variant="outline" className="text-muted-foreground font-normal text-[11px]">
+                            No pool
+                          </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        <PrazoBadge denuncia={d} />
                       </TableCell>
                       <TableCell>
                         <Badge variant={STATUS_VARIANT[d.status]}>

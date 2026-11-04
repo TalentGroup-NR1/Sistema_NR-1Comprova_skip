@@ -10,7 +10,7 @@ vi.mock("@/integrations/supabase/client", () => ({
   },
 }));
 
-describe("useAtualizarStatusDenuncia - Trilha de Auditoria", () => {
+describe("useAtualizarStatusDenuncia - Trilha de Auditoria & Parecer", () => {
   let queryClient: QueryClient;
 
   beforeEach(() => {
@@ -24,7 +24,7 @@ describe("useAtualizarStatusDenuncia - Trilha de Auditoria", () => {
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   );
 
-  it("calls atualizar_status_denuncia with id, status and optional justificativa", async () => {
+  it("calls atualizar_status_denuncia with id, status and optional parecer", async () => {
     vi.mocked(supabase.rpc).mockResolvedValueOnce({ data: null, error: null });
 
     const { result } = renderHook(() => useAtualizarStatusDenuncia(), { wrapper });
@@ -32,7 +32,7 @@ describe("useAtualizarStatusDenuncia - Trilha de Auditoria", () => {
     result.current.mutate({
       id: "denuncia-uuid-1",
       status: "em_analise",
-      justificativa: "Início de apuração pelo comitê CIPA+A",
+      parecer: "Início de apuração pelo comitê CIPA+A",
     });
 
     await waitFor(() => {
@@ -42,11 +42,11 @@ describe("useAtualizarStatusDenuncia - Trilha de Auditoria", () => {
     expect(supabase.rpc).toHaveBeenCalledWith("atualizar_status_denuncia", {
       p_id: "denuncia-uuid-1",
       p_novo_status: "em_analise",
-      p_justificativa: "Início de apuração pelo comitê CIPA+A",
+      p_parecer: "Início de apuração pelo comitê CIPA+A",
     });
   });
 
-  it("passes null as justificativa when not provided", async () => {
+  it("passes null as parecer when not provided", async () => {
     vi.mocked(supabase.rpc).mockResolvedValueOnce({ data: null, error: null });
 
     const { result } = renderHook(() => useAtualizarStatusDenuncia(), { wrapper });
@@ -63,8 +63,48 @@ describe("useAtualizarStatusDenuncia - Trilha de Auditoria", () => {
     expect(supabase.rpc).toHaveBeenCalledWith("atualizar_status_denuncia", {
       p_id: "denuncia-uuid-2",
       p_novo_status: "concluido",
-      p_justificativa: null,
+      p_parecer: null,
     });
+  });
+
+  it("translates assuma_a_denuncia_primeiro error clearly", async () => {
+    vi.mocked(supabase.rpc).mockResolvedValueOnce({
+      data: null,
+      error: { message: "assuma_a_denuncia_primeiro" } as any,
+    });
+
+    const { result } = renderHook(() => useAtualizarStatusDenuncia(), { wrapper });
+
+    result.current.mutate({
+      id: "denuncia-uuid-3",
+      status: "em_analise",
+    });
+
+    await waitFor(() => {
+      expect(result.current.isError).toBe(true);
+    });
+
+    expect(result.current.error?.message).toMatch(/Você precisa assumir a denúncia antes de tratá-la/);
+  });
+
+  it("translates parecer_obrigatorio_para_conclusao error clearly", async () => {
+    vi.mocked(supabase.rpc).mockResolvedValueOnce({
+      data: null,
+      error: { message: "parecer_obrigatorio_para_conclusao" } as any,
+    });
+
+    const { result } = renderHook(() => useAtualizarStatusDenuncia(), { wrapper });
+
+    result.current.mutate({
+      id: "denuncia-uuid-4",
+      status: "concluido",
+    });
+
+    await waitFor(() => {
+      expect(result.current.isError).toBe(true);
+    });
+
+    expect(result.current.error?.message).toMatch(/mínimo de 30 caracteres/);
   });
 
   it("propagates forbidden error when user lacks permission", async () => {
@@ -76,9 +116,9 @@ describe("useAtualizarStatusDenuncia - Trilha de Auditoria", () => {
     const { result } = renderHook(() => useAtualizarStatusDenuncia(), { wrapper });
 
     result.current.mutate({
-      id: "denuncia-uuid-3",
+      id: "denuncia-uuid-5",
       status: "concluido",
-      justificativa: "Sem permissão",
+      parecer: "Sem permissão",
     });
 
     await waitFor(() => {
@@ -88,4 +128,3 @@ describe("useAtualizarStatusDenuncia - Trilha de Auditoria", () => {
     expect(result.current.error?.message).toMatch(/forbidden/);
   });
 });
-

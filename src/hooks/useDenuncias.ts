@@ -24,6 +24,15 @@ export interface DenunciaAdmin {
   responsavel_id?: string | null;
   transferido_de?: string | null;
   atribuido_em?: string | null;
+  assumido_por?: string | null;
+  assumido_por_nome?: string | null;
+  assumido_em?: string | null;
+  parecer_atual?: string | null;
+  parecer_em?: string | null;
+  parecer_por?: string | null;
+  prazo_primeira_resposta?: string | null;
+  prazo_conclusao?: string | null;
+  primeira_resposta_em?: string | null;
 }
 
 export interface HistoricoDenunciaItem {
@@ -209,18 +218,30 @@ export function useAtualizarStatusDenuncia() {
     mutationFn: async (input: {
       id: string;
       status: DenunciaStatus;
+      parecer?: string | null;
       justificativa?: string | null;
     }) => {
+      const parecerTexto = input.parecer ?? input.justificativa ?? null;
       const { error } = await supabase.rpc("atualizar_status_denuncia", {
         p_id: input.id,
         p_novo_status: input.status,
-        p_justificativa: input.justificativa ?? null,
+        p_parecer: parecerTexto,
       } as any);
-      if (error) throw error;
+      if (error) {
+        if (error.message?.includes("assuma_a_denuncia_primeiro")) {
+          throw new Error("Você precisa assumir a denúncia antes de tratá-la.");
+        }
+        if (error.message?.includes("parecer_obrigatorio_para_conclusao")) {
+          throw new Error("O parecer de apuração é obrigatório para conclusão (mínimo de 30 caracteres).");
+        }
+        throw error;
+      }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["denuncias-admin"] });
       qc.invalidateQueries({ queryKey: ["denuncia-historico"] });
+      qc.invalidateQueries({ queryKey: ["denuncias-vencidas"] });
+      qc.invalidateQueries({ queryKey: ["denuncias-contagem-sem-resp"] });
     },
   });
 }
@@ -366,6 +387,89 @@ export function useContagemDenunciasSemResponsavel() {
       const { data, error } = await supabase.rpc("contagem_denuncias_sem_responsavel");
       if (error) throw error;
       return data as ContagemSemResponsavel;
+    },
+  });
+}
+
+export function useAssumirDenuncia() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (denunciaId: string) => {
+      const { error } = await supabase.rpc("assumir_denuncia", {
+        p_id: denunciaId,
+      } as any);
+      if (error) {
+        if (error.message?.includes("denuncia_ja_assumida")) {
+          throw new Error("Esta denúncia já foi assumida por outro responsável.");
+        }
+        throw error;
+      }
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["denuncias-admin"] });
+      qc.invalidateQueries({ queryKey: ["denuncia-historico"] });
+      qc.invalidateQueries({ queryKey: ["denuncias-vencidas"] });
+      qc.invalidateQueries({ queryKey: ["denuncias-contagem-sem-resp"] });
+      toast.success("Você assumiu a denúncia para apuração.");
+    },
+    onError: (err: any) => {
+      toast.error(err?.message || "Erro ao assumir denúncia.");
+    },
+  });
+}
+
+export function useLiberarDenuncia() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (denunciaId: string) => {
+      const { error } = await supabase.rpc("liberar_denuncia", {
+        p_id: denunciaId,
+      } as any);
+      if (error) {
+        if (error.message?.includes("apenas_quem_assumiu_pode_liberar")) {
+          throw new Error("Apenas o responsável que assumiu pode liberar a denúncia ao comitê.");
+        }
+        throw error;
+      }
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["denuncias-admin"] });
+      qc.invalidateQueries({ queryKey: ["denuncia-historico"] });
+      qc.invalidateQueries({ queryKey: ["denuncias-vencidas"] });
+      qc.invalidateQueries({ queryKey: ["denuncias-contagem-sem-resp"] });
+      toast.success("Denúncia liberada de volta ao comitê.");
+    },
+    onError: (err: any) => {
+      toast.error(err?.message || "Erro ao liberar denúncia.");
+    },
+  });
+}
+
+export interface DenunciaVencidaItem {
+  id: string;
+  titulo: string;
+  status: string;
+  criado_em: string;
+  assumido_por: string | null;
+  dias_vencidos: number;
+}
+
+export function useListarDenunciasVencidas() {
+  const { user, isAuthenticated } = useAuth();
+  const { data: isResponsavel } = useIsResponsavelDenuncia();
+
+  return useQuery({
+    queryKey: ["denuncias-vencidas", user?.id],
+    enabled: !!isAuthenticated && !!isResponsavel,
+    refetchInterval: 60 * 1000,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("listar_denuncias_vencidas");
+      if (error) throw error;
+      const row = (data as any)?.[0];
+      return {
+        total_vencidas: (row?.total_vencidas as number) ?? 0,
+        denuncias_vencidas: (row?.denuncias_vencidas as DenunciaVencidaItem[]) ?? [],
+      };
     },
   });
 }

@@ -13,6 +13,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -21,18 +22,20 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ShieldAlert, AlertCircle } from "lucide-react";
+import { ShieldAlert, AlertCircle, AlertTriangle, UserCheck } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   DenunciaAdmin,
   DenunciaStatus,
   useDenunciasAdmin,
   useIsResponsavelDenuncia,
+  useListarDenunciasVencidas,
   useRegistrarCienciaCipa,
 } from "@/hooks/useDenuncias";
 import { DenunciaDetailDialog } from "@/components/denuncias/DenunciaDetailDialog";
 import { CategoriaOrigemBadges } from "@/components/denuncias/CategoriaOrigemBadges";
 import { AlertaLegalCIPACModal } from "@/components/denuncias/AlertaLegalCIPACModal";
+import { PrazoBadge, calcularPrazoDenuncia } from "@/components/denuncias/PrazoBadge";
 import {
   CATEGORIA_LABEL,
   CATEGORIA_OPTIONS,
@@ -52,12 +55,15 @@ const STATUS_VARIANT: Record<DenunciaStatus, "default" | "secondary" | "outline"
   concluido: "outline",
 };
 
+type StatusFiltro = DenunciaStatus | "todos" | "vencidos";
+
 export default function ComportamentosOfensivos() {
   const { data: isResponsavel, isLoading: isLoadingResp } = useIsResponsavelDenuncia();
   const { data, isLoading } = useDenunciasAdmin(!!isResponsavel);
+  const vencidasQuery = useListarDenunciasVencidas();
   const registrarCiencia = useRegistrarCienciaCipa();
 
-  const [statusFiltro, setStatusFiltro] = useState<DenunciaStatus | "todos">("todos");
+  const [statusFiltro, setStatusFiltro] = useState<StatusFiltro>("todos");
   const [categoriaFiltro, setCategoriaFiltro] = useState<string>("todos");
   const [origemFiltro, setOrigemFiltro] = useState<string>("todos");
   const [pendingId, setPendingId] = useState<string | null>(null);
@@ -70,10 +76,18 @@ export default function ComportamentosOfensivos() {
 
   const lista = useMemo(() => {
     return denuncias.filter((d) => {
-      if (statusFiltro !== "todos" && d.status !== statusFiltro) return false;
-      if (categoriaFiltro !== "todos" && d.categoria_comportamento !== categoriaFiltro)
+      if (statusFiltro === "vencidos") {
+        const prazo = calcularPrazoDenuncia(d);
+        if (!prazo.isVencido) return false;
+      } else if (statusFiltro !== "todos" && d.status !== statusFiltro) {
         return false;
-      if (origemFiltro !== "todos" && d.origem_ofensa !== origemFiltro) return false;
+      }
+      if (categoriaFiltro !== "todos" && d.categoria_comportamento !== categoriaFiltro) {
+        return false;
+      }
+      if (origemFiltro !== "todos" && d.origem_ofensa !== origemFiltro) {
+        return false;
+      }
       return true;
     });
   }, [denuncias, statusFiltro, categoriaFiltro, origemFiltro]);
@@ -150,6 +164,8 @@ export default function ComportamentosOfensivos() {
     );
   }
 
+  const totalVencidas = vencidasQuery.data?.total_vencidas ?? 0;
+
   return (
     <MainLayout>
       <div className="p-6 space-y-6">
@@ -166,6 +182,35 @@ export default function ComportamentosOfensivos() {
             </p>
           </div>
         </div>
+
+        {/* Banner de alerta de prazos vencidos */}
+        {totalVencidas > 0 && (
+          <Alert variant="destructive" className="flex items-center justify-between flex-wrap gap-3">
+            <div className="flex items-center gap-2.5">
+              <AlertTriangle className="h-5 w-5 shrink-0" />
+              <div>
+                <AlertTitle className="font-semibold text-sm">
+                  {totalVencidas === 1
+                    ? "1 denúncia com prazo legal de apuração vencido"
+                    : `${totalVencidas} denúncias com prazo legal de apuração vencido`}
+                </AlertTitle>
+                <AlertDescription className="text-xs">
+                  A Lei nº 14.457/2022 estipula 30 dias para a primeira manifestação e 90 dias para conclusão com parecer.
+                </AlertDescription>
+              </div>
+            </div>
+            {statusFiltro !== "vencidos" && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="bg-background text-foreground hover:bg-muted text-xs h-8 shrink-0"
+                onClick={() => setStatusFiltro("vencidos")}
+              >
+                Filtrar denúncias vencidas
+              </Button>
+            )}
+          </Alert>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card>
@@ -228,13 +273,14 @@ export default function ComportamentosOfensivos() {
               </Select>
               <Select
                 value={statusFiltro}
-                onValueChange={(v) => setStatusFiltro(v as any)}
+                onValueChange={(v) => setStatusFiltro(v as StatusFiltro)}
               >
                 <SelectTrigger className="w-[180px]">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="todos">Todos os status</SelectItem>
+                  <SelectItem value="vencidos">⚠️ Prazo vencido</SelectItem>
                   <SelectItem value="novo">Novo</SelectItem>
                   <SelectItem value="em_analise">Em análise</SelectItem>
                   <SelectItem value="concluido">Concluído</SelectItem>
@@ -261,6 +307,8 @@ export default function ComportamentosOfensivos() {
                     <TableHead>Categoria</TableHead>
                     <TableHead>Origem</TableHead>
                     <TableHead>Título</TableHead>
+                    <TableHead>Responsável</TableHead>
+                    <TableHead>Prazo Legal</TableHead>
                     <TableHead>Status</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -287,6 +335,21 @@ export default function ComportamentosOfensivos() {
                           : <span className="text-muted-foreground italic">Não informado</span>}
                       </TableCell>
                       <TableCell className="font-medium">{d.titulo}</TableCell>
+                      <TableCell className="text-sm whitespace-nowrap">
+                        {d.assumido_por_nome ? (
+                          <div className="flex items-center gap-1.5 font-medium text-xs">
+                            <UserCheck className="h-3.5 w-3.5 text-primary" />
+                            <span>{d.assumido_por_nome}</span>
+                          </div>
+                        ) : (
+                          <Badge variant="outline" className="text-muted-foreground font-normal text-[11px]">
+                            No pool
+                          </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        <PrazoBadge denuncia={d} />
+                      </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <Badge variant={STATUS_VARIANT[d.status]}>
