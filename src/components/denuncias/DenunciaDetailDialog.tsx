@@ -36,9 +36,11 @@ import {
   AlertCircle,
   AlertTriangle,
   Calendar,
+  Check,
   CheckCircle2,
   ChevronDown,
   Clock,
+  Copy,
   History,
   Lock,
   MessageSquare,
@@ -86,6 +88,7 @@ export function DenunciaDetailDialog({ denuncia, onOpenChange, extraHeader }: Pr
   const [resumoPublico, setResumoPublico] = useState<string>("");
   const [mensagemComite, setMensagemComite] = useState<string>("");
   const [historicoAberto, setHistoricoAberto] = useState<boolean>(false);
+  const [copiadoProtocolo, setCopiadoProtocolo] = useState<boolean>(false);
 
   useEffect(() => {
     if (denuncia) {
@@ -94,6 +97,7 @@ export function DenunciaDetailDialog({ denuncia, onOpenChange, extraHeader }: Pr
       setResumoPublico(denuncia.resumo_publico ?? "");
       setMensagemComite("");
       setHistoricoAberto(false);
+      setCopiadoProtocolo(false);
     }
   }, [denuncia]);
 
@@ -112,6 +116,18 @@ export function DenunciaDetailDialog({ denuncia, onOpenChange, extraHeader }: Pr
     status !== denuncia.status ||
     (parecer.trim() !== (denuncia.parecer_atual ?? "").trim() && parecerLength > 0) ||
     resumoPublico.trim() !== (denuncia.resumo_publico ?? "").trim();
+
+  const handleCopiarProtocolo = async () => {
+    if (!denuncia.protocolo) return;
+    try {
+      await navigator.clipboard.writeText(denuncia.protocolo);
+      setCopiadoProtocolo(true);
+      toast.success("Protocolo copiado para a área de transferência.");
+      setTimeout(() => setCopiadoProtocolo(false), 2000);
+    } catch {
+      toast.error("Não foi possível copiar o protocolo.");
+    }
+  };
 
   const handleAssumir = async () => {
     try {
@@ -157,6 +173,10 @@ export function DenunciaDetailDialog({ denuncia, onOpenChange, extraHeader }: Pr
       toast.error("Digite a mensagem para o denunciante.");
       return;
     }
+    if (txt.length > 2000) {
+      toast.error("A mensagem deve ter no máximo 2000 caracteres.");
+      return;
+    }
 
     try {
       await enviarMensagem.mutateAsync({
@@ -164,6 +184,7 @@ export function DenunciaDetailDialog({ denuncia, onOpenChange, extraHeader }: Pr
         mensagem: txt,
       });
       setMensagemComite("");
+      toast.success("Mensagem enviada. O denunciante verá ao consultar o protocolo.");
     } catch {
       // erro tratado no hook
     }
@@ -174,15 +195,45 @@ export function DenunciaDetailDialog({ denuncia, onOpenChange, extraHeader }: Pr
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <div className="flex items-start justify-between gap-4">
-            <div className="space-y-1">
+            <div className="space-y-1.5 flex-1">
               <div className="flex items-center gap-2 flex-wrap">
                 <DialogTitle className="text-xl">{denuncia.titulo}</DialogTitle>
-                {denuncia.protocolo && (
-                  <Badge variant="outline" className="font-mono text-xs font-semibold">
-                    {denuncia.protocolo}
-                  </Badge>
-                )}
+                <div className="inline-flex items-center gap-1.5 bg-muted/60 border border-border px-2.5 py-0.5 rounded-md">
+                  <span className="text-[11px] text-muted-foreground font-medium">Protocolo:</span>
+                  <span className="font-mono text-xs font-bold tracking-wider text-foreground">
+                    {denuncia.protocolo || "—"}
+                  </span>
+                  {denuncia.protocolo && (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={handleCopiarProtocolo}
+                            className="h-5 w-5 ml-0.5 p-0 hover:bg-muted text-muted-foreground hover:text-foreground"
+                          >
+                            {copiadoProtocolo ? (
+                              <Check className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
+                            ) : (
+                              <Copy className="h-3 w-3" />
+                            )}
+                            <span className="sr-only">Copiar protocolo</span>
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="top">
+                          {copiadoProtocolo ? "Copiado!" : "Copiar protocolo"}
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  )}
+                </div>
               </div>
+              <p className="text-[11px] text-muted-foreground">
+                O denunciante usa este código para acompanhar o relato em{" "}
+                <span className="font-mono font-medium text-foreground">/acompanhar</span>.
+              </p>
               <DialogDescription>
                 Recebida em{" "}
                 {format(new Date(denuncia.criado_em), "dd/MM/yyyy 'às' HH:mm", {
@@ -210,7 +261,7 @@ export function DenunciaDetailDialog({ denuncia, onOpenChange, extraHeader }: Pr
 
           {extraHeader}
 
-          {/* Mensagem da denúncia */}
+          {/* 1. Mensagem da denúncia */}
           <div>
             <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
               Mensagem Original do Relato
@@ -220,7 +271,7 @@ export function DenunciaDetailDialog({ denuncia, onOpenChange, extraHeader }: Pr
             </div>
           </div>
 
-          {/* Painel de Prazos Legais (Lei 14.457/2022) */}
+          {/* 2. Painel de Prazos Legais (Lei 14.457/2022) */}
           <div className="rounded-lg border bg-card p-4 space-y-3">
             <div className="flex items-center gap-2 text-sm font-semibold">
               <Clock className="h-4 w-4 text-primary" />
@@ -278,7 +329,7 @@ export function DenunciaDetailDialog({ denuncia, onOpenChange, extraHeader }: Pr
             </div>
           </div>
 
-          {/* BLOCO DE ASSUNÇÃO E TRATAMENTO (Modelo B - Lei 14.457/2022) */}
+          {/* 3. GESTÃO E APURAÇÃO DA DENÚNCIA (Titularidade e Assunção - Modelo B) */}
           <div className="rounded-lg border bg-card p-4 space-y-4">
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <Label className="text-sm font-semibold uppercase tracking-wide">
@@ -307,7 +358,8 @@ export function DenunciaDetailDialog({ denuncia, onOpenChange, extraHeader }: Pr
                 </AlertTitle>
                 <AlertDescription className="text-xs text-amber-800 dark:text-amber-300/90 mt-1">
                   Este relato está no pool compartilhado da empresa. Para alterar o status,
-                  registrar diligências ou emitir o parecer final, é necessário assumir a denúncia.
+                  registrar diligências, emitir o parecer final ou enviar mensagens ao denunciante,
+                  é necessário assumir a denúncia.
                 </AlertDescription>
                 <div className="mt-3">
                   <Button
@@ -337,7 +389,7 @@ export function DenunciaDetailDialog({ denuncia, onOpenChange, extraHeader }: Pr
                         locale: ptBR,
                       })
                     : "data não registrada"}
-                  . Apenas o responsável que assumiu o caso pode alterar o status ou registrar o parecer de apuração.
+                  . Apenas o responsável que assumiu o caso pode alterar o status, registrar o parecer de apuração ou enviar mensagens ao denunciante.
                 </AlertDescription>
                 <div className="mt-3">
                   <TooltipProvider>
@@ -373,141 +425,43 @@ export function DenunciaDetailDialog({ denuncia, onOpenChange, extraHeader }: Pr
                         locale: ptBR,
                       })
                     : "—"}
-                  . Seus atos e alterações de status são registrados na trilha de auditoria para fins de fiscalização.
+                  . Seus atos, mensagens e alterações de status são registrados na trilha de auditoria para fins de fiscalização.
                 </AlertDescription>
               </Alert>
             )}
-
-            {/* Formulário de Status e Parecer */}
-            <div className="space-y-4 pt-2">
-              <div className="space-y-2">
-                <Label htmlFor="denuncia-status-select">Status do Relato</Label>
-                <Select
-                  value={status}
-                  onValueChange={(v) => setStatus(v as DenunciaStatus)}
-                  disabled={!isAssumidoPorMim || atualizar.isPending}
-                >
-                  <SelectTrigger id="denuncia-status-select" className="w-[240px]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {(Object.keys(STATUS_LABEL) as DenunciaStatus[]).map((s) => (
-                      <SelectItem key={s} value={s}>
-                        {STATUS_LABEL[s]}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <div className="flex items-center justify-between gap-2">
-                  <Label htmlFor="parecer-apuracao">
-                    Parecer Interno de Apuração / Justificativa
-                    {isConcluindo && (
-                      <span className="text-destructive ml-1">* (obrigatório)</span>
-                    )}
-                  </Label>
-                  {isAssumidoPorMim && isConcluindo && (
-                    <span
-                      className={`text-xs ${
-                        parecerLength >= 30
-                          ? "text-emerald-600 dark:text-emerald-400"
-                          : "text-destructive font-medium"
-                      }`}
-                    >
-                      {parecerLength} / 30 caracteres mínimos
-                    </span>
-                  )}
-                </div>
-
-                <Textarea
-                  id="parecer-apuracao"
-                  value={parecer}
-                  onChange={(e) => setParecer(e.target.value)}
-                  placeholder={
-                    isAssumidoPorMim
-                      ? "Descreva detalhadamente as diligências realizadas, medidas adotadas e a fundamentação da conclusão..."
-                      : "Nenhum parecer registrado até o momento."
-                  }
-                  rows={4}
-                  disabled={!isAssumidoPorMim || atualizar.isPending}
-                  className="resize-y"
-                />
-
-                {isAssumidoPorMim && isConcluindo && !parecerValidoParaConclusao && (
-                  <p className="text-xs text-destructive flex items-center gap-1 font-medium">
-                    <AlertTriangle className="h-3.5 w-3.5" />
-                    Para concluir uma denúncia, a Lei 14.457/2022 exige parecer fundamentado com pelo menos 30 caracteres. Faltam {30 - parecerLength} caracteres.
-                  </p>
-                )}
-              </div>
-
-              {/* Campo Resumo Público para o Denunciante (ao concluir) */}
-              {isConcluindo && isAssumidoPorMim && (
-                <div className="space-y-2 rounded-lg border p-3 bg-muted/20">
-                  <div className="flex items-center justify-between gap-2">
-                    <Label htmlFor="resumo-publico" className="text-xs font-semibold">
-                      Resumo da Conclusão para o Denunciante (Público)
-                    </Label>
-                    <span className="text-[11px] text-muted-foreground">Visível via protocolo</span>
-                  </div>
-                  <Textarea
-                    id="resumo-publico"
-                    value={resumoPublico}
-                    onChange={(e) => setResumoPublico(e.target.value)}
-                    placeholder="Ex: A apuração foi concluída pelo comitê e as medidas administrativas foram tomadas para garantir a integridade do ambiente. Agradecemos sua manifestação."
-                    rows={3}
-                    maxLength={500}
-                    className="text-xs resize-y"
-                  />
-                  <p className="text-[11px] text-muted-foreground">
-                    Este é o texto que a pessoa que denunciou verá ao consultar o protocolo. Seja acolhedor e não exponha dados sigilosos ou nomes de pessoas.
-                  </p>
-                </div>
-              )}
-
-              {isAssumidoPorMim && (
-                <div className="flex justify-end pt-2">
-                  <Button
-                    onClick={handleSalvar}
-                    disabled={
-                      !hasChanges ||
-                      atualizar.isPending ||
-                      (isConcluindo && !parecerValidoParaConclusao)
-                    }
-                  >
-                    {atualizar.isPending ? "Salvando..." : "Salvar Apuração"}
-                  </Button>
-                </div>
-              )}
-            </div>
           </div>
 
-          {/* MENSAGERIA BIDIRECIONAL COM O DENUNCIANTE */}
+          {/* 4. COMUNICAÇÃO ANÔNIMA COM O DENUNCIANTE (Posicionada logo abaixo de Gestão e Apuração!) */}
           <div className="rounded-lg border bg-card p-4 space-y-4">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <MessageSquare className="h-4 w-4 text-primary" />
-                <Label className="text-sm font-semibold uppercase tracking-wide">
-                  Comunicação Anônima com o Denunciante
-                </Label>
+            <div className="space-y-1">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <MessageSquare className="h-4 w-4 text-primary" />
+                  <Label className="text-sm font-semibold uppercase tracking-wide">
+                    Comunicação Anônima com o Denunciante
+                  </Label>
+                </div>
+                {denuncia.ultima_mensagem_denunciante_em && (
+                  <span className="text-[11px] text-muted-foreground">
+                    Última resposta do denunciante:{" "}
+                    {format(new Date(denuncia.ultima_mensagem_denunciante_em), "dd/MM 'às' HH:mm", {
+                      locale: ptBR,
+                    })}
+                  </span>
+                )}
               </div>
-              {denuncia.ultima_mensagem_denunciante_em && (
-                <span className="text-[11px] text-muted-foreground">
-                  Última resposta do denunciante:{" "}
-                  {format(new Date(denuncia.ultima_mensagem_denunciante_em), "dd/MM HH:mm")}
-                </span>
-              )}
+              <p className="text-xs text-muted-foreground">
+                O denunciante verá estas mensagens ao consultar o protocolo em /acompanhar. Ele é anônimo — este é o único canal de retorno.
+              </p>
             </div>
 
-            {/* Lista de mensagens */}
-            <div className="space-y-2.5 max-h-64 overflow-y-auto pr-1">
+            {/* Thread de mensagens */}
+            <div className="space-y-2.5 max-h-64 overflow-y-auto pr-1 border rounded-md p-3 bg-muted/10">
               {mensagensQuery.isLoading ? (
-                <p className="text-xs text-muted-foreground py-2">Carregando mensagens...</p>
+                <p className="text-xs text-muted-foreground py-2 text-center">Carregando mensagens...</p>
               ) : !mensagensQuery.data || mensagensQuery.data.length === 0 ? (
-                <p className="text-xs text-muted-foreground py-2 italic">
-                  Nenhuma mensagem trocada ainda com o denunciante.
+                <p className="text-xs text-muted-foreground py-4 text-center italic">
+                  Nenhuma mensagem ainda. Envie a primeira para iniciar o contato com o denunciante.
                 </p>
               ) : (
                 mensagensQuery.data.map((msg) => {
@@ -521,13 +475,22 @@ export function DenunciaDetailDialog({ denuncia, onOpenChange, extraHeader }: Pr
                         className={`max-w-[85%] rounded-lg p-3 text-xs space-y-1 ${
                           isComite
                             ? "bg-primary/10 border border-primary/20 text-foreground"
-                            : "bg-muted border border-border text-foreground"
+                            : "bg-background border border-amber-300 dark:border-amber-700/60 shadow-xs text-foreground"
                         }`}
                       >
                         <div className="flex items-center justify-between gap-3 text-[10px] text-muted-foreground">
-                          <span className="font-semibold uppercase tracking-wider">
-                            {isComite ? msg.autor_nome || "Comitê" : "Denunciante (Anônimo)"}
-                          </span>
+                          {isComite ? (
+                            <span className="font-semibold text-primary uppercase tracking-wider">
+                              {msg.autor_nome || "Comitê"}
+                            </span>
+                          ) : (
+                            <Badge
+                              variant="outline"
+                              className="text-[10px] px-1.5 py-0 border-amber-500/40 text-amber-700 dark:text-amber-400 font-semibold bg-amber-500/10"
+                            >
+                              Denunciante (Anônimo)
+                            </Badge>
+                          )}
                           <span>
                             {format(new Date(msg.created_at), "dd/MM 'às' HH:mm", {
                               locale: ptBR,
@@ -542,26 +505,26 @@ export function DenunciaDetailDialog({ denuncia, onOpenChange, extraHeader }: Pr
               )}
             </div>
 
-            {/* Form de envio do comitê */}
+            {/* Caixa de envio */}
             {isAssumidoPorMim ? (
               <form onSubmit={handleEnviarMensagemComite} className="space-y-2 pt-2 border-t">
                 <Textarea
                   value={mensagemComite}
                   onChange={(e) => setMensagemComite(e.target.value)}
-                  placeholder="Solicite esclarecimentos ou responda ao denunciante com total sigilo..."
+                  placeholder="Escreva uma mensagem ou pedido de esclarecimento ao denunciante..."
                   rows={2}
                   maxLength={2000}
                   className="text-xs resize-y"
                   disabled={enviarMensagem.isPending}
                 />
-                <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
                   <span className="text-[11px] text-muted-foreground">
-                    O denunciante verá esta mensagem ao consultar o protocolo.
+                    {mensagemComite.length} / 2000 caracteres
                   </span>
                   <Button
                     type="submit"
                     size="sm"
-                    disabled={enviarMensagem.isPending || !mensagemComite.trim()}
+                    disabled={enviarMensagem.isPending || !mensagemComite.trim() || mensagemComite.length > 2000}
                     className="gap-1.5 text-xs h-8"
                   >
                     <Send className="h-3.5 w-3.5" />
@@ -570,13 +533,136 @@ export function DenunciaDetailDialog({ denuncia, onOpenChange, extraHeader }: Pr
                 </div>
               </form>
             ) : (
-              <p className="text-xs text-muted-foreground italic pt-2 border-t">
-                Apenas o responsável que assumiu o caso pode enviar mensagens ao denunciante.
-              </p>
+              <div className="pt-2 border-t space-y-2">
+                <Textarea
+                  placeholder="Escreva uma mensagem ou pedido de esclarecimento ao denunciante..."
+                  rows={2}
+                  className="text-xs resize-none bg-muted/30"
+                  disabled
+                />
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <p className="text-xs text-amber-700 dark:text-amber-400 font-medium">
+                    Assuma a denúncia para se comunicar com o denunciante.
+                  </p>
+                  <Button size="sm" disabled className="gap-1.5 text-xs h-8 opacity-50">
+                    <Send className="h-3.5 w-3.5" />
+                    Enviar ao denunciante
+                  </Button>
+                </div>
+              </div>
             )}
           </div>
 
-          {/* PAINEL DE HISTÓRICO DE APURAÇÃO (Trilha de Auditoria) */}
+          {/* 5. TRATAMENTO, STATUS E PARECER DE APURAÇÃO */}
+          <div className="rounded-lg border bg-card p-4 space-y-4">
+            <Label className="text-sm font-semibold uppercase tracking-wide block">
+              Tratamento e Parecer de Apuração
+            </Label>
+
+            <div className="space-y-2">
+              <Label htmlFor="denuncia-status-select">Status do Relato</Label>
+              <Select
+                value={status}
+                onValueChange={(v) => setStatus(v as DenunciaStatus)}
+                disabled={!isAssumidoPorMim || atualizar.isPending}
+              >
+                <SelectTrigger id="denuncia-status-select" className="w-[240px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {(Object.keys(STATUS_LABEL) as DenunciaStatus[]).map((s) => (
+                    <SelectItem key={s} value={s}>
+                      {STATUS_LABEL[s]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <Label htmlFor="parecer-apuracao">
+                  Parecer Interno de Apuração / Justificativa
+                  {isConcluindo && (
+                    <span className="text-destructive ml-1">* (obrigatório)</span>
+                  )}
+                </Label>
+                {isAssumidoPorMim && isConcluindo && (
+                  <span
+                    className={`text-xs ${
+                      parecerLength >= 30
+                        ? "text-emerald-600 dark:text-emerald-400"
+                        : "text-destructive font-medium"
+                    }`}
+                  >
+                    {parecerLength} / 30 caracteres mínimos
+                  </span>
+                )}
+              </div>
+
+              <Textarea
+                id="parecer-apuracao"
+                value={parecer}
+                onChange={(e) => setParecer(e.target.value)}
+                placeholder={
+                  isAssumidoPorMim
+                    ? "Descreva detalhadamente as diligências realizadas, medidas adotadas e a fundamentação da conclusão..."
+                    : "Nenhum parecer registrado até o momento."
+                }
+                rows={4}
+                disabled={!isAssumidoPorMim || atualizar.isPending}
+                className="resize-y"
+              />
+
+              {isAssumidoPorMim && isConcluindo && !parecerValidoParaConclusao && (
+                <p className="text-xs text-destructive flex items-center gap-1 font-medium">
+                  <AlertTriangle className="h-3.5 w-3.5" />
+                  Para concluir uma denúncia, a Lei 14.457/2022 exige parecer fundamentado com pelo menos 30 caracteres. Faltam {30 - parecerLength} caracteres.
+                </p>
+              )}
+            </div>
+
+            {/* Campo Resumo Público para o Denunciante (ao concluir) */}
+            {isConcluindo && isAssumidoPorMim && (
+              <div className="space-y-2 rounded-lg border p-3 bg-muted/20">
+                <div className="flex items-center justify-between gap-2">
+                  <Label htmlFor="resumo-publico" className="text-xs font-semibold">
+                    Resumo da Conclusão para o Denunciante (Público)
+                  </Label>
+                  <span className="text-[11px] text-muted-foreground">Visível via protocolo em /acompanhar</span>
+                </div>
+                <Textarea
+                  id="resumo-publico"
+                  value={resumoPublico}
+                  onChange={(e) => setResumoPublico(e.target.value)}
+                  placeholder="Ex: A apuração foi concluída pelo comitê e as medidas administrativas foram tomadas para garantir a integridade do ambiente. Agradecemos sua manifestação."
+                  rows={3}
+                  maxLength={500}
+                  className="text-xs resize-y"
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  Este é o texto que a pessoa que denunciou verá ao consultar o protocolo. Seja acolhedor e não exponha dados sigilosos ou nomes de pessoas.
+                </p>
+              </div>
+            )}
+
+            {isAssumidoPorMim && (
+              <div className="flex justify-end pt-2">
+                <Button
+                  onClick={handleSalvar}
+                  disabled={
+                    !hasChanges ||
+                    atualizar.isPending ||
+                    (isConcluindo && !parecerValidoParaConclusao)
+                  }
+                >
+                  {atualizar.isPending ? "Salvando..." : "Salvar Apuração"}
+                </Button>
+              </div>
+            )}
+          </div>
+
+          {/* 6. PAINEL DE HISTÓRICO DE APURAÇÃO (Trilha de Auditoria) */}
           <Collapsible open={historicoAberto} onOpenChange={setHistoricoAberto}>
             <div className="rounded-lg border bg-card">
               <CollapsibleTrigger asChild>
