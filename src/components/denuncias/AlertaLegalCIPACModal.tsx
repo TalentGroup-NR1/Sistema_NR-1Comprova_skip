@@ -1,4 +1,4 @@
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -11,10 +11,11 @@ import { CIPA_ALERTA_LEGAL } from "@/lib/cipaCategorias";
 
 interface Props {
   open: boolean;
-  onCiente: () => void;
+  onCiente: () => void | Promise<void>;
+  isPending?: boolean;
 }
 
-export function AlertaLegalCIPACModal({ open, onCiente }: Props) {
+export function AlertaLegalCIPACModal({ open, onCiente, isPending = false }: Props) {
   return (
     <Dialog open={open}>
       <DialogContent
@@ -33,12 +34,18 @@ export function AlertaLegalCIPACModal({ open, onCiente }: Props) {
           {CIPA_ALERTA_LEGAL}
         </div>
         <p className="text-xs text-muted-foreground">
-          Lei nº 14.457/2022 — CIPA+A. Esta ciência é registrada antes da leitura
-          do relato.
+          Lei nº 14.457/2022 — CIPA+A. Esta ciência é registrada de forma imutável no banco de dados antes da leitura do relato.
         </p>
         <DialogFooter>
-          <Button onClick={onCiente} className="w-full sm:w-auto">
-            Estou ciente
+          <Button onClick={onCiente} disabled={isPending} className="w-full sm:w-auto">
+            {isPending ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Registrando ciência...
+              </>
+            ) : (
+              "Estou ciente"
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>

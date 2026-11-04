@@ -19,6 +19,18 @@ export interface DenunciaAdmin {
   tipo: FaleConoscoTipo;
   categoria_comportamento: string | null;
   origem_ofensa: string | null;
+  ciencia_cipa_em?: string | null;
+  ciencia_cipa_por?: string | null;
+}
+
+export interface HistoricoDenunciaItem {
+  id: string;
+  status_anterior: string | null;
+  status_novo: string;
+  justificativa: string | null;
+  alterado_por: string;
+  alterado_por_nome: string;
+  created_at: string;
 }
 
 export function useCriarDenuncia() {
@@ -53,7 +65,6 @@ export function useCriarDenuncia() {
     },
   });
 }
-
 
 export function useDenunciasAdmin(enabled = true) {
   const { user } = useAuth();
@@ -177,15 +188,52 @@ export function useDenunciasMonitor() {
 export function useAtualizarStatusDenuncia() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (input: { id: string; status: DenunciaStatus }) => {
+    mutationFn: async (input: {
+      id: string;
+      status: DenunciaStatus;
+      justificativa?: string | null;
+    }) => {
       const { error } = await supabase.rpc("atualizar_status_denuncia", {
         p_id: input.id,
         p_novo_status: input.status,
-      });
+        p_justificativa: input.justificativa ?? null,
+      } as any);
       if (error) throw error;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["denuncias-admin"] });
+      qc.invalidateQueries({ queryKey: ["denuncia-historico"] });
+    },
+  });
+}
+
+export function useRegistrarCienciaCipa() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (denunciaId: string) => {
+      const { error } = await supabase.rpc("registrar_ciencia_cipa", {
+        p_denuncia_id: denunciaId,
+      } as any);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["denuncias-admin"] });
+      qc.invalidateQueries({ queryKey: ["denuncia-historico"] });
+    },
+  });
+}
+
+export function useHistoricoDenuncia(denunciaId: string | null) {
+  return useQuery({
+    queryKey: ["denuncia-historico", denunciaId],
+    enabled: !!denunciaId,
+    queryFn: async () => {
+      if (!denunciaId) return [];
+      const { data, error } = await supabase.rpc("listar_historico_denuncia", {
+        p_denuncia_id: denunciaId,
+      } as any);
+      if (error) throw error;
+      return (data ?? []) as HistoricoDenunciaItem[];
     },
   });
 }

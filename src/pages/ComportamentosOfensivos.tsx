@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { toast } from "sonner";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -22,8 +23,10 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { ShieldAlert } from "lucide-react";
 import {
+  DenunciaAdmin,
   DenunciaStatus,
   useDenunciasAdmin,
+  useRegistrarCienciaCipa,
 } from "@/hooks/useDenuncias";
 import { DenunciaDetailDialog } from "@/components/denuncias/DenunciaDetailDialog";
 import { CategoriaOrigemBadges } from "@/components/denuncias/CategoriaOrigemBadges";
@@ -49,6 +52,8 @@ const STATUS_VARIANT: Record<DenunciaStatus, "default" | "secondary" | "outline"
 
 export default function ComportamentosOfensivos() {
   const { data, isLoading } = useDenunciasAdmin();
+  const registrarCiencia = useRegistrarCienciaCipa();
+
   const [statusFiltro, setStatusFiltro] = useState<DenunciaStatus | "todos">("todos");
   const [categoriaFiltro, setCategoriaFiltro] = useState<string>("todos");
   const [origemFiltro, setOrigemFiltro] = useState<string>("todos");
@@ -93,20 +98,25 @@ export default function ComportamentosOfensivos() {
     return m;
   }, [denuncias]);
 
-  const handleRowClick = (id: string) => {
-    const key = `cipa_alerta_ciente:${id}`;
-    if (sessionStorage.getItem(key) === "1") {
-      setSelectedId(id);
+  const handleRowClick = (d: DenunciaAdmin) => {
+    // Se a ciência legal já estiver persistida no banco, abre diretamente sem exibir o modal
+    if (d.ciencia_cipa_em) {
+      setSelectedId(d.id);
     } else {
-      setPendingId(id);
+      setPendingId(d.id);
     }
   };
 
-  const handleCiente = () => {
+  const handleCiente = async () => {
     if (pendingId) {
-      sessionStorage.setItem(`cipa_alerta_ciente:${pendingId}`, "1");
-      setSelectedId(pendingId);
-      setPendingId(null);
+      try {
+        await registrarCiencia.mutateAsync(pendingId);
+        toast.success("Ciência legal CIPA+A registrada com sucesso no banco de dados.");
+        setSelectedId(pendingId);
+        setPendingId(null);
+      } catch (err: any) {
+        toast.error("Erro ao registrar ciência", { description: err?.message });
+      }
     }
   };
 
@@ -229,7 +239,7 @@ export default function ComportamentosOfensivos() {
                     <TableRow
                       key={d.id}
                       className="cursor-pointer"
-                      onClick={() => handleRowClick(d.id)}
+                      onClick={() => handleRowClick(d)}
                     >
                       <TableCell className="whitespace-nowrap text-sm">
                         {format(new Date(d.criado_em), "dd/MM/yyyy HH:mm", {
@@ -248,9 +258,16 @@ export default function ComportamentosOfensivos() {
                       </TableCell>
                       <TableCell className="font-medium">{d.titulo}</TableCell>
                       <TableCell>
-                        <Badge variant={STATUS_VARIANT[d.status]}>
-                          {STATUS_LABEL[d.status]}
-                        </Badge>
+                        <div className="flex items-center gap-2">
+                          <Badge variant={STATUS_VARIANT[d.status]}>
+                            {STATUS_LABEL[d.status]}
+                          </Badge>
+                          {d.ciencia_cipa_em && (
+                            <Badge variant="outline" className="text-[10px] text-emerald-600 border-emerald-300">
+                              Ciência CAT
+                            </Badge>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -265,15 +282,29 @@ export default function ComportamentosOfensivos() {
           onOpenChange={(o) => !o && setSelectedId(null)}
           extraHeader={
             selected ? (
-              <CategoriaOrigemBadges
-                categoria={selected.categoria_comportamento}
-                origem={selected.origem_ofensa}
-              />
+              <div className="space-y-2">
+                <CategoriaOrigemBadges
+                  categoria={selected.categoria_comportamento}
+                  origem={selected.origem_ofensa}
+                />
+                {selected.ciencia_cipa_em && (
+                  <p className="text-xs text-muted-foreground italic">
+                    ⚖️ Ciência legal CAT/SINAN registrada em{" "}
+                    {format(new Date(selected.ciencia_cipa_em), "dd/MM/yyyy 'às' HH:mm", {
+                      locale: ptBR,
+                    })}
+                  </p>
+                )}
+              </div>
             ) : null
           }
         />
 
-        <AlertaLegalCIPACModal open={!!pendingId} onCiente={handleCiente} />
+        <AlertaLegalCIPACModal
+          open={!!pendingId}
+          onCiente={handleCiente}
+          isPending={registrarCiencia.isPending}
+        />
       </div>
     </MainLayout>
   );

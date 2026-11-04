@@ -72,4 +72,36 @@ describe("useCriarDenuncia - Rate Limit", () => {
 
     expect(result.current.error?.message).toMatch(/Muitos envios em pouco tempo/);
   });
+
+  it("propagates rate_limit_exceeded on 4th consecutive attempt", async () => {
+    // Simula 3 sucessos e 1 falha de rate limit
+    vi.mocked(supabase.rpc)
+      .mockResolvedValueOnce({ data: "uuid-1", error: null })
+      .mockResolvedValueOnce({ data: "uuid-2", error: null })
+      .mockResolvedValueOnce({ data: "uuid-3", error: null })
+      .mockResolvedValueOnce({
+        data: null,
+        error: { message: "ERROR: rate_limit_exceeded: max=3;window=60" } as any,
+      });
+
+    const { result } = renderHook(() => useCriarDenuncia(), { wrapper });
+
+    // 1ª chamada
+    result.current.mutate({ titulo: "1", mensagem: "m1", anonimo: true, tipo: "denuncia", categoria: "assedio_sexual", origem: "colegas_pares" });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    // 2ª chamada
+    result.current.mutate({ titulo: "2", mensagem: "m2", anonimo: true, tipo: "denuncia", categoria: "assedio_sexual", origem: "colegas_pares" });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    // 3ª chamada
+    result.current.mutate({ titulo: "3", mensagem: "m3", anonimo: true, tipo: "denuncia", categoria: "assedio_sexual", origem: "colegas_pares" });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    // 4ª chamada (bloqueada)
+    result.current.mutate({ titulo: "4", mensagem: "m4", anonimo: true, tipo: "denuncia", categoria: "assedio_sexual", origem: "colegas_pares" });
+    await waitFor(() => expect(result.current.isError).toBe(true));
+
+    expect(result.current.error?.message).toMatch(/Muitos envios em pouco tempo/);
+  });
 });
