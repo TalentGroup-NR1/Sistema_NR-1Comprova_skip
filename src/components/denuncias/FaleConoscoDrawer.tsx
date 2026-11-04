@@ -23,6 +23,7 @@ import {
   ShieldAlert,
   AlertTriangle,
   ExternalLink,
+  Search,
 } from "lucide-react";
 import {
   useCriarFaleConosco,
@@ -228,46 +229,62 @@ export function FaleConoscoDrawer({ open, onOpenChange }: Props) {
                 )}
               </div>
 
-              {/* Banner de separação para o Canal de Denúncias */}
-              <div className="rounded-lg border border-border p-3 space-y-2 bg-card">
+              {/* Bloco de Entrada para o Canal de Denúncias (Visível para todos os colaboradores) */}
+              <div className="rounded-lg border-2 border-destructive/30 bg-destructive/5 p-3.5 space-y-2">
                 <div className="flex items-start gap-2.5">
                   <ShieldAlert className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
-                  <div className="space-y-1">
-                    <p className="text-xs font-semibold text-foreground">
-                      Precisa relatar assédio ou conduta imprópria?
+                  <div className="space-y-1 flex-1">
+                    <p className="text-xs font-semibold text-destructive">
+                      Precisa denunciar assédio, discriminação ou violência?
                     </p>
                     <p className="text-[11px] text-muted-foreground leading-relaxed">
-                      Para assédio sexual, moral, discriminação ou violência no trabalho, utilize o canal sigiloso previsto na Lei nº 14.457/2022.
+                      Este canal é sigiloso, independente e apurado com total imparcialidade pelo comitê designado (Lei nº 14.457/2022).
                     </p>
-                    <Button
-                      type="button"
-                      variant="link"
-                      onClick={() => {
-                        onOpenChange(false);
-                        setDenunciaModalOpen(true);
-                      }}
-                      className="p-0 h-auto text-xs text-destructive hover:underline font-semibold"
-                    >
-                      Abrir Canal de Denúncias ➔
-                    </Button>
+                    <div className="pt-1.5">
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => {
+                          onOpenChange(false);
+                          setDenunciaModalOpen(true);
+                        }}
+                        className="w-full text-xs gap-1.5 h-8 font-medium shadow-xs"
+                      >
+                        <ShieldAlert className="h-3.5 w-3.5" />
+                        Acessar Canal de Denúncias
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
 
-            <div className="border-t border-border p-4 bg-background space-y-2">
+            <div className="border-t border-border p-4 bg-background space-y-2.5">
               <Button type="submit" className="w-full text-xs" disabled={criar.isPending}>
                 {criar.isPending ? "Enviando..." : "Enviar Mensagem ao RH"}
               </Button>
-              <div className="text-center">
-                <Link
-                  to="/fale-conosco/minhas"
-                  onClick={() => onOpenChange(false)}
-                  className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  <ExternalLink className="h-3 w-3" />
-                  Ver minhas mensagens enviadas
-                </Link>
+              <div className="pt-1 text-center space-y-1.5 border-t border-border/40">
+                <div>
+                  <Link
+                    to="/acompanhar"
+                    onClick={() => onOpenChange(false)}
+                    className="inline-flex items-center gap-1.5 text-xs text-primary font-medium hover:underline"
+                  >
+                    <Search className="h-3.5 w-3.5" />
+                    Já registrou uma denúncia? Acompanhe pelo protocolo →
+                  </Link>
+                </div>
+                <div>
+                  <Link
+                    to="/fale-conosco/minhas"
+                    onClick={() => onOpenChange(false)}
+                    className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    <ExternalLink className="h-3 w-3" />
+                    Ver minhas mensagens enviadas
+                  </Link>
+                </div>
               </div>
             </div>
           </form>

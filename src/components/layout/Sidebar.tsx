@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Users, UserMinus, Calendar, FileText, Settings, Bell, ChevronLeft, ChevronRight, ChevronDown, Building2, ClipboardList, GraduationCap, Heart, Shield, ShieldAlert, MessageSquare, MessageSquareText, Briefcase, TrendingUp, Megaphone, UserSearch, Clock, Plane, ListChecks, ShieldCheck, LogOut, Palette, User, Network, Server } from "lucide-react";
+import { LayoutDashboard, Users, UserMinus, Calendar, FileText, Settings, Bell, ChevronLeft, ChevronRight, ChevronDown, Building2, ClipboardList, GraduationCap, Heart, Shield, ShieldAlert, MessageSquare, MessageSquareText, Briefcase, TrendingUp, Megaphone, UserSearch, Clock, Plane, ListChecks, ShieldCheck, LogOut, Palette, User, Network, Server, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -718,6 +718,10 @@ export function Sidebar() {
             <DropdownMenuItem onClick={() => setPreferenciasOpen(true)}>
               <Palette className="mr-2 h-4 w-4" />
               Preferências
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => navigate('/acompanhar')}>
+              <Search className="mr-2 h-4 w-4 text-primary" />
+              Acompanhar Denúncia
             </DropdownMenuItem>
             {role === 'admin_empresa' && (
               <DropdownMenuItem onClick={() => navigate('/configuracoes-empresa')}>
