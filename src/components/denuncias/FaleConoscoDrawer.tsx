@@ -15,50 +15,28 @@ import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   MessageSquareText,
-  ShieldCheck,
   Lightbulb,
   HelpCircle,
+  ShieldAlert,
+  AlertTriangle,
   ExternalLink,
-  Calendar,
 } from "lucide-react";
-import { useCriarDenuncia, type FaleConoscoTipo } from "@/hooks/useDenuncias";
+import {
+  useCriarFaleConosco,
+  type FaleConoscoItemTipo,
+} from "@/hooks/useFaleConosco";
 import { cn } from "@/lib/utils";
-import {
-  CATEGORIA_OPTIONS,
-  ORIGEM_OPTIONS,
-  CIPA_AVISO_SIGILO,
-  type CategoriaComportamento,
-  type OrigemOfensa,
-} from "@/lib/cipaCategorias";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { ProtocoloSucessoModal } from "./ProtocoloSucessoModal";
+import { CanalDenunciaModal } from "./CanalDenunciaModal";
 
-const schema = z
-  .object({
-    tipo: z.enum(["denuncia", "sugestao", "duvida"]),
-    titulo: z.string().trim().min(1, "Informe o título").max(200, "Máximo 200 caracteres"),
-    mensagem: z.string().trim().min(1, "Descreva sua mensagem").max(5000, "Máximo 5000 caracteres"),
-    anonimo: z.boolean(),
-    categoria: z.string().nullable().optional(),
-    origem: z.string().nullable().optional(),
-    dataFato: z.string().nullable().optional(),
-  })
-  .refine(
-    (d) => d.tipo !== "denuncia" || !!d.categoria,
-    { message: "Selecione o tipo de comportamento ofensivo", path: ["categoria"] }
-  )
-  .refine(
-    (d) => d.tipo !== "denuncia" || !!d.origem,
-    { message: "Selecione a origem da ofensa", path: ["origem"] }
-  );
+const schema = z.object({
+  tipo: z.enum(["sugestao", "duvida"]),
+  titulo: z.string().trim().min(3, "Informe um título com no mínimo 3 caracteres").max(200, "Máximo 200 caracteres"),
+  mensagem: z.string().trim().min(10, "Descreva sua mensagem com no mínimo 10 caracteres").max(5000, "Máximo 5000 caracteres"),
+  anonimo: z.boolean(),
+});
 
 interface Props {
   open: boolean;
@@ -66,71 +44,42 @@ interface Props {
 }
 
 const TIPO_OPTIONS: {
-  value: FaleConoscoTipo;
+  value: FaleConoscoItemTipo;
   label: string;
   description: string;
-  icon: typeof ShieldCheck;
+  icon: typeof Lightbulb;
   accent: string;
 }[] = [
   {
-    value: "denuncia",
-    label: "Denúncia",
-    description: "Sempre anônima e sigilosa",
-    icon: ShieldCheck,
-    accent: "text-destructive",
-  },
-  {
     value: "sugestao",
     label: "Sugestão",
-    description: "Ideias e melhorias",
+    description: "Ideias e melhorias para a empresa",
     icon: Lightbulb,
     accent: "text-emerald-600",
   },
   {
     value: "duvida",
     label: "Dúvida",
-    description: "Perguntas ao RH",
+    description: "Perguntas de rotina ou processos ao RH",
     icon: HelpCircle,
     accent: "text-blue-600",
   },
 ];
 
 export function FaleConoscoDrawer({ open, onOpenChange }: Props) {
-  const [tipo, setTipo] = useState<FaleConoscoTipo>("denuncia");
+  const [tipo, setTipo] = useState<FaleConoscoItemTipo>("sugestao");
   const [titulo, setTitulo] = useState("");
   const [mensagem, setMensagem] = useState("");
-  const [anonimo, setAnonimo] = useState(true);
-  const [categoria, setCategoria] = useState<CategoriaComportamento | "">("");
-  const [origem, setOrigem] = useState<OrigemOfensa | "">("");
-  const [dataFato, setDataFato] = useState("");
-  const [protocoloGerado, setProtocoloGerado] = useState<string | null>(null);
-  const [tituloGravado, setTituloGravado] = useState<string>("");
+  const [anonimo, setAnonimo] = useState(false);
+  const [denunciaModalOpen, setDenunciaModalOpen] = useState(false);
 
-  const criar = useCriarDenuncia();
-
-  const isDenuncia = tipo === "denuncia";
-  const effectiveAnonimo = isDenuncia ? true : anonimo;
-  const hojeStr = new Date().toISOString().split("T")[0];
+  const criar = useCriarFaleConosco();
 
   const reset = () => {
-    setTipo("denuncia");
+    setTipo("sugestao");
     setTitulo("");
     setMensagem("");
-    setAnonimo(true);
-    setCategoria("");
-    setOrigem("");
-    setDataFato("");
-  };
-
-  const handleTipoChange = (value: string) => {
-    const t = value as FaleConoscoTipo;
-    setTipo(t);
-    if (t === "denuncia") setAnonimo(true);
-    else {
-      setAnonimo(false);
-      setCategoria("");
-      setOrigem("");
-    }
+    setAnonimo(false);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -139,28 +88,22 @@ export function FaleConoscoDrawer({ open, onOpenChange }: Props) {
       tipo,
       titulo,
       mensagem,
-      anonimo: effectiveAnonimo,
-      categoria: categoria || null,
-      origem: origem || null,
-      dataFato: dataFato || null,
+      anonimo,
     });
+
     if (!parsed.success) {
       toast.error(parsed.error.issues[0]?.message ?? "Dados inválidos");
       return;
     }
+
     try {
-      const protocolo = await criar.mutateAsync({
+      await criar.mutateAsync({
         tipo: parsed.data.tipo,
         titulo: parsed.data.titulo,
         mensagem: parsed.data.mensagem,
         anonimo: parsed.data.anonimo,
-        categoria: parsed.data.categoria ?? null,
-        origem: parsed.data.origem ?? null,
-        data_fato: parsed.data.dataFato ?? null,
       });
 
-      setTituloGravado(parsed.data.titulo);
-      setProtocoloGerado(protocolo);
       reset();
       onOpenChange(false);
     } catch (err: any) {
@@ -168,7 +111,7 @@ export function FaleConoscoDrawer({ open, onOpenChange }: Props) {
         err?.message === "company_not_found"
           ? "Não foi possível identificar sua empresa. Contate o RH."
           : err?.message;
-      toast.error("Erro ao enviar", { description: msg });
+      toast.error("Erro ao enviar mensagem", { description: msg });
     }
   };
 
@@ -179,21 +122,20 @@ export function FaleConoscoDrawer({ open, onOpenChange }: Props) {
           <SheetHeader className="p-6 pb-4 border-b border-border">
             <SheetTitle className="flex items-center gap-2">
               <MessageSquareText className="h-5 w-5 text-primary" />
-              Fale Conosco
+              Fale Conosco — Sugestões e Dúvidas
             </SheetTitle>
-            <SheetDescription className="text-xs">
-              Envie denúncias, sugestões ou dúvidas ao RH. Você escolhe se quer se
-              identificar — denúncias são sempre anônimas.
+            <SheetDescription className="text-xs leading-relaxed">
+              Envie ideias, melhorias ou perguntas ao RH. Sua mensagem não é uma denúncia.
             </SheetDescription>
           </SheetHeader>
 
           <form onSubmit={handleSubmit} className="flex-1 flex flex-col min-h-0">
             <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
               <div className="space-y-2">
-                <Label>O que você deseja enviar?</Label>
+                <Label className="text-xs font-semibold uppercase">Tipo de Mensagem</Label>
                 <RadioGroup
                   value={tipo}
-                  onValueChange={handleTipoChange}
+                  onValueChange={(v) => setTipo(v as FaleConoscoItemTipo)}
                   className="grid grid-cols-1 gap-2"
                 >
                   {TIPO_OPTIONS.map((opt) => {
@@ -202,7 +144,7 @@ export function FaleConoscoDrawer({ open, onOpenChange }: Props) {
                     return (
                       <label
                         key={opt.value}
-                        htmlFor={`tipo-${opt.value}`}
+                        htmlFor={`fc-tipo-${opt.value}`}
                         className={cn(
                           "flex items-center gap-3 rounded-lg border p-3 cursor-pointer transition-colors",
                           selected
@@ -210,7 +152,7 @@ export function FaleConoscoDrawer({ open, onOpenChange }: Props) {
                             : "border-border hover:bg-muted/40"
                         )}
                       >
-                        <RadioGroupItem id={`tipo-${opt.value}`} value={opt.value} />
+                        <RadioGroupItem id={`fc-tipo-${opt.value}`} value={opt.value} />
                         <Icon className={cn("h-4 w-4", opt.accent)} />
                         <div className="flex-1">
                           <div className="text-sm font-medium">{opt.label}</div>
@@ -224,160 +166,107 @@ export function FaleConoscoDrawer({ open, onOpenChange }: Props) {
                 </RadioGroup>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="fc-titulo">Título</Label>
+              <div className="space-y-1.5">
+                <Label htmlFor="fc-titulo" className="text-xs font-semibold">
+                  Título da Mensagem <span className="text-destructive">*</span>
+                </Label>
                 <Input
                   id="fc-titulo"
                   value={titulo}
                   onChange={(e) => setTitulo(e.target.value)}
                   maxLength={200}
                   placeholder="Resumo do assunto"
+                  className="text-xs"
                 />
               </div>
 
-              {isDenuncia && (
-                <>
-                  <div className="space-y-2">
-                    <Label htmlFor="fc-categoria">
-                      Tipo de Comportamento Ofensivo <span className="text-destructive">*</span>
-                    </Label>
-                    <p className="text-xs text-muted-foreground">
-                      Qual foi a natureza da situação vivenciada ou presenciada?
-                    </p>
-                    <Select
-                      value={categoria}
-                      onValueChange={(v) => setCategoria(v as CategoriaComportamento)}
-                    >
-                      <SelectTrigger id="fc-categoria">
-                        <SelectValue placeholder="Selecione uma opção" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {CATEGORIA_OPTIONS.map((o) => (
-                          <SelectItem key={o.value} value={o.value}>
-                            {o.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="fc-origem">
-                      Origem da Ofensa <span className="text-destructive">*</span>
-                    </Label>
-                    <p className="text-xs text-muted-foreground">
-                      Por parte de quem ocorreu o comportamento?
-                    </p>
-                    <Select
-                      value={origem}
-                      onValueChange={(v) => setOrigem(v as OrigemOfensa)}
-                    >
-                      <SelectTrigger id="fc-origem">
-                        <SelectValue placeholder="Selecione uma opção" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {ORIGEM_OPTIONS.map((o) => (
-                          <SelectItem key={o.value} value={o.value}>
-                            {o.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </>
-              )}
-
-              {/* Data aproximada do fato (para denúncias e sugestões) */}
-              {(isDenuncia || tipo === "sugestao") && (
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="fc-data-fato" className="text-xs">
-                      Quando aconteceu? (aproximado)
-                    </Label>
-                    <span className="text-[11px] text-muted-foreground">Opcional</span>
-                  </div>
-                  <Input
-                    id="fc-data-fato"
-                    type="date"
-                    max={hojeStr}
-                    value={dataFato}
-                    onChange={(e) => setDataFato(e.target.value)}
-                    className="text-xs"
-                  />
-                  <p className="text-[11px] text-muted-foreground">
-                    Ajuda na localização e apuração. Pode ser deixado em branco se não lembrar.
-                  </p>
-                </div>
-              )}
-
-              <div className="space-y-2">
-                <Label htmlFor="fc-mensagem">Mensagem</Label>
+              <div className="space-y-1.5">
+                <Label htmlFor="fc-mensagem" className="text-xs font-semibold">
+                  Mensagem <span className="text-destructive">*</span>
+                </Label>
                 <Textarea
                   id="fc-mensagem"
                   value={mensagem}
                   onChange={(e) => setMensagem(e.target.value)}
                   maxLength={5000}
-                  placeholder={
-                    isDenuncia
-                      ? "Descreva os fatos com o máximo de detalhes possível (datas, local, pessoas envolvidas)."
-                      : "Escreva sua mensagem ao RH"
-                  }
-                  className="min-h-[140px] resize-none"
+                  placeholder="Escreva sua sugestão ou dúvida para o time de RH..."
+                  className="min-h-[140px] text-xs resize-none"
                 />
-                <p className="text-xs text-muted-foreground text-right">
-                  {mensagem.length}/5000
-                </p>
-              </div>
-
-              <div
-                className={cn(
-                  "flex items-start justify-between gap-4 rounded-lg border border-border p-3",
-                  isDenuncia ? "bg-destructive/5" : "bg-muted/30"
-                )}
-              >
-                <div className="space-y-0.5">
-                  <Label
-                    htmlFor="fc-anonimo"
-                    className={cn("font-medium", isDenuncia && "text-destructive")}
-                  >
-                    Enviar como anônimo
-                  </Label>
-                  <p className="text-xs text-muted-foreground">
-                    {isDenuncia
-                      ? "Denúncias são sempre anônimas — sua identidade é totalmente protegida."
-                      : anonimo
-                      ? "Sua identidade não será exibida ao RH."
-                      : "Seu nome ficará visível para o RH."}
-                  </p>
+                <div className="flex justify-between items-center text-[11px] text-muted-foreground">
+                  <span>Mínimo de 10 caracteres</span>
+                  <span>{mensagem.length}/5000</span>
                 </div>
-                <Switch
-                  id="fc-anonimo"
-                  checked={effectiveAnonimo}
-                  disabled={isDenuncia}
-                  onCheckedChange={setAnonimo}
-                />
               </div>
 
-              {isDenuncia && (
-                <p className="text-[11px] leading-relaxed text-muted-foreground border-l-2 border-destructive/40 pl-3 italic">
-                  {CIPA_AVISO_SIGILO}
-                </p>
-              )}
+              {/* Anonimato opcional (padrão desligado) */}
+              <div className="rounded-lg border border-border p-3 space-y-2 bg-muted/20">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="fc-anonimo" className="text-xs font-medium">
+                      Enviar como anônimo
+                    </Label>
+                    <p className="text-[11px] text-muted-foreground">
+                      {anonimo
+                        ? "Sua identidade não será compartilhada com o RH."
+                        : "Seu nome e e-mail estarão visíveis para que o RH possa responder diretamente a você."}
+                    </p>
+                  </div>
+                  <Switch
+                    id="fc-anonimo"
+                    checked={anonimo}
+                    onCheckedChange={setAnonimo}
+                  />
+                </div>
+
+                {anonimo && (
+                  <Alert className="border-amber-300 dark:border-amber-700 bg-amber-500/10 py-2">
+                    <AlertTriangle className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+                    <AlertDescription className="text-[11px] text-amber-800 dark:text-amber-300">
+                      Se você enviar anônimo, não poderemos responder diretamente a você.
+                    </AlertDescription>
+                  </Alert>
+                )}
+              </div>
+
+              {/* Banner de separação para o Canal de Denúncias */}
+              <div className="rounded-lg border border-border p-3 space-y-2 bg-card">
+                <div className="flex items-start gap-2.5">
+                  <ShieldAlert className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
+                  <div className="space-y-1">
+                    <p className="text-xs font-semibold text-foreground">
+                      Precisa relatar assédio ou conduta imprópria?
+                    </p>
+                    <p className="text-[11px] text-muted-foreground leading-relaxed">
+                      Para assédio sexual, moral, discriminação ou violência no trabalho, utilize o canal sigiloso previsto na Lei nº 14.457/2022.
+                    </p>
+                    <Button
+                      type="button"
+                      variant="link"
+                      onClick={() => {
+                        onOpenChange(false);
+                        setDenunciaModalOpen(true);
+                      }}
+                      className="p-0 h-auto text-xs text-destructive hover:underline font-semibold"
+                    >
+                      Abrir Canal de Denúncias ➔
+                    </Button>
+                  </div>
+                </div>
+              </div>
             </div>
 
-            <div className="border-t border-border p-4 bg-background space-y-3">
-              <Button type="submit" className="w-full" disabled={criar.isPending}>
-                {criar.isPending ? "Enviando..." : "Enviar mensagem"}
+            <div className="border-t border-border p-4 bg-background space-y-2">
+              <Button type="submit" className="w-full text-xs" disabled={criar.isPending}>
+                {criar.isPending ? "Enviando..." : "Enviar Mensagem ao RH"}
               </Button>
-
-              <div className="text-center pt-1">
+              <div className="text-center">
                 <Link
-                  to="/acompanhar"
+                  to="/fale-conosco/minhas"
                   onClick={() => onOpenChange(false)}
                   className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
                 >
                   <ExternalLink className="h-3 w-3" />
-                  Já possui um protocolo? Clique aqui para acompanhar
+                  Ver minhas mensagens enviadas
                 </Link>
               </div>
             </div>
@@ -385,15 +274,11 @@ export function FaleConoscoDrawer({ open, onOpenChange }: Props) {
         </SheetContent>
       </Sheet>
 
-      {/* Modal exibido imediatamente com o protocolo gerado */}
-      {protocoloGerado && (
-        <ProtocoloSucessoModal
-          open={!!protocoloGerado}
-          onOpenChange={(aberto) => !aberto && setProtocoloGerado(null)}
-          protocolo={protocoloGerado}
-          titulo={tituloGravado}
-        />
-      )}
+      {/* Modal separado para canal de denúncias */}
+      <CanalDenunciaModal
+        open={denunciaModalOpen}
+        onOpenChange={setDenunciaModalOpen}
+      />
     </>
   );
 }

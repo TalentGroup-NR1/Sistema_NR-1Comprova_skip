@@ -271,8 +271,8 @@ describe('Sidebar - Visibilidade e Governança Comercial de Módulos', () => {
     fireEvent.click(screen.getByText('Configurações'));
 
     expect(screen.getByText('Comportamentos Ofensivos')).toBeInTheDocument();
-    // Há o link de gestão no menu e o botão do drawer no rodapé
-    expect(screen.getAllByText('Fale Conosco').length).toBe(2);
+    // Colaborador designado vê "Comportamentos Ofensivos" no menu e o botão do drawer no rodapé
+    expect(screen.getAllByText('Fale Conosco').length).toBe(1);
   });
 
   it('colaborador NÃO designado NÃO vê os itens de denúncias', () => {

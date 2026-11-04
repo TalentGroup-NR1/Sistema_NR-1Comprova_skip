@@ -54,6 +54,8 @@ import ComportamentosOfensivos from "./pages/ComportamentosOfensivos";
 import AdminPlataforma from "./pages/AdminPlataforma";
 import NotFound from "./pages/NotFound";
 import AcompanharProtocolo from "./pages/AcompanharProtocolo";
+import FaleConoscoAdmin from "./pages/FaleConoscoAdmin";
+import MinhasMensagensFaleConosco from "./pages/MinhasMensagensFaleConosco";
 import LaudoAepPage from "./pages/LaudoAepPage";
 import ConfiguracoesEmpresa from "./pages/ConfiguracoesEmpresa";
 import Evidencias from "./pages/Evidencias";
@@ -205,6 +207,16 @@ const App = () => (
               <Route path="/ponto-eletronico" element={
                 <ProtectedRoute moduleKey="/ponto-eletronico">
                   <PontoEletronico />
+                </ProtectedRoute>
+              } />
+              <Route path="/fale-conosco" element={
+                <ProtectedRoute allowedRoles={['admin_empresa', 'analista_rh']}>
+                  <FaleConoscoAdmin />
+                </ProtectedRoute>
+              } />
+              <Route path="/fale-conosco/minhas" element={
+                <ProtectedRoute>
+                  <MinhasMensagensFaleConosco />
                 </ProtectedRoute>
               } />
               <Route path="/denuncias" element={

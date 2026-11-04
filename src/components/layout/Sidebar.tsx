@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Users, UserMinus, Calendar, FileText, Settings, Bell, ChevronLeft, ChevronRight, ChevronDown, Building2, ClipboardList, GraduationCap, Heart, Shield, ShieldAlert, MessageSquare, Briefcase, TrendingUp, Megaphone, UserSearch, Clock, Plane, ListChecks, ShieldCheck, LogOut, Palette, User, Network, Server } from "lucide-react";
+import { LayoutDashboard, Users, UserMinus, Calendar, FileText, Settings, Bell, ChevronLeft, ChevronRight, ChevronDown, Building2, ClipboardList, GraduationCap, Heart, Shield, ShieldAlert, MessageSquare, MessageSquareText, Briefcase, TrendingUp, Megaphone, UserSearch, Clock, Plane, ListChecks, ShieldCheck, LogOut, Palette, User, Network, Server } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -73,7 +73,7 @@ const configuracoesItems: NavItem[] = [
   { icon: Building2, label: "Cadastro de Empresa", href: "/empresas", roles: ['admin_master'] },
   { icon: FileText, label: "Relatórios Executivos", href: "/relatorios-executivos", roles: ['admin_master', 'admin_empresa', 'analista_rh'] },
   { icon: Shield, label: "Gerenciar Usuários", href: "/acessos", roles: ['admin_master', 'admin_empresa'] },
-  { icon: ShieldCheck, label: "Fale Conosco", href: "/denuncias" },
+  { icon: MessageSquareText, label: "Fale Conosco", href: "/fale-conosco", roles: ['admin_empresa', 'analista_rh'] },
   { icon: ShieldAlert, label: "Comportamentos Ofensivos", href: "/comportamentos-ofensivos" },
 ];
 
