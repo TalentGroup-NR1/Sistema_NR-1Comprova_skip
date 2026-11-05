@@ -506,7 +506,7 @@ export function useTreinamentosPublicados() {
   return useQuery({
     queryKey: ["treinamentos-publicados", effectiveCompanyId],
     queryFn: async () => {
-      // Try to load current colaborador to filter by contract_type (for non-admin viewers)
+      // 1. Try to load current colaborador to filter by contract_type (for non-admin viewers)
       let myContractType: string | null = null;
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
@@ -518,6 +518,25 @@ export function useTreinamentosPublicados() {
         myContractType = (colab as any)?.contract_type ?? null;
       }
 
+      // 2. Fetch habilitados for this company
+      const habilitadosMap: Record<string, { habilitado: boolean; obrigatorio: boolean }> = {};
+      if (effectiveCompanyId) {
+        const { data: ethData, error: ethErr } = await supabase
+          .from("empresa_treinamentos_habilitados")
+          .select("treinamento_id, habilitado, obrigatorio")
+          .eq("company_id", effectiveCompanyId);
+
+        if (!ethErr && ethData) {
+          ethData.forEach((row) => {
+            habilitadosMap[row.treinamento_id] = {
+              habilitado: row.habilitado,
+              obrigatorio: row.obrigatorio,
+            };
+          });
+        }
+      }
+
+      // 3. Select published courses (enforced by RLS)
       const { data, error } = await supabase
         .from("treinamentos")
         .select(`
@@ -531,7 +550,30 @@ export function useTreinamentosPublicados() {
 
       const list = (data as Treinamento[]) || [];
 
-      const filtered = list.filter((t) => {
+      // 4. Filter and decorate:
+      // For global courses (origem === 'plataforma'):
+      // - Must be enabled by the company (habilitadosMap[t.id]?.habilitado === true)
+      // - Apply company-specific obrigatorio flag from empresa_treinamentos_habilitados
+      // For company courses (origem === 'empresa'):
+      // - Already scoped by company_id through RLS
+      const visibleList: Treinamento[] = [];
+
+      for (const t of list) {
+        if (t.origem === 'plataforma') {
+          const eth = habilitadosMap[t.id];
+          if (!eth || !eth.habilitado) {
+            continue;
+          }
+          visibleList.push({
+            ...t,
+            obrigatorio: eth.obrigatorio ?? t.obrigatorio ?? false,
+          });
+        } else {
+          visibleList.push(t);
+        }
+      }
+
+      const filtered = visibleList.filter((t) => {
         // If no contract_type targeting set, available to everyone
         if (!t.target_contract_types || t.target_contract_types.length === 0) return true;
         // If viewer has no contract_type (admin sem vínculo de colaborador), don't hide

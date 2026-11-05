@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { Play, Clock, Award, CheckCircle2, Lock } from "lucide-react";
+import { Play, Clock, Award, CheckCircle2, Lock, Globe } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
@@ -72,6 +72,12 @@ export function TreinamentoCard({ treinamento, progresso, className }: Treinamen
 
         {/* Badges topo */}
         <div className="absolute left-2 top-2 flex flex-wrap gap-1">
+          {treinamento.origem === "plataforma" && (
+            <Badge variant="outline" className="bg-background/90 backdrop-blur text-[10px] uppercase tracking-wide gap-1 border-primary/40 text-primary">
+              <Globe className="h-3 w-3" />
+              Catálogo da Plataforma
+            </Badge>
+          )}
           {treinamento.obrigatorio && (
             <Badge variant="destructive" className="text-[10px] uppercase tracking-wide">
               <Lock className="mr-1 h-3 w-3" />
