@@ -53,6 +53,7 @@ import {
 } from "@/hooks/useCatalogoGlobal";
 import { TreinamentoGlobalFormDialog } from "@/components/treinamentos/TreinamentoGlobalFormDialog";
 import { CategoriasPlataformaManager } from "@/components/treinamentos/CategoriasPlataformaManager";
+import { TreinamentoConfig } from "@/components/treinamentos/TreinamentoConfig";
 import { TreinamentoStatus, TreinamentoTipo } from "@/hooks/useTreinamentos";
 
 export default function CatalogoGlobalTreinamentos() {
@@ -63,6 +64,7 @@ export default function CatalogoGlobalTreinamentos() {
   const [formDialogOpen, setFormDialogOpen] = useState(false);
   const [categoriasManagerOpen, setCategoriasManagerOpen] = useState(false);
   const [editingTreinamento, setEditingTreinamento] = useState<TreinamentoGlobal | null>(null);
+  const [configTreinamento, setConfigTreinamento] = useState<TreinamentoGlobal | null>(null);
 
   // Filtros
   const [search, setSearch] = useState("");
@@ -157,6 +159,17 @@ export default function CatalogoGlobalTreinamentos() {
         );
     }
   };
+
+  if (configTreinamento) {
+    return (
+      <div className="container mx-auto py-6">
+        <TreinamentoConfig
+          treinamento={configTreinamento as any}
+          onBack={() => setConfigTreinamento(null)}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto py-6 space-y-6">
@@ -393,6 +406,17 @@ export default function CatalogoGlobalTreinamentos() {
 
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setConfigTreinamento(curso)}
+                          className="h-8 px-2 text-primary font-medium"
+                          title="Gerenciar Módulos, Aulas e Quiz"
+                        >
+                          <Layers className="h-3.5 w-3.5 mr-1" />
+                          Conteúdo
+                        </Button>
+
                         <Button
                           variant="ghost"
                           size="sm"

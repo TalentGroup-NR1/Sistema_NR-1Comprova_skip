@@ -21,6 +21,8 @@ export interface Treinamento {
   tags: string[] | null;
   tempo_minimo_minutos: number;
   quiz_obrigatorio: boolean;
+  nota_minima?: number | null;
+  tentativas_maximas?: number | null;
   termo_ciencia_obrigatorio: boolean;
   texto_termo_ciencia: string | null;
   status: TreinamentoStatus;
