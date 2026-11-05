@@ -234,3 +234,4 @@ export function CategoriasPlataformaManager({ open, onOpenChange }: CategoriasPl
     </Dialog>
   );
 }
+

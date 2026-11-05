@@ -63,3 +63,4 @@ describe("Catálogo Global — Autorização e Visibilidade (Etapa 8.5)", () => 
     expect(adminMasterScope("colaborador", null)).toBe(false);
   });
 });
+
