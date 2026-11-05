@@ -4,7 +4,7 @@ import { useMyColaborador } from '@/hooks/useMyFeedbackCycles';
 
 /**
  * Hook that returns the effective company ID for data filtering.
- * - Admin master: uses the selected company from context (null = all companies)
+ * - Admin master: uses the selected company from context (null = all companies / modo plataforma)
  * - Other roles: uses their own company_id from auth (profile) or fallback to colaboradores table
  */
 export function useEffectiveCompanyId() {
@@ -12,7 +12,12 @@ export function useEffectiveCompanyId() {
   const { selectedCompanyId } = useCompanyContext();
   const { data: colaborador } = useMyColaborador();
   
-  // 0. Super Admin / Admin Master: NÃO tem empresa — opera no "Modo Plataforma" e deve ver o branding padrão (NR-1Comprova)
+  // 1. Multiempresa / Sandbox: se há uma empresa explicitamente selecionada no contexto de sessão
+  if (selectedCompanyId) {
+    return selectedCompanyId;
+  }
+
+  // 0. Super Admin / Admin Master sem empresa selecionada: opera no "Modo Plataforma" (null)
   if (
     isAdminMaster ||
     isSuperAdmin ||
@@ -22,11 +27,6 @@ export function useEffectiveCompanyId() {
     roles?.includes('admin_master')
   ) {
     return null;
-  }
-
-  // 1. Multiempresa: se há uma empresa explicitamente selecionada no contexto de sessão
-  if (selectedCompanyId) {
-    return selectedCompanyId;
   }
 
   // 2. Profile company_id exists (empresa default ou ativa no banco)

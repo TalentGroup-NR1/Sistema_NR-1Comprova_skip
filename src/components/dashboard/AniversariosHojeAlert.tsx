@@ -14,6 +14,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Cake, PartyPopper } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { useEffectiveCompanyId } from '@/hooks/useEffectiveCompanyId';
 import { differenceInYears, parseISO } from 'date-fns';
 
 interface Colaborador {
@@ -47,14 +48,32 @@ function isBirthdayToday(birth_date?: string) {
 }
 
 export function AniversariosHojeAlert({ aniversariantes, aniversariosEmpresa, isLoading }: Props) {
-  const { user } = useAuth();
+  const { user, role } = useAuth();
+  const effectiveCompanyId = useEffectiveCompanyId();
+  const isAdminMaster = role === 'admin_master';
+
   const [open, setOpen] = useState(false);
+
+  // Admin Master sem empresa selecionada: NUNCA renderizar alerta de aniversariantes de clientes
+  if (isAdminMaster && !effectiveCompanyId) {
+    return null;
+  }
 
   const today = new Date().toISOString().slice(0, 10);
   const storageKey = user?.id ? `aniversarios-aviso-${user.id}-${today}` : null;
 
-  const birthdaysToday = aniversariantes.filter(c => isBirthdayToday(c.birth_date));
-  const workAnnivToday = aniversariosEmpresa.filter(a => a.isToday);
+  // Deduplicação estrita de aniversariantes por ID e por combinação nome + nascimento (evita duplicar linhas de JOIN ou múltiplos vínculos)
+  const uniqueColaboradores = aniversariantes.filter((colab, index, self) =>
+    index === self.findIndex(c => c.id === colab.id || (c.full_name === colab.full_name && c.birth_date === colab.birth_date))
+  );
+
+  const birthdaysToday = uniqueColaboradores.filter(c => isBirthdayToday(c.birth_date));
+
+  const uniqueWorkAnniv = aniversariosEmpresa.filter((anniv, index, self) =>
+    index === self.findIndex(a => a.colaborador.id === anniv.colaborador.id || (a.colaborador.full_name === anniv.colaborador.full_name))
+  );
+
+  const workAnnivToday = uniqueWorkAnniv.filter(a => a.isToday);
   const total = birthdaysToday.length + workAnnivToday.length;
 
   useEffect(() => {

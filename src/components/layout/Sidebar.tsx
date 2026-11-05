@@ -70,7 +70,7 @@ const desenvolvimentoItems: NavItem[] = [
 ];
 
 const configuracoesItems: NavItem[] = [
-  { icon: Settings, label: "Configurações da Empresa", href: "/configuracoes-empresa", roles: ['admin_empresa'] },
+  { icon: Settings, label: "Configurações da Empresa", href: "/configuracoes-empresa", roles: ['admin_master', 'admin_empresa'] },
   { icon: Building2, label: "Cadastro de Empresa", href: "/empresas", roles: ['admin_master'] },
   { icon: FileText, label: "Relatórios Executivos", href: "/relatorios-executivos", roles: ['admin_master', 'admin_empresa', 'analista_rh'] },
   { icon: Shield, label: "Gerenciar Usuários", href: "/acessos", roles: ['admin_master', 'admin_empresa'] },
@@ -195,8 +195,8 @@ export function Sidebar() {
       roleFiltered = items.filter(item => !item.roles);
     }
     
-    // Super Admin sem empresa selecionada: visão irrestrita da plataforma (bypass explícito)
-    if (isSuperAdmin && !selectedCompanyId) {
+    // Super Admin / Admin Master sem empresa selecionada: visão irrestrita da plataforma (bypass explícito do catálogo comercial)
+    if ((isSuperAdmin || effectiveRole === 'admin_master') && !selectedCompanyId) {
       return roleFiltered;
     }
 

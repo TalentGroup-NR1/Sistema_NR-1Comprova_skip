@@ -23,8 +23,8 @@ export function useVisibleModules() {
     queryFn: async (): Promise<ModuleVisibility[]> => {
       if (!isAuthenticated) return [];
 
-      // Super Admin em visão global irrestrita (sem empresa específica selecionada)
-      if (isSuperAdmin && !effectiveCompanyId) {
+      // Super Admin ou Admin Master em visão global irrestrita (sem empresa específica selecionada)
+      if ((isSuperAdmin || role === 'admin_master') && !effectiveCompanyId) {
         return [];
       }
 
@@ -42,7 +42,7 @@ export function useVisibleModules() {
 
       return (data as ModuleVisibility[]) || [];
     },
-    enabled: !!isAuthenticated && (isSuperAdmin || !!effectiveCompanyId),
+    enabled: !!isAuthenticated && (isSuperAdmin || role === 'admin_master' || !!effectiveCompanyId),
     retry: typeof process !== 'undefined' && process.env?.NODE_ENV === 'test' ? false : 2,
     staleTime: 30 * 1000, // 30s de cache reativo (reavalia ao navegar/focar janela)
     refetchOnWindowFocus: true,
@@ -75,8 +75,8 @@ export function useIsModuleVisible(moduleKey?: string) {
 
   const moduloPai = resolverModuloPai(moduleKey);
 
-  // 2. Super Admin da plataforma: visão irrestrita explícita
-  if (isSuperAdmin) {
+  // 2. Super Admin ou Admin Master da plataforma: visão irrestrita explícita
+  if (isSuperAdmin || role === 'admin_master') {
     // Visão global sem empresa selecionada: bypass total
     if (!effectiveCompanyId) {
       return { isVisible: true, isLoading: false, isError: false, isSuperAdminBypass: false, refetch };

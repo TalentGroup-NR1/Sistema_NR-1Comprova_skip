@@ -145,8 +145,9 @@ export function useColaboradores() {
       return failureCount < 2;
     },
     queryFn: async () => {
+      if (!effectiveCompanyId) return [];
       const { data, error } = await supabase.rpc('get_colaboradores_seguro', {
-        p_company_id: effectiveCompanyId ?? null,
+        p_company_id: effectiveCompanyId,
         p_gestor_id: shouldFilterByGestor ? gestorColaboradorId : null,
       });
 

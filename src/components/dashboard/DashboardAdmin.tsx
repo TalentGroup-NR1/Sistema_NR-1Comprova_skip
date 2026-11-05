@@ -2,7 +2,6 @@ import { StatsCard } from "@/components/dashboard/StatsCard";
 import { DiariosBordoHojeAlert } from "@/components/dashboard/DiariosBordoHojeAlert";
 import { AniversariosHojeAlert } from "@/components/dashboard/AniversariosHojeAlert";
 import { RecentEmployees } from "@/components/dashboard/RecentEmployees";
-
 import { BirthdaysList } from "@/components/dashboard/BirthdaysList";
 import { WorkAnniversaries } from "@/components/dashboard/WorkAnniversaries";
 import { DiarioBordoReminders } from "@/components/dashboard/DiarioBordoReminders";
@@ -12,16 +11,27 @@ import { useDashboardMetrics } from "@/hooks/useDashboardMetrics";
 import { useAniversariantesGlobais } from "@/hooks/useAniversariantesGlobais";
 import { useIsModuleVisible } from "@/hooks/useVisibleModules";
 import { AdminFichaAlertBanner } from "@/components/dashboard/AdminFichaAlertBanner";
+import { AdminMasterEmptyDashboard } from "@/components/dashboard/AdminMasterEmptyDashboard";
+import { useEffectiveCompanyId } from "@/hooks/useEffectiveCompanyId";
+import { useAuth } from "@/hooks/useAuth";
 import { Users, UserPlus, UserMinus } from "lucide-react";
 
 const MES_NOMES = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 
 export function DashboardAdmin() {
+  const effectiveCompanyId = useEffectiveCompanyId();
+  const { role } = useAuth();
+  const isAdminMaster = role === 'admin_master';
+
+  // Admin Master sem empresa selecionada: zero dados de clientes (estado vazio orientativo)
+  if (isAdminMaster && !effectiveCompanyId) {
+    return <AdminMasterEmptyDashboard />;
+  }
+
   const {
     totalAtivos,
     contratadosMes,
     demitidosMes,
-    
     ytdContratados,
     ytdDemitidos,
     ultimaAdmissaoRef,
@@ -54,7 +64,6 @@ export function DashboardAdmin() {
   const subtitleAtivos = isLoading
     ? undefined
     : `+${contratadosMes} admissões / −${demitidosMes} desligamentos no mês`;
-
 
   const { isVisible: verDiario } = useIsModuleVisible('/diario-bordo');
   const { isVisible: verColaboradores } = useIsModuleVisible('/colaboradores');
@@ -93,7 +102,7 @@ export function DashboardAdmin() {
         />
       </div>
 
-      {/* Company Breakdown - Only for admin_master with "All Companies" */}
+      {/* Company Breakdown - Only for admin_master with a specific sandbox company selected */}
       {showCompanyBreakdown && (
         <div className="mb-6">
           <FuncionariosPorEmpresaCard
