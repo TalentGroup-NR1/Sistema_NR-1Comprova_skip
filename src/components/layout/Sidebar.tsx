@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Users, UserMinus, Calendar, FileText, Settings, Bell, ChevronLeft, ChevronRight, ChevronDown, Building2, ClipboardList, GraduationCap, Heart, Shield, ShieldAlert, MessageSquare, MessageSquareText, Briefcase, TrendingUp, Megaphone, UserSearch, Clock, Plane, ListChecks, ShieldCheck, LogOut, Palette, User, Network, Server, Search } from "lucide-react";
+import { LayoutDashboard, Users, UserMinus, Calendar, FileText, Settings, Bell, ChevronLeft, ChevronRight, ChevronDown, Building2, ClipboardList, GraduationCap, Globe, Heart, Shield, ShieldAlert, MessageSquare, MessageSquareText, Briefcase, TrendingUp, Megaphone, UserSearch, Clock, Plane, ListChecks, ShieldCheck, LogOut, Palette, User, Network, Server, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -64,6 +64,7 @@ const desenvolvimentoItems: NavItem[] = [
   { icon: ClipboardList, label: "Avaliação de Desempenho", href: "/avaliacoes" },
   { icon: MessageSquare, label: "Feedback", href: "/feedback-gestao", roles: ['admin_master', 'admin_empresa', 'analista_rh', 'gestor_departamento'] },
   { icon: GraduationCap, label: "Treinamento", href: "/treinamentos" },
+  { icon: Globe, label: "Catálogo Global", href: "/treinamentos/catalogo-global", roles: ['admin_master'] },
   { icon: Heart, label: "Cuidar+", href: "/cuidar-mais" },
   { icon: ShieldAlert, label: "Mapa de Riscos NR1", href: "/mapa-riscos-nr1" },
   { icon: Network, label: "Estrutura Organizacional", href: "/estrutura-organizacional", roles: ['admin_master', 'admin_empresa', 'analista_rh', 'gestor_departamento'] },

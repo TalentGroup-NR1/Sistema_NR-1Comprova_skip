@@ -59,6 +59,7 @@ import MinhasMensagensFaleConosco from "./pages/MinhasMensagensFaleConosco";
 import LaudoAepPage from "./pages/LaudoAepPage";
 import ConfiguracoesEmpresa from "./pages/ConfiguracoesEmpresa";
 import Evidencias from "./pages/Evidencias";
+import CatalogoGlobalTreinamentos from "./pages/CatalogoGlobalTreinamentos";
 import { ErrorBoundary } from "@/components/layout/ErrorBoundary";
 
 const queryClient = new QueryClient();
@@ -179,6 +180,11 @@ const App = () => (
               <Route path="/pdi" element={<ProtectedRoute moduleKey="/avaliacoes"><Navigate to="/avaliacoes" replace /></ProtectedRoute>} />
               <Route path="/avaliacao" element={<ProtectedRoute moduleKey="/avaliacoes"><Navigate to="/avaliacoes" replace /></ProtectedRoute>} />
               <Route path="/treinamentos" element={<ProtectedRoute moduleKey="/treinamentos"><Treinamentos /></ProtectedRoute>} />
+              <Route path="/treinamentos/catalogo-global" element={
+                <ProtectedRoute allowedRoles={['admin_master']}>
+                  <CatalogoGlobalTreinamentos />
+                </ProtectedRoute>
+              } />
               <Route path="/treinamento" element={<ProtectedRoute moduleKey="/treinamentos"><Navigate to="/treinamentos" replace /></ProtectedRoute>} />
               <Route path="/treinamento/:id" element={<ProtectedRoute moduleKey="/treinamentos"><TreinamentoView /></ProtectedRoute>} />
               <Route path="/beneficios" element={<ProtectedRoute moduleKey="/beneficios"><Beneficios /></ProtectedRoute>} />

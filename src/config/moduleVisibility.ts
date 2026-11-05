@@ -45,6 +45,7 @@ export const MODULE_VISIBILITY: Record<string, AppRole[]> = {
   '/avaliacoes': ALL_ROLES,
   '/feedback-gestao': MANAGEMENT_ROLES,
   '/treinamentos': ALL_ROLES,
+  '/treinamentos/catalogo-global': ['admin_master'],
   '/cuidar-mais': ALL_ROLES,
   '/mapa-riscos-nr1': ALL_ROLES,
   '/estrutura-organizacional': MANAGEMENT_ROLES,
