@@ -109,3 +109,4 @@ describeSuite('Integração RLS: Habilitação de Catálogo Global por Empresa',
     expect(data).toHaveLength(0);
   });
 });
+

@@ -298,3 +298,4 @@ describe('ETAPA 8.6 — Cliente Habilita Catálogo Global', () => {
     );
   });
 });
+
