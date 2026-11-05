@@ -464,20 +464,19 @@ export function TreinamentoViewer({ treinamento, modulos: modulosProp }: Treinam
                 <h3 className="text-base font-semibold flex items-center gap-2">
                   <Layers className="h-4 w-4 text-primary" /> Avaliação e Quiz
                 </h3>
-                {todasAulasConcluidas ? (
-                  <QuizPlayer
-                    treinamentoId={treinamento.id}
-                    progresso={progressoData}
-                    onQuizApproved={() => refetchProgresso()}
-                  />
-                ) : (
-                  <Alert className="border-muted bg-muted/30">
-                    <Lock className="h-4 w-4 text-muted-foreground" />
-                    <AlertDescription className="text-xs text-muted-foreground">
-                      O quiz obrigatório será liberado automaticamente assim que você concluir todas as aulas ({aulasConcluidasCount}/{totalAulas}).
-                    </AlertDescription>
-                  </Alert>
-                )}
+                <QuizPlayer
+                  treinamentoId={treinamento.id}
+                  progresso={progressoData}
+                  aulasCompletas={todasAulasConcluidas}
+                  totalAulas={totalAulas}
+                  aulasConcluidas={aulasConcluidasCount}
+                  notaMinima={(treinamento as any).nota_minima || 70}
+                  tentativasMaximas={(treinamento as any).tentativas_maximas || 3}
+                  onQuizApproved={() => {
+                    refetchProgresso();
+                    refetchProgressoGlobal();
+                  }}
+                />
               </div>
             )}
 
