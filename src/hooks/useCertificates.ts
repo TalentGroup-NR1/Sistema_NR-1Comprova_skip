@@ -138,6 +138,21 @@ export function useEmitCertificate() {
       dataConclusao: string;
       issuedByType: 'colaborador' | 'admin';
     }) => {
+      // Blindagem defensiva: verificar se o treinamento permite emissão de certificado
+      const { data: curso, error: cursoErr } = await supabase
+        .from("treinamentos")
+        .select("id, tipo, gera_certificado")
+        .eq("id", data.treinamentoId)
+        .single();
+
+      if (cursoErr || !curso) {
+        throw new Error("Treinamento não encontrado para emissão do certificado.");
+      }
+
+      if (curso.tipo === "link" || curso.gera_certificado === false) {
+        throw new Error("Este treinamento não emite certificado da plataforma.");
+      }
+
       const certificateCode = generateCertificateCode();
 
       const { data: certificate, error } = await supabase

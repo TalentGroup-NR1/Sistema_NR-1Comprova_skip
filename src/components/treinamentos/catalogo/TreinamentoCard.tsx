@@ -78,11 +78,24 @@ export function TreinamentoCard({ treinamento, progresso, className }: Treinamen
               Obrigatório
             </Badge>
           )}
-          {concluido && (
-            <Badge className="bg-green-600 text-[10px] uppercase tracking-wide text-white hover:bg-green-600">
-              <CheckCircle2 className="mr-1 h-3 w-3" />
-              Concluído
-            </Badge>
+          {treinamento.tipo === "link" ? (
+            concluido ? (
+              <Badge className="bg-sky-700 text-[10px] uppercase tracking-wide text-white hover:bg-sky-700">
+                <CheckCircle2 className="mr-1 h-3 w-3" />
+                Estudado (autodeclarado)
+              </Badge>
+            ) : (
+              <Badge variant="secondary" className="text-[10px] uppercase tracking-wide">
+                Link externo
+              </Badge>
+            )
+          ) : (
+            concluido && (
+              <Badge className="bg-green-600 text-[10px] uppercase tracking-wide text-white hover:bg-green-600">
+                <CheckCircle2 className="mr-1 h-3 w-3" />
+                Concluído
+              </Badge>
+            )
           )}
         </div>
 

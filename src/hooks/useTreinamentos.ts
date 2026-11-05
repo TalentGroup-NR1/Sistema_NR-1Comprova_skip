@@ -8,7 +8,7 @@ export type TreinamentoStatus = 'rascunho' | 'publicado' | 'arquivado';
 
 export interface Treinamento {
   id: string;
-  company_id: string;
+  company_id: string | null;
   categoria_id: string | null;
   titulo: string;
   descricao: string | null;
@@ -31,6 +31,9 @@ export interface Treinamento {
   target_contract_types: string[] | null;
   capa_path: string | null;
   destaque: boolean;
+  origem?: 'plataforma' | 'empresa';
+  gera_certificado?: boolean;
+  validade_meses?: number | null;
   created_at: string;
   updated_at: string;
   categoria?: CategoriaTreinamento | null;

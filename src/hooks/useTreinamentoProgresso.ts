@@ -342,13 +342,36 @@ export function useConcluirTreinamento() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ progressoId, treinamentoId }: { progressoId: string; treinamentoId: string }) => {
+    mutationFn: async ({
+      progressoId,
+      treinamentoId,
+      autodeclarado = false,
+      termoAceito = false,
+      termoIp = null,
+    }: {
+      progressoId: string;
+      treinamentoId: string;
+      autodeclarado?: boolean;
+      termoAceito?: boolean;
+      termoIp?: string | null;
+    }) => {
+      const now = new Date().toISOString();
+      const updatePayload: Record<string, unknown> = {
+        status: 'concluido' as ConclusaoStatus,
+        concluido_em: now,
+      };
+
+      if (termoAceito || autodeclarado) {
+        updatePayload.termo_aceito = true;
+        updatePayload.termo_aceito_em = now;
+        if (termoIp) {
+          updatePayload.termo_ip = termoIp;
+        }
+      }
+
       const { data, error } = await supabase
         .from("treinamento_progresso")
-        .update({
-          status: 'concluido' as ConclusaoStatus,
-          concluido_em: new Date().toISOString(),
-        })
+        .update(updatePayload)
         .eq("id", progressoId)
         .select()
         .single();

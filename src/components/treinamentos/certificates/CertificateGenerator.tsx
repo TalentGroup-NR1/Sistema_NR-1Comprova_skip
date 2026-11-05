@@ -199,6 +199,11 @@ export function CertificateGenerator({
     }
   };
 
+    // Defesa em profundidade: link externo ou cursos sem certificado NUNCA renderizam emissão
+  if (treinamento.tipo === "link" || treinamento.gera_certificado === false) {
+    return null;
+  }
+
   if (loadingCertificate) {
     return null;
   }

@@ -8,6 +8,15 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Treinamento } from "@/hooks/useTreinamentos";
 import { 
   useMeuProgresso, 
@@ -42,6 +51,18 @@ export function TreinamentoViewer({ treinamento }: TreinamentoViewerProps) {
   const [loadingUrl, setLoadingUrl] = useState(false);
   const [colaboradorData, setColaboradorData] = useState<{ id: string; full_name: string } | null>(null);
   const [companyData, setCompanyData] = useState<{ name: string; logo_url: string | null } | null>(null);
+  const [modalAutodeclaracaoOpen, setModalAutodeclaracaoOpen] = useState(false);
+  const [declaracaoChecked, setDeclaracaoChecked] = useState(false);
+
+  const getExternalDomain = (url?: string | null): string => {
+    if (!url) return "instituição externa";
+    try {
+      const parsed = new URL(url.startsWith("http") ? url : "https://" + url);
+      return parsed.hostname.replace(/^www\./, "");
+    } catch {
+      return "instituição externa";
+    }
+  };
 
   // Fetch colaborador data
   useEffect(() => {
@@ -172,6 +193,24 @@ export function TreinamentoViewer({ treinamento }: TreinamentoViewerProps) {
     }
   };
 
+  const handleConfirmarAutodeclaracao = async () => {
+    if (!progressoData?.id || !declaracaoChecked) return;
+    try {
+      await concluirTreinamento.mutateAsync({
+        progressoId: progressoData.id,
+        treinamentoId: treinamento.id,
+        autodeclarado: true,
+        termoAceito: true,
+      });
+      setModalAutodeclaracaoOpen(false);
+      refetchProgresso();
+      toast.success("Estudo registrado com sucesso!");
+    } catch (error) {
+      console.error("Erro ao registrar autodeclaração:", error);
+      toast.error("Erro ao registrar conclusão.");
+    }
+  };
+
   const handleDownload = () => {
     if (signedUrl) {
       window.open(signedUrl, "_blank");
@@ -181,10 +220,21 @@ export function TreinamentoViewer({ treinamento }: TreinamentoViewerProps) {
   // Status display
   const getStatusInfo = () => {
     if (jaConcluido) {
+      if (treinamento.tipo === "link") {
+        return {
+          label: "Estudado (autodeclarado)",
+          color: "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-200",
+          icon: CheckCircle,
+        };
+      }
       return { label: "Concluído", color: "bg-green-100 text-green-800", icon: CheckCircle };
     }
     if (podeConcluir) {
-      return { label: "Pronto para concluir", color: "bg-blue-100 text-blue-800", icon: CheckCircle };
+      return {
+        label: treinamento.tipo === "link" ? "Pronto para registrar" : "Pronto para concluir",
+        color: "bg-blue-100 text-blue-800",
+        icon: CheckCircle,
+      };
     }
     if (!tempoAtingido) {
       return { label: "Em andamento", color: "bg-yellow-100 text-yellow-800", icon: Clock };
@@ -355,26 +405,35 @@ export function TreinamentoViewer({ treinamento }: TreinamentoViewerProps) {
 
     // Link type - external link
     if (treinamento.tipo === "link") {
+      const domain = getExternalDomain(treinamento.url_conteudo);
       return (
-        <div className="flex flex-wrap gap-2">
-          <Button asChild>
-            <a href={treinamento.url_conteudo || "#"} target="_blank" rel="noopener noreferrer">
-              <Link2 className="h-4 w-4 mr-2" />
-              Acessar Link
-            </a>
-          </Button>
-          <Button 
-            variant="outline" 
-            onClick={() => {
-              if (treinamento.url_conteudo) {
-                navigator.clipboard.writeText(treinamento.url_conteudo);
-                toast.success("Link copiado para a área de transferência");
-              }
-            }}
-          >
-            <Copy className="h-4 w-4 mr-2" />
-            Copiar link
-          </Button>
+        <div className="space-y-4">
+          <Alert className="border-blue-200 bg-blue-50 dark:bg-blue-950/40 dark:border-blue-800">
+            <AlertCircle className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+            <AlertDescription className="text-blue-800 dark:text-blue-200 text-sm leading-relaxed">
+              Conteúdo hospedado externamente ({domain}). O certificado deste treinamento é emitido pela instituição responsável na própria plataforma de origem. Ao finalizar seus estudos, retorne a esta página para registrar sua autodeclaração de estudo.
+            </AlertDescription>
+          </Alert>
+          <div className="flex flex-wrap gap-2">
+            <Button asChild>
+              <a href={treinamento.url_conteudo || "#"} target="_blank" rel="noopener noreferrer">
+                <Link2 className="h-4 w-4 mr-2" />
+                Acessar Link
+              </a>
+            </Button>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                if (treinamento.url_conteudo) {
+                  navigator.clipboard.writeText(treinamento.url_conteudo);
+                  toast.success("Link copiado para a área de transferência");
+                }
+              }}
+            >
+              <Copy className="h-4 w-4 mr-2" />
+              Copiar link
+            </Button>
+          </div>
         </div>
       );
     }
@@ -503,14 +562,28 @@ export function TreinamentoViewer({ treinamento }: TreinamentoViewerProps) {
         {/* Botão de conclusão */}
         {podeConcluir && (
           <CardFooter>
-            <Button 
-              onClick={handleConcluir} 
-              className="w-full"
-              disabled={concluirTreinamento.isPending}
-            >
-              <CheckCircle className="h-4 w-4 mr-2" />
-              {concluirTreinamento.isPending ? "Concluindo..." : "Concluir Treinamento"}
-            </Button>
+            {treinamento.tipo === "link" ? (
+              <Button 
+                onClick={() => {
+                  setDeclaracaoChecked(false);
+                  setModalAutodeclaracaoOpen(true);
+                }} 
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                disabled={concluirTreinamento.isPending}
+              >
+                <CheckCircle className="h-4 w-4 mr-2" />
+                Marcar como estudado
+              </Button>
+            ) : (
+              <Button 
+                onClick={handleConcluir} 
+                className="w-full"
+                disabled={concluirTreinamento.isPending}
+              >
+                <CheckCircle className="h-4 w-4 mr-2" />
+                {concluirTreinamento.isPending ? "Concluindo..." : "Concluir Treinamento"}
+              </Button>
+            )}
           </CardFooter>
         )}
       </Card>
@@ -582,47 +655,133 @@ export function TreinamentoViewer({ treinamento }: TreinamentoViewerProps) {
 
       {/* Conclusão Notice + Certificado */}
       {jaConcluido && progressoData && (
-        <Card className="border-green-200 bg-green-50">
-          <CardContent className="pt-6">
-            <div className="flex items-start gap-4">
-              <CheckCircle className="h-6 w-6 text-green-600 mt-1" />
-              <div className="flex-1 space-y-4">
-                <div>
-                  <p className="text-green-800 font-medium">
-                    Treinamento concluído em {progressoData.concluido_em 
-                      ? new Date(progressoData.concluido_em).toLocaleDateString('pt-BR', { 
-                          day: '2-digit', 
-                          month: '2-digit', 
-                          year: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })
-                      : 'data não registrada'}.
-                  </p>
-                  <p className="text-sm text-green-700">
-                    Tempo total: {progressoData.tempo_total_minutos} min
-                    {progressoData.quiz_aprovado && ` | Quiz: ${progressoData.quiz_melhor_nota?.toFixed(1)}%`}
-                    {progressoData.termo_aceito && ` | Termo aceito`}
+        treinamento.tipo === "link" ? (
+          <Card className="border-blue-200 bg-blue-50/70 dark:bg-blue-950/30 dark:border-blue-800">
+            <CardContent className="pt-6">
+              <div className="flex items-start gap-4">
+                <CheckCircle className="h-6 w-6 text-blue-600 dark:text-blue-400 mt-1 flex-shrink-0" />
+                <div className="flex-1 space-y-2">
+                  <div>
+                    <p className="text-blue-900 dark:text-blue-100 font-semibold">
+                      Conteúdo externo registrado como estudado em {progressoData.concluido_em 
+                        ? new Date(progressoData.concluido_em).toLocaleDateString('pt-BR', { 
+                            day: '2-digit', 
+                            month: '2-digit', 
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })
+                        : 'data não registrada'}.
+                    </p>
+                    <p className="text-sm text-blue-800 dark:text-blue-300 mt-1">
+                      Tempo registrado na plataforma: {progressoData.tempo_total_minutos} min.
+                    </p>
+                  </div>
+                  <p className="text-xs text-blue-700 dark:text-blue-300/90 pt-1">
+                    ℹ️ Este treinamento é ministrado por instituição externa ({getExternalDomain(treinamento.url_conteudo)}). Caso a instituição ofereça certificado, este deve ser obtido diretamente pelo portal dela, não pela plataforma NR-1 Comprova.
                   </p>
                 </div>
-                
-                {/* Botão de Certificado */}
-                {colaboradorData && companyId && (
-                  <CertificateGenerator
-                    treinamento={treinamento}
-                    progresso={progressoData}
-                    colaboradorId={colaboradorData.id}
-                    colaboradorNome={colaboradorData.full_name}
-                    companyId={companyId}
-                    companyName={companyData?.name}
-                    companyLogoUrl={companyData?.logo_url || undefined}
-                  />
-                )}
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card className="border-green-200 bg-green-50">
+            <CardContent className="pt-6">
+              <div className="flex items-start gap-4">
+                <CheckCircle className="h-6 w-6 text-green-600 mt-1" />
+                <div className="flex-1 space-y-4">
+                  <div>
+                    <p className="text-green-800 font-medium">
+                      Treinamento concluído em {progressoData.concluido_em 
+                        ? new Date(progressoData.concluido_em).toLocaleDateString('pt-BR', { 
+                            day: '2-digit', 
+                            month: '2-digit', 
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })
+                        : 'data não registrada'}.
+                    </p>
+                    <p className="text-sm text-green-700">
+                      Tempo total: {progressoData.tempo_total_minutos} min
+                      {progressoData.quiz_aprovado && ` | Quiz: ${progressoData.quiz_melhor_nota?.toFixed(1)}%`}
+                      {progressoData.termo_aceito && ` | Termo aceito`}
+                    </p>
+                  </div>
+                  
+                  {/* Botão de Certificado (apenas se gera_certificado !== false) */}
+                  {treinamento.gera_certificado !== false && colaboradorData && companyId && (
+                    <CertificateGenerator
+                      treinamento={treinamento}
+                      progresso={progressoData}
+                      colaboradorId={colaboradorData.id}
+                      colaboradorNome={colaboradorData.full_name}
+                      companyId={companyId}
+                      companyName={companyData?.name}
+                      companyLogoUrl={companyData?.logo_url || undefined}
+                    />
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )
       )}
+
+      {/* Modal de Autodeclaração de Estudo Externo */}
+      <Dialog open={modalAutodeclaracaoOpen} onOpenChange={setModalAutodeclaracaoOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Confirmar estudo do conteúdo externo</DialogTitle>
+            <DialogDescription className="space-y-2 pt-2">
+              <span>
+                Este treinamento acontece na plataforma externa{" "}
+                <strong>{getExternalDomain(treinamento.url_conteudo)}</strong>. A conclusão das aulas
+                e atividades não é verificada automaticamente pelo NR-1 Comprova.
+              </span>
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-4">
+            <div className="flex items-start space-x-3 rounded-lg border border-border p-3.5 bg-muted/40">
+              <Checkbox
+                id="check-declaracao"
+                checked={declaracaoChecked}
+                onCheckedChange={(checked) => setDeclaracaoChecked(checked === true)}
+                className="mt-0.5"
+              />
+              <label
+                htmlFor="check-declaracao"
+                className="text-sm font-medium leading-relaxed cursor-pointer select-none"
+              >
+                Declaro que acessei e estudei o conteúdo indicado neste treinamento.
+              </label>
+            </div>
+            <p className="text-xs text-muted-foreground mt-2 px-1">
+              Esta autodeclaração será registrada no seu histórico de capacitações com data e hora.
+            </p>
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setModalAutodeclaracaoOpen(false)}
+              disabled={concluirTreinamento.isPending}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              onClick={handleConfirmarAutodeclaracao}
+              disabled={!declaracaoChecked || concluirTreinamento.isPending}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              {concluirTreinamento.isPending ? "Registrando..." : "Confirmar conclusão"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
