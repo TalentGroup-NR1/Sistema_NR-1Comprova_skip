@@ -592,6 +592,8 @@ export function TreinamentoViewer({ treinamento, modulos: modulosProp }: Treinam
                               companyId={companyId}
                               companyName={companyData?.name}
                               companyLogoUrl={companyData?.logo_url || undefined}
+                              podeCertificar={progressoGlobal?.pode_certificar}
+                              progressoGlobal={progressoGlobal}
                             />
                           </div>
                         )}

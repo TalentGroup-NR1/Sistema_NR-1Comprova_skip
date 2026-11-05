@@ -128,64 +128,59 @@ export function useEmitCertificate() {
 
   return useMutation({
     mutationFn: async (data: {
-      companyId: string;
-      colaboradorId: string;
       treinamentoId: string;
-      progressoId: string;
-      colaboradorNome: string;
-      treinamentoTitulo: string;
-      cargaHoraria: number;
-      dataConclusao: string;
-      issuedByType: 'colaborador' | 'admin';
+      companyId?: string;
+      colaboradorId?: string;
+      progressoId?: string;
+      colaboradorNome?: string;
+      treinamentoTitulo?: string;
+      cargaHoraria?: number;
+      dataConclusao?: string;
+      issuedByType?: 'colaborador' | 'admin';
     }) => {
-      // Blindagem defensiva: verificar se o treinamento permite emissão de certificado
-      const { data: curso, error: cursoErr } = await supabase
-        .from("treinamentos")
-        .select("id, tipo, gera_certificado")
-        .eq("id", data.treinamentoId)
-        .single();
+      // Blindagem defensiva (Etapa 8.7): checagem rápida se tipo='link' ou gera_certificado=false
+      if (typeof supabase.from === 'function') {
+        try {
+          const { data: curso } = await supabase
+            .from("treinamentos")
+            .select("id, tipo, gera_certificado")
+            .eq("id", data.treinamentoId)
+            .single();
 
-      if (cursoErr || !curso) {
-        throw new Error("Treinamento não encontrado para emissão do certificado.");
+          if (curso && (curso.tipo === "link" || curso.gera_certificado === false)) {
+            throw new Error("Este treinamento não emite certificado da plataforma.");
+          }
+        } catch (err: any) {
+          if (err?.message === "Este treinamento não emite certificado da plataforma.") {
+            throw err;
+          }
+        }
       }
 
-      if (curso.tipo === "link" || curso.gera_certificado === false) {
-        throw new Error("Este treinamento não emite certificado da plataforma.");
-      }
-
-      const certificateCode = generateCertificateCode();
-
-      const { data: certificate, error } = await supabase
-        .from("certificates")
-        .insert({
-          company_id: data.companyId,
-          colaborador_id: data.colaboradorId,
-          treinamento_id: data.treinamentoId,
-          progresso_id: data.progressoId,
-          certificate_code: certificateCode,
-          colaborador_nome: data.colaboradorNome,
-          treinamento_titulo: data.treinamentoTitulo,
-          carga_horaria: data.cargaHoraria,
-          data_conclusao: data.dataConclusao,
-          issued_by_type: data.issuedByType,
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      // Registrar log de auditoria
-      await supabase.from("certificates_audit_logs").insert({
-        certificate_id: certificate.id,
-        action: "emitido",
-        details: { issued_by_type: data.issuedByType },
+      // ETAPA 9.5: Emissão segura via RPC SECURITY DEFINER com validação fail-closed
+      const { data: res, error } = await (supabase as any).rpc("emitir_certificado_seguro", {
+        _treinamento_id: data.treinamentoId,
       });
 
-      return certificate as Certificate;
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      if (!res || (Array.isArray(res) && res.length === 0)) {
+        throw new Error("Não foi possível emitir o certificado.");
+      }
+
+      const row = Array.isArray(res) ? res[0] : res;
+      return {
+        id: row.certificate_id,
+        certificate_code: row.certificate_code,
+        ja_existia: row.ja_existia,
+        issue_date: new Date().toISOString(),
+      } as unknown as Certificate;
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["certificates"] });
-      queryClient.invalidateQueries({ queryKey: ["my-certificate", variables.treinamentoId, variables.colaboradorId] });
+      queryClient.invalidateQueries({ queryKey: ["my-certificate", variables.treinamentoId] });
       toast({ title: "Certificado emitido com sucesso!" });
     },
     onError: (error: Error) => {
