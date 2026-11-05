@@ -355,26 +355,39 @@ export function useConcluirTreinamento() {
       termoAceito?: boolean;
       termoIp?: string | null;
     }) => {
-      // REGRA DE OURO (Etapa 9.1 / 9.2):
-      // Se há aulas cadastradas, bloqueia conclusão se houver aulas pendentes
+      // REGRA DE OURO (Etapa 9.1 / 9.2b) — Fail-closed via RPC:
+      // A conclusão do treinamento deve ser recusada SEMPRE que pode_certificar !== true
       const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        try {
-          const { data: progressoGlobal } = await (supabase as any).rpc('get_progresso_treinamento', {
-            _treinamento_id: treinamentoId,
-            _user_id: user.id,
-          });
-          if (progressoGlobal && progressoGlobal.length > 0) {
-            const info = progressoGlobal[0];
+      if (user && typeof (supabase as any).rpc === 'function') {
+        const { data: progressoGlobal, error: rpcError } = await (supabase as any).rpc('get_progresso_treinamento', {
+          _treinamento_id: treinamentoId,
+          _user_id: user.id,
+        });
+
+        if (rpcError) {
+          throw new Error(`Erro ao verificar progresso do treinamento: ${rpcError.message}`);
+        }
+
+        if (progressoGlobal && progressoGlobal.length > 0) {
+          const info = progressoGlobal[0];
+          const podeCertificar = Boolean(info.pode_certificar);
+
+          if (!podeCertificar) {
             const totalAulas = Number(info.total_aulas || 0);
             const aulasConcluidas = Number(info.aulas_concluidas || 0);
-            if (totalAulas > 0 && aulasConcluidas < totalAulas) {
-              throw new Error(`Não é possível concluir o treinamento: ${aulasConcluidas} de ${totalAulas} aulas concluídas.`);
+            const quizObrigatorio = Boolean(info.quiz_obrigatorio);
+            const quizAprovado = Boolean(info.quiz_aprovado);
+
+            if (totalAulas === 0) {
+              throw new Error("Este treinamento não possui aulas cadastradas e não pode ser concluído.");
             }
-          }
-        } catch (err) {
-          if (err && err.message && err.message.includes('Não é possível concluir o treinamento')) {
-            throw err;
+            if (aulasConcluidas < totalAulas) {
+              throw new Error(`Conclua todas as aulas antes de finalizar. (${aulasConcluidas} de ${totalAulas})`);
+            }
+            if (quizObrigatorio && !quizAprovado) {
+              throw new Error("Responda a avaliação com a nota mínima exigida para ser aprovado.");
+            }
+            throw new Error("Requisitos para conclusão do treinamento não foram atendidos.");
           }
         }
       }
