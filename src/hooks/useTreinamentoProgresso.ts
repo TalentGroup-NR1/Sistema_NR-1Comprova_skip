@@ -355,6 +355,30 @@ export function useConcluirTreinamento() {
       termoAceito?: boolean;
       termoIp?: string | null;
     }) => {
+      // REGRA DE OURO (Etapa 9.1 / 9.2):
+      // Se há aulas cadastradas, bloqueia conclusão se houver aulas pendentes
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        try {
+          const { data: progressoGlobal } = await (supabase as any).rpc('get_progresso_treinamento', {
+            _treinamento_id: treinamentoId,
+            _user_id: user.id,
+          });
+          if (progressoGlobal && progressoGlobal.length > 0) {
+            const info = progressoGlobal[0];
+            const totalAulas = Number(info.total_aulas || 0);
+            const aulasConcluidas = Number(info.aulas_concluidas || 0);
+            if (totalAulas > 0 && aulasConcluidas < totalAulas) {
+              throw new Error(`Não é possível concluir o treinamento: ${aulasConcluidas} de ${totalAulas} aulas concluídas.`);
+            }
+          }
+        } catch (err) {
+          if (err && err.message && err.message.includes('Não é possível concluir o treinamento')) {
+            throw err;
+          }
+        }
+      }
+
       const now = new Date().toISOString();
       const updatePayload: Record<string, unknown> = {
         status: 'concluido' as ConclusaoStatus,

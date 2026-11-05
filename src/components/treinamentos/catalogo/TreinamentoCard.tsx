@@ -8,9 +8,10 @@ import { TreinamentoProgresso } from "@/hooks/useTreinamentoProgresso";
 import { useCapaTreinamento, getFallbackGradient } from "./capaUtils";
 
 interface TreinamentoCardProps {
-  treinamento: Treinamento;
+  treinamento: Treinamento & { total_aulas?: number };
   progresso?: TreinamentoProgresso | null;
   className?: string;
+  totalAulas?: number;
 }
 
 function calcPercentual(t: Treinamento, p?: TreinamentoProgresso | null): number {
@@ -23,7 +24,7 @@ function calcPercentual(t: Treinamento, p?: TreinamentoProgresso | null): number
   return p.status === "em_andamento" ? 40 : 0;
 }
 
-export function TreinamentoCard({ treinamento, progresso, className }: TreinamentoCardProps) {
+export function TreinamentoCard({ treinamento, progresso, className, totalAulas }: TreinamentoCardProps) {
   const navigate = useNavigate();
   const capaUrl = useCapaTreinamento(treinamento);
   const percentual = calcPercentual(treinamento, progresso);
@@ -82,6 +83,11 @@ export function TreinamentoCard({ treinamento, progresso, className }: Treinamen
             <Badge variant="destructive" className="text-[10px] uppercase tracking-wide">
               <Lock className="mr-1 h-3 w-3" />
               Obrigatório
+            </Badge>
+          )}
+          {((treinamento as any).total_aulas === 0 || totalAulas === 0) && treinamento.tipo !== "link" && !concluido && (
+            <Badge variant="outline" className="bg-background/90 text-amber-600 border-amber-300 text-[10px] uppercase tracking-wide">
+              Sem conteúdo disponível
             </Badge>
           )}
           {treinamento.tipo === "link" ? (
