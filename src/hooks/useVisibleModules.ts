@@ -60,7 +60,7 @@ export function useVisibleModules() {
  * - Fail-Closed: em loading inicial ou erro de RPC, módulos contratáveis NÃO são liberados por defeito.
  */
 export function useIsModuleVisible(moduleKey?: string) {
-  const { isSuperAdmin } = useAuth();
+  const { isSuperAdmin, isAdminMaster, role } = useAuth();
   const effectiveCompanyId = useEffectiveCompanyId();
   const { data: visibleModules, isLoading, isError, refetch } = useVisibleModules();
 
@@ -76,7 +76,7 @@ export function useIsModuleVisible(moduleKey?: string) {
   const moduloPai = resolverModuloPai(moduleKey);
 
   // 2. Super Admin ou Admin Master da plataforma: visão irrestrita explícita
-  if (isSuperAdmin || role === 'admin_master') {
+  if (isSuperAdmin || isAdminMaster || role === 'admin_master') {
     // Visão global sem empresa selecionada: bypass total
     if (!effectiveCompanyId) {
       return { isVisible: true, isLoading: false, isError: false, isSuperAdminBypass: false, refetch };

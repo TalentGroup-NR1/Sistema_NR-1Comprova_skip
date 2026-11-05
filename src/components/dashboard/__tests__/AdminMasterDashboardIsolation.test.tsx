@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import Dashboard from '@/pages/Index';
 import { DashboardAdmin } from '../DashboardAdmin';
 import { AniversariosHojeAlert } from '../AniversariosHojeAlert';
 import * as AuthHook from '@/hooks/useAuth';
@@ -35,6 +36,14 @@ vi.mock('@/hooks/useAniversariantesGlobais', () => ({
 
 vi.mock('@/hooks/useVisibleModules', () => ({
   useIsModuleVisible: vi.fn(() => ({ isVisible: true })),
+}));
+
+vi.mock('@/components/layout/MainLayout', () => ({
+  MainLayout: ({ children }: any) => <div data-testid="main-layout">{children}</div>,
+}));
+
+vi.mock('@/components/dashboard/AlertaDenunciasCard', () => ({
+  AlertaDenunciasCard: () => null,
 }));
 
 describe('DashboardAdmin — Isolamento de Dados do Admin Master (Zero Leakage)', () => {
@@ -78,7 +87,7 @@ describe('DashboardAdmin — Isolamento de Dados do Admin Master (Zero Leakage)'
 
     render(
       <MemoryRouter>
-        <DashboardAdmin />
+        <Dashboard />
       </MemoryRouter>
     );
 
@@ -173,3 +182,4 @@ describe('DashboardAdmin — Isolamento de Dados do Admin Master (Zero Leakage)'
     expect(screen.queryByText('Mariana Oliveira Lima')).not.toBeInTheDocument();
   });
 });
+

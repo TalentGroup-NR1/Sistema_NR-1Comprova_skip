@@ -64,8 +64,10 @@ export function CompanyProvider({ children }: CompanyProviderProps) {
     // Se for Super Admin / Admin Master, valida contra lista global de empresas
     if (isAdminMaster || isSuperAdmin) {
       if (selectedCompanyId && allCompanies && allCompanies.length > 0) {
-        const exists = allCompanies.some(c => c.id === selectedCompanyId);
-        if (!exists) {
+        const company = allCompanies.find(c => c.id === selectedCompanyId);
+        // Admin Master só pode ter empresa selecionada se for interna / sandbox (is_internal === true).
+        // Se a empresa não existir ou for de cliente (!is_internal), limpa imediatamente.
+        if (!company || company.is_internal !== true) {
           setSelectedCompanyIdState(null);
           localStorage.removeItem(storageKey);
         }
@@ -115,10 +117,20 @@ export function CompanyProvider({ children }: CompanyProviderProps) {
 
   const setSelectedCompanyId = async (id: string | null) => {
     if (id && id !== selectedCompanyId) {
-      // Executa a troca atômica com validação server-side
-      const ok = await switchCompany(id);
-      if (!ok) {
-        return; // Falha na troca: não altera o estado local (fail-closed)
+      if (isAdminMaster || isSuperAdmin) {
+        if (allCompanies && allCompanies.length > 0) {
+          const comp = allCompanies.find(c => c.id === id);
+          if (comp && comp.is_internal !== true) {
+            console.warn('[CompanyContext] Admin Master só pode selecionar empresas internas como sandbox.');
+            return;
+          }
+        }
+      } else {
+        // Executa a troca atômica com validação server-side
+        const ok = await switchCompany(id);
+        if (!ok) {
+          return; // Falha na troca: não altera o estado local (fail-closed)
+        }
       }
     }
 
@@ -132,15 +144,24 @@ export function CompanyProvider({ children }: CompanyProviderProps) {
     }
   };
 
-  const selectedCompanyName = selectedCompanyId 
-    ? (userCompanies.find(u => u.companyId === selectedCompanyId)?.name 
-       ?? allCompanies?.find(c => c.id === selectedCompanyId)?.name 
+  const isMaster = Boolean(isAdminMaster || isSuperAdmin);
+
+  // Para Admin Master, se a empresa selecionada não for verificada como interna (sandbox), expõe null (fail-closed imediato)
+  const safeSelectedCompanyId = isMaster
+    ? (selectedCompanyId && allCompanies && allCompanies.length > 0
+        ? (allCompanies.find(c => c.id === selectedCompanyId && c.is_internal === true)?.id ?? null)
+        : null)
+    : selectedCompanyId;
+
+  const selectedCompanyName = safeSelectedCompanyId 
+    ? (userCompanies.find(u => u.companyId === safeSelectedCompanyId)?.name 
+       ?? allCompanies?.find(c => c.id === safeSelectedCompanyId)?.name 
        ?? null)
     : null;
 
   return (
     <CompanyContext.Provider value={{ 
-      selectedCompanyId, 
+      selectedCompanyId: safeSelectedCompanyId, 
       setSelectedCompanyId, 
       selectedCompanyName,
       hasMultipleCompanies

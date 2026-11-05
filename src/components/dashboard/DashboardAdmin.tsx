@@ -11,22 +11,12 @@ import { useDashboardMetrics } from "@/hooks/useDashboardMetrics";
 import { useAniversariantesGlobais } from "@/hooks/useAniversariantesGlobais";
 import { useIsModuleVisible } from "@/hooks/useVisibleModules";
 import { AdminFichaAlertBanner } from "@/components/dashboard/AdminFichaAlertBanner";
-import { AdminMasterEmptyDashboard } from "@/components/dashboard/AdminMasterEmptyDashboard";
-import { useEffectiveCompanyId } from "@/hooks/useEffectiveCompanyId";
-import { useAuth } from "@/hooks/useAuth";
+import { SectionErrorBoundary } from "@/components/dashboard/SectionErrorBoundary";
 import { Users, UserPlus, UserMinus } from "lucide-react";
 
 const MES_NOMES = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 
 export function DashboardAdmin() {
-  const effectiveCompanyId = useEffectiveCompanyId();
-  const { role } = useAuth();
-  const isAdminMaster = role === 'admin_master';
-
-  // Admin Master sem empresa selecionada: zero dados de clientes (estado vazio orientativo)
-  if (isAdminMaster && !effectiveCompanyId) {
-    return <AdminMasterEmptyDashboard />;
-  }
 
   const {
     totalAtivos,
@@ -70,48 +60,58 @@ export function DashboardAdmin() {
 
   return (
     <>
-      <AdminFichaAlertBanner />
-      {verDiario && <DiariosBordoHojeAlert />}
-      <AniversariosHojeAlert
-        aniversariantes={aniversariantes}
-        aniversariosEmpresa={aniversariosEmpresa}
-        isLoading={isLoading}
-      />
+      <SectionErrorBoundary title="Alertas de Ficha">
+        <AdminFichaAlertBanner />
+      </SectionErrorBoundary>
+
+      <SectionErrorBoundary title="Alertas Diários">
+        {verDiario && <DiariosBordoHojeAlert />}
+        <AniversariosHojeAlert
+          aniversariantes={aniversariantes}
+          aniversariosEmpresa={aniversariosEmpresa}
+          isLoading={isLoading}
+        />
+      </SectionErrorBoundary>
+
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mb-6">
-        <StatsCard
-          title="Total de Ativos"
-          value={isLoading ? "..." : totalAtivos}
-          icon={<Users className="h-6 w-6" />}
-          variant="primary"
-          delay={0}
-        />
-        <StatsCard
-          title="Contratados do Mês"
-          value={isLoading ? "..." : contratadosMes}
-          icon={<UserPlus className="h-6 w-6" />}
-          variant="success"
-          delay={100}
-        />
-        <StatsCard
-          title="Demitidos do Mês"
-          value={isLoading ? "..." : demitidosMes}
-          icon={<UserMinus className="h-6 w-6" />}
-          variant="warning"
-          delay={200}
-        />
-      </div>
+      <SectionErrorBoundary title="Métricas Principais">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mb-6">
+          <StatsCard
+            title="Total de Ativos"
+            value={isLoading ? "..." : totalAtivos}
+            icon={<Users className="h-6 w-6" />}
+            variant="primary"
+            delay={0}
+          />
+          <StatsCard
+            title="Contratados do Mês"
+            value={isLoading ? "..." : contratadosMes}
+            icon={<UserPlus className="h-6 w-6" />}
+            variant="success"
+            delay={100}
+          />
+          <StatsCard
+            title="Demitidos do Mês"
+            value={isLoading ? "..." : demitidosMes}
+            icon={<UserMinus className="h-6 w-6" />}
+            variant="warning"
+            delay={200}
+          />
+        </div>
+      </SectionErrorBoundary>
 
       {/* Company Breakdown - Only for admin_master with a specific sandbox company selected */}
       {showCompanyBreakdown && (
-        <div className="mb-6">
-          <FuncionariosPorEmpresaCard
-            empresas={funcionariosPorEmpresa}
-            isLoading={isLoading}
-            delay={350}
-            className=""
-          />
-        </div>
+        <SectionErrorBoundary title="Distribuição por Empresa">
+          <div className="mb-6">
+            <FuncionariosPorEmpresaCard
+              empresas={funcionariosPorEmpresa}
+              isLoading={isLoading}
+              delay={350}
+              className=""
+            />
+          </div>
+        </SectionErrorBoundary>
       )}
 
       {/* Main Content Grid */}
@@ -119,34 +119,44 @@ export function DashboardAdmin() {
         {/* Left Column - 2/3 */}
         <div className="lg:col-span-2 space-y-6">
           {verColaboradores && (
-            <RecentEmployees 
-              colaboradores={recentes} 
-              isLoading={isLoading} 
-              delay={400}
-            />
+            <SectionErrorBoundary title="Colaboradores Recentes">
+              <RecentEmployees 
+                colaboradores={recentes} 
+                isLoading={isLoading} 
+                delay={400}
+              />
+            </SectionErrorBoundary>
           )}
           {verDiario && (
-            <DiarioBordoReminders 
-              cycles={diarioBordoReminders} 
-              isLoading={isLoading}
-              delay={500}
-            />
+            <SectionErrorBoundary title="Lembretes do Diário">
+              <DiarioBordoReminders 
+                cycles={diarioBordoReminders} 
+                isLoading={isLoading}
+                delay={500}
+              />
+            </SectionErrorBoundary>
           )}
         </div>
 
         {/* Right Column - 1/3 */}
         <div className="space-y-6">
-          <PromocoesRecentesCard delay={450} />
-          <BirthdaysList 
-            aniversariantes={aniversariantesGlobais?.nascimentos ?? []} 
-            isLoading={loadingAniv}
-            delay={500}
-          />
-          <WorkAnniversaries 
-            aniversarios={aniversariantesGlobais?.empresa ?? []} 
-            isLoading={loadingAniv}
-            delay={600}
-          />
+          <SectionErrorBoundary title="Promoções Recentes">
+            <PromocoesRecentesCard delay={450} />
+          </SectionErrorBoundary>
+          <SectionErrorBoundary title="Aniversariantes">
+            <BirthdaysList 
+              aniversariantes={aniversariantesGlobais?.nascimentos ?? []} 
+              isLoading={loadingAniv}
+              delay={500}
+            />
+            <div className="mt-6">
+              <WorkAnniversaries 
+                aniversarios={aniversariantesGlobais?.empresa ?? []} 
+                isLoading={loadingAniv}
+                delay={600}
+              />
+            </div>
+          </SectionErrorBoundary>
         </div>
       </div>
     </>

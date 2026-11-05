@@ -30,8 +30,9 @@ describe('CompanyContext - Isolamento de Tenant e Chaveamento de LocalStorage', 
 
     vi.mocked(CompaniesHook.useCompanies).mockReturnValue({
       data: [
-        { id: 'comp-a', name: 'Empresa A' },
-        { id: 'comp-b', name: 'Empresa B' },
+        { id: 'comp-a', name: 'Empresa A (Sandbox)', is_internal: true },
+        { id: 'comp-b', name: 'Empresa B (Sandbox)', is_internal: true },
+        { id: 'comp-cliente', name: 'Empresa Cliente', is_internal: false },
       ],
     } as any);
 
@@ -126,5 +127,55 @@ describe('CompanyContext - Isolamento de Tenant e Chaveamento de LocalStorage', 
 
     // Chave do Usuário A permanece intacta e isolada
     expect(localStorage.getItem('tgmais_selected_company_user-a')).toBe('comp-a');
+  });
+
+  it('4. Admin Master com empresa de cliente no localStorage: descarta a chave e seta null', () => {
+    localStorage.setItem('tgmais_selected_company_admin-1', 'comp-cliente');
+
+    vi.mocked(AuthHook.useAuth).mockReturnValue({
+      user: { id: 'admin-1' },
+      isAdminMaster: true,
+      isSuperAdmin: false,
+      companyId: null,
+    } as any);
+
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <CompanyProvider>{children}</CompanyProvider>
+    );
+
+    const { result } = renderHook(() => useCompanyContext(), { wrapper });
+
+    expect(result.current.selectedCompanyId).toBeNull();
+    expect(localStorage.getItem('tgmais_selected_company_admin-1')).toBeNull();
+  });
+
+  it('5. Admin Master não consegue selecionar empresa de cliente (apenas sandbox interna)', async () => {
+    vi.mocked(AuthHook.useAuth).mockReturnValue({
+      user: { id: 'admin-1' },
+      isAdminMaster: true,
+      isSuperAdmin: false,
+      companyId: null,
+    } as any);
+
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <CompanyProvider>{children}</CompanyProvider>
+    );
+
+    const { result } = renderHook(() => useCompanyContext(), { wrapper });
+
+    await act(async () => {
+      await result.current.setSelectedCompanyId('comp-cliente');
+    });
+
+    expect(result.current.selectedCompanyId).toBeNull();
+    expect(localStorage.getItem('tgmais_selected_company_admin-1')).toBeNull();
+
+    // Selecionando empresa interna (sandbox) funciona
+    await act(async () => {
+      await result.current.setSelectedCompanyId('comp-a');
+    });
+
+    expect(result.current.selectedCompanyId).toBe('comp-a');
+    expect(localStorage.getItem('tgmais_selected_company_admin-1')).toBe('comp-a');
   });
 });

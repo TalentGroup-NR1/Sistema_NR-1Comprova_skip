@@ -114,8 +114,13 @@ function useProvideAuth(): AuthContextValue {
         
       let resolvedCompanyId = profileData?.company_id ?? null;
 
-      // Se profileData não tiver company_id, busca via RPC get_my_company_id (que avalia claims e vínculo por e-mail)
-      if (!resolvedCompanyId) {
+      // Se profileData não tiver company_id, busca via RPC get_my_company_id (que avalia claims e vínculo por e-mail).
+      // Super Admin / Admin Master opera no modo plataforma (isento de tenant default), logo não deve receber fallback.
+      const isPlatformMaster =
+        roleData === 'admin_master' ||
+        roleData === 'super_admin' ||
+        Boolean(allRoles?.some(r => r.role === 'admin_master' || r.role === 'super_admin'));
+      if (!resolvedCompanyId && !isPlatformMaster) {
         try {
           const { data: rpcCid } = await supabase.rpc('get_my_company_id' as never);
           if (rpcCid) {
@@ -253,7 +258,9 @@ function useProvideAuth(): AuthContextValue {
   const signOut = async () => {
     if (user?.id) {
       localStorage.removeItem(`nr1_branding_${user.id}`);
+      localStorage.removeItem(`tgmais_selected_company_${user.id}`);
     }
+    localStorage.removeItem('tgmais_selected_company');
     const { error } = await supabase.auth.signOut();
     return { error };
   };

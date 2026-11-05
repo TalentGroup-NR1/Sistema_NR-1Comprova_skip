@@ -11,22 +11,24 @@ export function useEffectiveCompanyId() {
   const { isAdminMaster, isSuperAdmin, role, roles, companyId } = useAuth();
   const { selectedCompanyId } = useCompanyContext();
   const { data: colaborador } = useMyColaborador();
-  
-  // 1. Multiempresa / Sandbox: se há uma empresa explicitamente selecionada no contexto de sessão
-  if (selectedCompanyId) {
-    return selectedCompanyId;
-  }
 
-  // 0. Super Admin / Admin Master sem empresa selecionada: opera no "Modo Plataforma" (null)
-  if (
+  const isMaster =
     isAdminMaster ||
     isSuperAdmin ||
     role === 'admin_master' ||
     role === 'super_admin' ||
     roles?.includes('super_admin') ||
-    roles?.includes('admin_master')
-  ) {
+    roles?.includes('admin_master');
+
+  // 0. Super Admin / Admin Master:
+  // Opera estritamente no "Modo Plataforma" (null), garantindo isolamento total de dados e branding padrão.
+  if (isMaster) {
     return null;
+  }
+
+  // 1. Multiempresa / Sandbox: se há uma empresa explicitamente selecionada no contexto de sessão
+  if (selectedCompanyId) {
+    return selectedCompanyId;
   }
 
   // 2. Profile company_id exists (empresa default ou ativa no banco)
