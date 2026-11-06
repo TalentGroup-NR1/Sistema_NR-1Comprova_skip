@@ -1,14 +1,17 @@
 import { forwardRef } from "react";
 import { QRCodeSVG } from "qrcode.react";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import { 
+  formatarDataConclusao, 
+  formatarDataEmissaoCurta,
+  NOME_PLATAFORMA 
+} from "@/lib/certificadoBranding";
 
 interface CertificateTemplateProps {
   colaboradorNome: string;
   treinamentoTitulo: string;
   cargaHoraria: number;
-  dataConclusao: Date;
-  dataEmissao: Date;
+  dataConclusao: string | Date;
+  dataEmissao: string | Date;
   certificateCode: string;
   validationUrl: string;
   companyName?: string;
@@ -24,9 +27,12 @@ export const CertificateTemplate = forwardRef<HTMLDivElement, CertificateTemplat
     dataEmissao,
     certificateCode,
     validationUrl,
-    companyName = "Empresa",
+    companyName = NOME_PLATAFORMA,
     companyLogoUrl,
   }, ref) => {
+    const dataConclusaoTexto = formatarDataConclusao(dataConclusao);
+    const dataEmissaoTexto = formatarDataEmissaoCurta(dataEmissao);
+
     return (
       <div 
         ref={ref}
@@ -92,7 +98,7 @@ export const CertificateTemplate = forwardRef<HTMLDivElement, CertificateTemplat
                 marginBottom: "8mm",
               }}
             >
-              {/* Logo da Empresa */}
+              {/* Logo da Empresa ou da Plataforma */}
               {companyLogoUrl ? (
                 <img
                   src={companyLogoUrl}
@@ -177,7 +183,7 @@ export const CertificateTemplate = forwardRef<HTMLDivElement, CertificateTemplat
               )}
               , realizado em{" "}
               <strong>
-                {format(dataConclusao, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+                {dataConclusaoTexto}
               </strong>
               .
             </p>
@@ -222,7 +228,7 @@ export const CertificateTemplate = forwardRef<HTMLDivElement, CertificateTemplat
             {/* Informações de emissão */}
             <div style={{ textAlign: "center", flex: 1 }}>
               <p style={{ fontSize: "10pt", color: "#4a5568", margin: "0 0 2mm 0" }}>
-                Data de Emissão: {format(dataEmissao, "dd/MM/yyyy", { locale: ptBR })}
+                Data de Emissão: {dataEmissaoTexto}
               </p>
               <p style={{ fontSize: "9pt", color: "#718096", margin: "0" }}>
                 Código: <strong>{certificateCode}</strong>

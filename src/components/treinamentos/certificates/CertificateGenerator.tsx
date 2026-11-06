@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { Award, Download, Loader2, Eye, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,6 +19,11 @@ import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import { getShareBaseUrl } from '@/lib/appUrl';
 import { isPerfilGestaoEmpresa } from "@/lib/perfis";
+import { 
+  resolverLogoCertificado, 
+  carregarLogoBase64, 
+  extrairDataConclusaoCanonica,
+} from "@/lib/certificadoBranding";
 
 interface CertificateGeneratorProps {
   treinamento: Treinamento;
@@ -47,7 +52,11 @@ export function CertificateGenerator({
   const [previewOpen, setPreviewOpen] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [downloading, setDownloading] = useState(false);
-  const templateRef = useRef<HTMLDivElement>(null);
+  const [logoBase64, setLogoBase64] = useState<string | null>(null);
+
+  // AJUSTE 1: refs 100% separadas - previewRef só no Dialog, printRef só no container off-screen
+  const previewRef = useRef<HTMLDivElement>(null);
+  const printRef = useRef<HTMLDivElement>(null);
 
   const isAdmin = role === "admin_master" || isPerfilGestaoEmpresa(role);
 
@@ -65,52 +74,101 @@ export function CertificateGenerator({
   const emitCertificate = useEmitCertificate();
   const saveCertificatePDF = useSaveCertificatePDF();
 
-  // Dados para o certificado
+  // AJUSTE 3: Resolver branding (logo + nome de exibição) por origem do treinamento
+  const branding = resolverLogoCertificado(treinamento, {
+    name: companyName,
+    logo_url: companyLogoUrl,
+  });
+
+  // AJUSTE 4: Pré-carregar logo em base64 para evitar canvas tainted no html2canvas
+  useEffect(() => {
+    let cancelled = false;
+    carregarLogoBase64(branding.logoUrl).then((b64) => {
+      if (!cancelled) {
+        setLogoBase64(b64);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [branding.logoUrl]);
+
+  // AJUSTE 2: Ordem canônica da data: 1) existingCertificate, 2) progresso, 3) new Date()
+  const dataConclusao = extrairDataConclusaoCanonica(existingCertificate, progresso);
+  const dataEmissao = existingCertificate?.issue_date || new Date().toISOString();
+
+  // Dados para o template do certificado
   const certificateData = {
     colaboradorNome,
     treinamentoTitulo: treinamento?.titulo || "",
     cargaHoraria: treinamento?.duracao_estimada_minutos 
       ? Math.round(treinamento.duracao_estimada_minutos / 60) 
       : 0,
-    dataConclusao: new Date(progresso?.concluido_em || new Date()),
-    dataEmissao: existingCertificate 
-      ? new Date(existingCertificate.issue_date) 
-      : new Date(),
+    dataConclusao,
+    dataEmissao,
     certificateCode: existingCertificate?.certificate_code || "PREVIEW",
     validationUrl: existingCertificate 
       ? `${getShareBaseUrl()}/validar-certificado?code=${existingCertificate.certificate_code}`
       : `${getShareBaseUrl()}/validar-certificado`,
-    companyName,
-    companyLogoUrl,
+    companyName: branding.nomeExibicao,
+    companyLogoUrl: branding.logoUrl,
   };
 
   // Função para gerar o PDF
   const generatePDF = useCallback(async (): Promise<Blob> => {
-    if (!templateRef.current) {
+    const el = printRef.current || (document.getElementById("certificate-print-template") as HTMLDivElement | null);
+    if (!el) {
       throw new Error("Template não encontrado");
     }
 
-    const canvas = await html2canvas(templateRef.current, {
-      scale: 2,
-      useCORS: true,
-      allowTaint: true,
-      backgroundColor: "#ffffff",
-    });
+    try {
+      // AJUSTE 4: Converter logo para base64 e sincronizar com a tag <img> do template de impressão
+      const b64 = logoBase64 || await carregarLogoBase64(branding.logoUrl);
+      const imgEl = el.querySelector('img[alt^="Logo"]') as HTMLImageElement | null;
+      if (imgEl && b64 && imgEl.src !== b64) {
+        imgEl.src = b64;
+        await new Promise((resolve) => {
+          if (imgEl.complete) {
+            resolve(null);
+            return;
+          }
+          const timer = setTimeout(() => resolve(null), 100);
+          imgEl.onload = () => {
+            clearTimeout(timer);
+            resolve(null);
+          };
+          imgEl.onerror = () => {
+            clearTimeout(timer);
+            resolve(null);
+          };
+        });
+      }
 
-    const pdf = new jsPDF({
-      orientation: "landscape",
-      unit: "mm",
-      format: "a4",
-    });
+      const canvas = await html2canvas(el, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: "#ffffff",
+      });
 
-    const imgData = canvas.toDataURL("image/png", 1.0);
-    const pdfWidth = pdf.internal.pageSize.getWidth();
-    const pdfHeight = pdf.internal.pageSize.getHeight();
+      const pdf = new jsPDF({
+        orientation: "landscape",
+        unit: "mm",
+        format: "a4",
+      });
 
-    pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+      const imgData = canvas.toDataURL("image/png", 1.0);
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
 
-    return pdf.output("blob");
-  }, []);
+      pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+
+      return pdf.output("blob");
+    } catch (error: any) {
+      // AJUSTE 5: Log seguro sem PII (apenas step e mensagem do erro)
+      console.error({ step: "generate_pdf", message: error?.message || "Erro ao gerar PDF" });
+      throw error;
+    }
+  }, [branding.logoUrl, logoBase64]);
 
   // Handler para gerar certificado
   const handleGenerateCertificate = async () => {
@@ -121,7 +179,8 @@ export function CertificateGenerator({
 
     setGenerating(true);
     try {
-      // Primeiro, emitir o certificado no banco via RPC segura
+      const dataConclusaoEmissao = progresso?.concluido_em || new Date().toISOString();
+
       const certificate = await emitCertificate.mutateAsync({
         treinamentoId: treinamento.id,
         companyId,
@@ -132,28 +191,24 @@ export function CertificateGenerator({
         cargaHoraria: treinamento.duracao_estimada_minutos 
           ? Math.round(treinamento.duracao_estimada_minutos / 60) 
           : 0,
-        dataConclusao: progresso?.concluido_em || new Date().toISOString(),
+        dataConclusao: dataConclusaoEmissao,
         issuedByType: isAdmin ? "admin" : "colaborador",
       });
 
-      // Atualizar dados do certificado para o template
       certificateData.certificateCode = certificate.certificate_code;
       certificateData.validationUrl = `${getShareBaseUrl()}/validar-certificado?code=${certificate.certificate_code}`;
-      certificateData.dataEmissao = new Date(certificate.issue_date);
+      certificateData.dataEmissao = certificate.issue_date;
+      certificateData.dataConclusao = certificate.data_conclusao || dataConclusaoEmissao;
 
-      // Aguardar um momento para o DOM atualizar
       await new Promise(resolve => setTimeout(resolve, 100));
 
-      // Gerar PDF
       const pdfBlob = await generatePDF();
 
-      // Salvar no storage
       await saveCertificatePDF.mutateAsync({
         certificateId: certificate.id,
         pdfBlob,
       });
 
-      // Download automático
       const url = URL.createObjectURL(pdfBlob);
       const link = document.createElement("a");
       link.href = url;
@@ -163,7 +218,8 @@ export function CertificateGenerator({
 
       toast.success("Certificado gerado com sucesso!");
     } catch (error: any) {
-      console.error("Erro ao gerar certificado:", error);
+      // AJUSTE 5: Log seguro sem PII
+      console.error({ step: "generate_pdf", message: error?.message || "Erro ao gerar certificado" });
       const msg = error?.message || "Erro ao gerar certificado";
       toast.error(msg);
     } finally {
@@ -183,8 +239,9 @@ export function CertificateGenerator({
         link.download = `certificado_${treinamento.titulo.replace(/\s+/g, '_')}.pdf`;
         link.click();
         URL.revokeObjectURL(url);
-      } catch (error) {
-        console.error("Erro ao gerar PDF:", error);
+      } catch (error: any) {
+        // AJUSTE 5: Log seguro sem PII
+        console.error({ step: "generate_pdf", message: error?.message || "Erro ao baixar certificado" });
         toast.error("Erro ao baixar certificado");
       } finally {
         setDownloading(false);
@@ -200,8 +257,9 @@ export function CertificateGenerator({
       } else {
         throw new Error("URL não disponível");
       }
-    } catch (error) {
-      console.error("Erro ao baixar certificado:", error);
+    } catch (error: any) {
+      // AJUSTE 5: Log seguro sem PII
+      console.error({ step: "generate_pdf", message: error?.message || "Erro ao baixar certificado" });
       toast.error("Erro ao baixar certificado");
     } finally {
       setDownloading(false);
@@ -217,85 +275,8 @@ export function CertificateGenerator({
     return null;
   }
 
-  // 1. Caso certificado já exista: exibe botões de Visualizar e Baixar (Passo 5.1)
-  if (existingCertificate) {
-    return (
-      <>
-        <div className="flex flex-wrap gap-2">
-          <Button 
-            variant="outline" 
-            onClick={() => setPreviewOpen(true)}
-          >
-            <Eye className="h-4 w-4 mr-2" />
-            Visualizar Certificado
-          </Button>
-          <Button 
-            onClick={handleDownloadCertificate}
-            disabled={downloading}
-          >
-            {downloading ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            ) : (
-              <Download className="h-4 w-4 mr-2" />
-            )}
-            Baixar Certificado
-          </Button>
-        </div>
-
-        {/* Dialog de Preview */}
-        <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
-          <DialogContent className="max-w-[95vw] max-h-[95vh] overflow-auto p-0">
-            <DialogHeader className="p-6 pb-0">
-              <DialogTitle>Preview do Certificado</DialogTitle>
-              <DialogDescription>
-                Visualização do certificado de conclusão do treinamento
-              </DialogDescription>
-            </DialogHeader>
-            
-            <div className="p-6 overflow-auto">
-              <div className="transform scale-[0.4] origin-top-left" style={{ width: "297mm", height: "210mm" }}>
-                <CertificateTemplate
-                  ref={templateRef}
-                  {...certificateData}
-                />
-              </div>
-            </div>
-
-            <div className="p-6 pt-0 flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setPreviewOpen(false)}>
-                Fechar
-              </Button>
-              <Button onClick={handleDownloadCertificate} disabled={downloading}>
-                {downloading ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <Download className="h-4 w-4 mr-2" />
-                )}
-                Baixar PDF
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-
-        {/* Template oculto para geração do PDF */}
-        <div
-          style={{
-            position: "absolute",
-            left: "-9999px",
-            top: "-9999px",
-          }}
-        >
-          <CertificateTemplate
-            ref={templateRef}
-            {...certificateData}
-          />
-        </div>
-      </>
-    );
-  }
-
-  // 2. Caso pode_certificar === false: exibe card informativo e NÃO renderiza botão de emitir (Passo 4.2 / 4.3)
-  if (!podeCertificar) {
+  // Se não pode certificar e não tem certificado prévio emitido, exibe card bloqueado (Etapa 9.5)
+  if (!podeCertificar && !existingCertificate) {
     const totalAulas = Number(global?.total_aulas ?? 0);
     const aulasConcluidas = Number(global?.aulas_concluidas ?? 0);
     const quizObrigatorio = Boolean(global?.quiz_obrigatorio);
@@ -321,25 +302,48 @@ export function CertificateGenerator({
     );
   }
 
-  // 3. Caso pode_certificar === true: renderiza o botão de Gerar Certificado
   return (
     <>
+      {/* Botões de Ação */}
       <div className="flex flex-wrap gap-2">
-        <Button 
-          onClick={handleGenerateCertificate}
-          disabled={generating}
-          className="bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white"
-        >
-          {generating ? (
-            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-          ) : (
-            <Award className="h-4 w-4 mr-2" />
-          )}
-          {generating ? "Gerando..." : "Gerar Certificado"}
-        </Button>
+        {existingCertificate ? (
+          <>
+            <Button 
+              variant="outline" 
+              onClick={() => setPreviewOpen(true)}
+            >
+              <Eye className="h-4 w-4 mr-2" />
+              Visualizar Certificado
+            </Button>
+            <Button 
+              onClick={handleDownloadCertificate}
+              disabled={downloading}
+            >
+              {downloading ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Download className="h-4 w-4 mr-2" />
+              )}
+              Baixar Certificado
+            </Button>
+          </>
+        ) : (
+          <Button 
+            onClick={handleGenerateCertificate}
+            disabled={generating}
+            className="bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white"
+          >
+            {generating ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Award className="h-4 w-4 mr-2" />
+            )}
+            {generating ? "Gerando..." : "Gerar Certificado"}
+          </Button>
+        )}
       </div>
 
-      {/* Dialog de Preview */}
+      {/* Dialog de Preview (usa previewRef exclusivamente) */}
       <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
         <DialogContent className="max-w-[95vw] max-h-[95vh] overflow-auto p-0">
           <DialogHeader className="p-6 pb-0">
@@ -352,7 +356,7 @@ export function CertificateGenerator({
           <div className="p-6 overflow-auto">
             <div className="transform scale-[0.4] origin-top-left" style={{ width: "297mm", height: "210mm" }}>
               <CertificateTemplate
-                ref={templateRef}
+                ref={previewRef}
                 {...certificateData}
               />
             </div>
@@ -374,17 +378,24 @@ export function CertificateGenerator({
         </DialogContent>
       </Dialog>
 
-      {/* Template oculto para geração do PDF */}
+      {/* Container de Impressão FORA do Dialog, SEMPRE montado (usa printRef exclusivamente) */}
       <div
+        id="certificate-print-template"
+        aria-hidden="true"
         style={{
-          position: "absolute",
+          position: "fixed",
           left: "-9999px",
           top: "-9999px",
+          width: "297mm",
+          height: "210mm",
+          zIndex: -1,
+          pointerEvents: "none",
         }}
       >
         <CertificateTemplate
-          ref={templateRef}
+          ref={printRef}
           {...certificateData}
+          companyLogoUrl={logoBase64 || branding.logoUrl}
         />
       </div>
     </>
