@@ -345,7 +345,19 @@ export default function CatalogoGlobalTreinamentos() {
                 {filteredTreinamentos.map((curso) => (
                   <TableRow key={curso.id}>
                     <TableCell>
-                      <div className="font-medium text-foreground">{curso.titulo}</div>
+                      <div className="font-medium text-foreground flex items-center gap-2">
+                        <span>{curso.titulo}</span>
+                        {(curso.total_aulas === 0 || curso.total_modulos === 0) && (
+                          <Badge
+                            variant="outline"
+                            onClick={() => setConfigTreinamento(curso)}
+                            className="text-[10px] text-amber-700 bg-amber-50 border-amber-300 dark:bg-amber-950 dark:text-amber-200 cursor-pointer hover:bg-amber-100"
+                            title="Sem conteúdo estruturado. Clique para gerenciar currículo."
+                          >
+                            Sem conteúdo estruturado
+                          </Badge>
+                        )}
+                      </div>
                       {curso.descricao && (
                         <p className="text-xs text-muted-foreground line-clamp-1 max-w-sm mt-0.5">
                           {curso.descricao}
@@ -487,6 +499,9 @@ export default function CatalogoGlobalTreinamentos() {
         open={formDialogOpen}
         onOpenChange={setFormDialogOpen}
         treinamentoToEdit={editingTreinamento}
+        onSuccessCreated={(created) => {
+          setConfigTreinamento(created);
+        }}
       />
 
       <CategoriasPlataformaManager

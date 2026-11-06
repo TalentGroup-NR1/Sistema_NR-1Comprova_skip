@@ -222,14 +222,48 @@ export function useCreateTreinamento() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: Omit<Treinamento, 'id' | 'created_at' | 'updated_at' | 'categoria'>) => {
-      const { data: result, error } = await supabase
-        .from("treinamentos")
-        .insert(data)
-        .select()
-        .single();
+    mutationFn: async (data: Omit<Treinamento, 'id' | 'created_at' | 'updated_at' | 'categoria'> & { id?: string }) => {
+      const isLink = data.tipo === "link";
+      const { data: rpcRes, error } = await supabase.rpc("criar_treinamento_com_conteudo_inicial", {
+        _titulo: data.titulo.trim(),
+        _tipo: data.tipo,
+        _categoria_id: data.categoria_id || null,
+        _company_id: data.company_id || null,
+        _descricao: data.descricao?.trim() || null,
+        _url_conteudo: data.url_conteudo || null,
+        _nome_arquivo: data.nome_arquivo || null,
+        _duracao_estimada_minutos: data.duracao_estimada_minutos || null,
+        _tempo_minimo_minutos: data.tempo_minimo_minutos || null,
+        _nivel: data.nivel || null,
+        _idioma: data.idioma || null,
+        _tags: data.tags || null,
+        _obrigatorio: data.obrigatorio ?? false,
+        _gera_certificado: isLink ? false : (data.gera_certificado ?? true),
+        _nota_minima: data.nota_minima ?? 7.0,
+        _tentativas_maximas: data.tentativas_maximas ?? 3,
+        _quiz_obrigatorio: data.quiz_obrigatorio ?? false,
+        _termo_ciencia_obrigatorio: data.termo_ciencia_obrigatorio ?? false,
+        _texto_termo_ciencia: data.texto_termo_ciencia || null,
+        _target_company_ids: data.target_company_ids || null,
+        _target_contract_types: data.target_contract_types || null,
+        _capa_path: data.capa_path || null,
+        _destaque: data.destaque ?? false,
+        _origem: data.origem || 'proprio',
+        _validade_meses: data.validade_meses || null,
+        _id: data.id || null,
+      });
+
       if (error) throw error;
-      return result;
+
+      const createdId = (rpcRes as any)?.treinamento_id;
+      const { data: result, error: fetchErr } = await supabase
+        .from("treinamentos")
+        .select(`*, categoria:categorias_treinamento(id, nome, cor)`)
+        .eq("id", createdId)
+        .single();
+
+      if (fetchErr) throw fetchErr;
+      return { ...result, _criacao_inicial: rpcRes };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["treinamentos"] });

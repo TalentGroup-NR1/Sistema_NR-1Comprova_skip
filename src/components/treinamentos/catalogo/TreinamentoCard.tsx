@@ -86,7 +86,15 @@ export function TreinamentoCard({ treinamento, progresso, className, totalAulas 
             </Badge>
           )}
           {((treinamento as any).total_aulas === 0 || totalAulas === 0) && treinamento.tipo !== "link" && !concluido && (
-            <Badge variant="outline" className="bg-background/90 text-amber-600 border-amber-300 text-[10px] uppercase tracking-wide">
+            <Badge
+              variant="outline"
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate(`/treinamentos?gerenciar=${treinamento.id}`);
+              }}
+              className="bg-background/90 text-amber-600 border-amber-300 text-[10px] uppercase tracking-wide cursor-pointer hover:bg-amber-100/80 transition-colors"
+              title="Clique para Gerenciar Currículo"
+            >
               Sem conteúdo disponível
             </Badge>
           )}

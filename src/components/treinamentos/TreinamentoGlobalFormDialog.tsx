@@ -33,7 +33,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, Globe, ShieldAlert, Award } from "lucide-react";
+import { Loader2, Globe, ShieldAlert, Award, Info } from "lucide-react";
 import { FileUploadArea } from "./FileUploadArea";
 import { useUploadTreinamentoFile, UploadableFileType } from "@/hooks/useTreinamentoStorage";
 import {
@@ -63,12 +63,14 @@ interface TreinamentoGlobalFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   treinamentoToEdit?: TreinamentoGlobal | null;
+  onSuccessCreated?: (created: TreinamentoGlobal) => void;
 }
 
 export function TreinamentoGlobalFormDialog({
   open,
   onOpenChange,
   treinamentoToEdit,
+  onSuccessCreated,
 }: TreinamentoGlobalFormDialogProps) {
   const { data: categoriasPlataforma } = useCategoriasPlataforma();
   const createTreinamento = useCreateTreinamentoGlobal();
@@ -182,12 +184,31 @@ export function TreinamentoGlobalFormDialog({
           status: data.status,
         });
       } else {
-        // Modo Criação
+        // Modo Criação (Passo 2: upload antes para inclusão atômica na RPC)
+        let uploadedFilePath: string | null = null;
+        let uploadedFileName: string | null = null;
+        const generatedId = crypto.randomUUID();
+
+        if (isFileBased && selectedFile) {
+          const uploadResult = await uploadFile.mutateAsync({
+            treinamentoId: generatedId,
+            file: selectedFile,
+            fileType: data.tipo as UploadableFileType,
+          });
+          uploadedFilePath = uploadResult.filePath;
+          uploadedFileName = uploadResult.fileName;
+        }
+
+        const finalUrl = isLink ? data.url_conteudo : uploadedFilePath;
+        const finalNome = isLink ? null : uploadedFileName;
+
         const novo = await createTreinamento.mutateAsync({
+          id: generatedId,
           titulo: data.titulo,
           descricao: data.descricao,
           tipo: data.tipo,
-          url_conteudo: isLink ? data.url_conteudo : null,
+          url_conteudo: finalUrl || null,
+          nome_arquivo: finalNome || null,
           categoria_id: data.categoria_id || null,
           duracao_estimada_minutos: data.duracao_estimada_minutos || null,
           nivel: data.nivel || null,
@@ -196,18 +217,8 @@ export function TreinamentoGlobalFormDialog({
           status: data.status,
         });
 
-        if (isFileBased && selectedFile && novo?.id) {
-          const uploadResult = await uploadFile.mutateAsync({
-            treinamentoId: novo.id,
-            file: selectedFile,
-            fileType: data.tipo as UploadableFileType,
-          });
-
-          await updateTreinamento.mutateAsync({
-            id: novo.id,
-            url_conteudo: uploadResult.filePath,
-            nome_arquivo: uploadResult.fileName,
-          });
+        if (onSuccessCreated && novo) {
+          onSuccessCreated(novo as any);
         }
       }
 
@@ -346,6 +357,16 @@ export function TreinamentoGlobalFormDialog({
                   onFileSelect={setSelectedFile}
                   existingFileName={treinamentoToEdit?.nome_arquivo || undefined}
                 />
+              </div>
+            )}
+
+            {/* Passo 4.1: Orientação após upload de arquivo ou preenchimento de link */}
+            {(selectedFile || (isLink && form.watch("url_conteudo"))) && (
+              <div className="rounded-lg bg-sky-50 dark:bg-sky-950/40 p-3 text-xs text-sky-800 dark:text-sky-200 border border-sky-200 dark:border-sky-800 flex items-start gap-2">
+                <Info className="h-4 w-4 shrink-0 mt-0.5 text-sky-600 dark:text-sky-400" />
+                <span>
+                  O arquivo será adicionado automaticamente como a primeira aula. Você pode criar módulos e aulas adicionais em <strong>Gerenciar → Currículo</strong>, e o quiz em <strong>Gerenciar → Quiz</strong>.
+                </span>
               </div>
             )}
 

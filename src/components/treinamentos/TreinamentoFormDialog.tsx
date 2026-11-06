@@ -38,7 +38,7 @@ import { useEffectiveCompanyId } from "@/hooks/useEffectiveCompanyId";
 import { useCompanies } from "@/hooks/useCompanies";
 import { useAuth } from "@/hooks/useAuth";
 import { FileUploadArea } from "./FileUploadArea";
-import { Loader2 } from "lucide-react";
+import { Loader2, Info } from "lucide-react";
 
 type TipoTreinamento = "link" | "pdf" | "ppt" | "video";
 
@@ -112,16 +112,34 @@ export function TreinamentoFormDialog({ open, onOpenChange }: TreinamentoFormDia
     setIsSubmitting(true);
 
     try {
+      let uploadedFilePath: string | null = null;
+      let uploadedFileName: string | null = null;
+      const generatedId = crypto.randomUUID();
+
+      if (isFileType && selectedFile) {
+        const uploadResult = await uploadFile.mutateAsync({
+          treinamentoId: generatedId,
+          file: selectedFile,
+          fileType: data.tipo as UploadableFileType,
+        });
+        uploadedFilePath = uploadResult.filePath;
+        uploadedFileName = uploadResult.fileName;
+      }
+
+      const finalUrl = isFileType ? uploadedFilePath : (data.url_conteudo || null);
+      const finalNome = isFileType ? uploadedFileName : null;
+
       const treinamento = await createTreinamento.mutateAsync({
+        id: generatedId,
         company_id: effectiveCompanyId,
         titulo: data.titulo,
         descricao: data.descricao || null,
         tipo: data.tipo as 'link' | 'pdf' | 'ppt' | 'video',
-        url_conteudo: isFileType ? "" : data.url_conteudo!,
+        url_conteudo: finalUrl,
         categoria_id: data.categoria_id || null,
         duracao_estimada_minutos: data.duracao_estimada_minutos || null,
         nivel: data.nivel || null,
-        nome_arquivo: null,
+        nome_arquivo: finalNome,
         idioma: "Português",
         tags: null,
         tempo_minimo_minutos: 0,
@@ -136,21 +154,7 @@ export function TreinamentoFormDialog({ open, onOpenChange }: TreinamentoFormDia
         target_contract_types: data.target_contract_types.length > 0 ? data.target_contract_types : null,
         capa_path: null,
         destaque: false,
-      });
-
-      if (isFileType && selectedFile && treinamento) {
-        const uploadResult = await uploadFile.mutateAsync({
-          treinamentoId: treinamento.id,
-          file: selectedFile,
-          fileType: data.tipo as UploadableFileType,
-        });
-
-        await updateTreinamento.mutateAsync({
-          id: treinamento.id,
-          url_conteudo: uploadResult.filePath,
-          nome_arquivo: uploadResult.fileName,
-        });
-      }
+      } as any);
 
       form.reset();
       setSelectedFile(null);
@@ -286,6 +290,16 @@ export function TreinamentoFormDialog({ open, onOpenChange }: TreinamentoFormDia
                 {form.formState.errors.root && (
                   <p className="text-sm text-destructive">{form.formState.errors.root.message}</p>
                 )}
+              </div>
+            )}
+
+            {/* Passo 4.1: Aviso após upload ou link preenchido */}
+            {(selectedFile || (!isFileType && form.watch("url_conteudo"))) && (
+              <div className="rounded-lg bg-sky-50 dark:bg-sky-950/40 p-3 text-xs text-sky-800 dark:text-sky-200 border border-sky-200 dark:border-sky-800 flex items-start gap-2">
+                <Info className="h-4 w-4 shrink-0 mt-0.5 text-sky-600 dark:text-sky-400" />
+                <span>
+                  O arquivo será adicionado automaticamente como a primeira aula. Você pode criar módulos e aulas adicionais em <strong>Gerenciar → Currículo</strong>, e o quiz em <strong>Gerenciar → Quiz</strong>.
+                </span>
               </div>
             )}
 

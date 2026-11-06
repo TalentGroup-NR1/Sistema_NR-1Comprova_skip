@@ -43,6 +43,8 @@ export interface TreinamentoGlobal {
   gera_certificado: boolean;
   validade_meses: number | null;
   clientes_habilitados: number;
+  total_modulos?: number;
+  total_aulas?: number;
   created_at: string;
   updated_at: string;
   categoria?: {
@@ -53,6 +55,7 @@ export interface TreinamentoGlobal {
 }
 
 export interface CreateTreinamentoGlobalDTO {
+  id?: string;
   titulo: string;
   descricao?: string | null;
   tipo: TreinamentoTipo;
@@ -211,18 +214,25 @@ export function useTreinamentosGlobais() {
         .from("treinamentos")
         .select(`
           *,
-          categoria:categorias_treinamento(id, nome, cor)
+          categoria:categorias_treinamento(id, nome, cor),
+          modulos:modulos_treinamento(id, aulas:aulas_treinamento(id))
         `)
         .eq("origem", "plataforma")
         .order("created_at", { ascending: false });
 
       if (error) throw error;
 
-      // Agregação de clientes habilitados (retorna 0 enquanto etapa 8.6 não habilita)
-      const list = (data || []).map((t) => ({
-        ...t,
-        clientes_habilitados: 0,
-      })) as TreinamentoGlobal[];
+      // Agregação de clientes habilitados e contagem de módulos/aulas
+      const list = (data || []).map((t: any) => {
+        const modulos = t.modulos || [];
+        const totalAulas = modulos.reduce((acc: number, m: any) => acc + (m.aulas?.length || 0), 0);
+        return {
+          ...t,
+          total_modulos: modulos.length,
+          total_aulas: totalAulas,
+          clientes_habilitados: 0,
+        };
+      }) as TreinamentoGlobal[];
 
       return list;
     },
@@ -235,34 +245,50 @@ export function useCreateTreinamentoGlobal() {
   return useMutation({
     mutationFn: async (dto: CreateTreinamentoGlobalDTO) => {
       const isLink = dto.tipo === "link";
-      const { data, error } = await supabase
-        .from("treinamentos")
-        .insert({
-          company_id: null,
-          origem: "plataforma",
-          titulo: dto.titulo.trim(),
-          descricao: dto.descricao?.trim() || null,
-          tipo: dto.tipo,
-          url_conteudo: dto.url_conteudo || null,
-          nome_arquivo: dto.nome_arquivo || null,
-          categoria_id: dto.categoria_id || null,
-          duracao_estimada_minutos: dto.duracao_estimada_minutos || null,
-          nivel: dto.nivel || null,
-          gera_certificado: isLink ? false : (dto.gera_certificado ?? true),
-          validade_meses: dto.validade_meses || null,
-          status: dto.status || "rascunho",
-          publicado_em: dto.status === "publicado" ? new Date().toISOString() : null,
-          obrigatorio: false,
-          destaque: false,
-        })
-        .select()
-        .single();
+      const { data: rpcRes, error } = await supabase.rpc("criar_treinamento_com_conteudo_inicial", {
+        _titulo: dto.titulo.trim(),
+        _tipo: dto.tipo,
+        _categoria_id: dto.categoria_id || null,
+        _company_id: null,
+        _descricao: dto.descricao?.trim() || null,
+        _url_conteudo: dto.url_conteudo || null,
+        _nome_arquivo: dto.nome_arquivo || null,
+        _duracao_estimada_minutos: dto.duracao_estimada_minutos || null,
+        _tempo_minimo_minutos: null,
+        _nivel: dto.nivel || null,
+        _idioma: null,
+        _tags: null,
+        _obrigatorio: false,
+        _gera_certificado: isLink ? false : (dto.gera_certificado ?? true),
+        _nota_minima: 7.0,
+        _tentativas_maximas: 3,
+        _quiz_obrigatorio: false,
+        _termo_ciencia_obrigatorio: false,
+        _texto_termo_ciencia: null,
+        _target_company_ids: null,
+        _target_contract_types: null,
+        _capa_path: null,
+        _destaque: false,
+        _origem: "plataforma",
+        _validade_meses: dto.validade_meses || null,
+        _id: dto.id || null,
+      });
 
       if (error) throw error;
-      return data;
+
+      const createdId = (rpcRes as any)?.treinamento_id;
+      const { data, error: fetchErr } = await supabase
+        .from("treinamentos")
+        .select(`*, categoria:categorias_treinamento(id, nome, cor)`)
+        .eq("id", createdId)
+        .single();
+
+      if (fetchErr) throw fetchErr;
+      return { ...data, _criacao_inicial: rpcRes };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["treinamentos-globais"] });
+      queryClient.invalidateQueries({ queryKey: ["treinamentos"] });
       toast({
         title: "Treinamento criado",
         description: "Treinamento adicionado ao Catálogo Global da Plataforma.",
