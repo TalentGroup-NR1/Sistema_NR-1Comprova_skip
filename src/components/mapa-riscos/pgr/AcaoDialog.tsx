@@ -85,6 +85,18 @@ export function AcaoDialog({ acao, pgrImportacaoId, open, onOpenChange }: AcaoDi
   const [novoComo, setNovoComo] = useState("");
   const [novoCustoEstimado, setNovoCustoEstimado] = useState<number>(0);
 
+  // Estados locais para modo edição (AJUSTE 4: manter isolado de novoAcaoTexto)
+  const [acaoTextoEdit, setAcaoTextoEdit] = useState(acao?.acao || "");
+  const [acaoErro, setAcaoErro] = useState("");
+
+  // Sincroniza estado de edição quando a ação muda
+  useEffect(() => {
+    if (acao) {
+      setAcaoTextoEdit(acao.acao || "");
+      setAcaoErro("");
+    }
+  }, [acao?.id, acao?.acao]);
+
   // Limpa estados ao fechar
   useEffect(() => {
     if (!open) {
@@ -97,6 +109,7 @@ export function AcaoDialog({ acao, pgrImportacaoId, open, onOpenChange }: AcaoDi
       setNovoOnde("");
       setNovoComo("");
       setNovoCustoEstimado(0);
+      setAcaoErro("");
     }
   }, [open]);
 
@@ -142,14 +155,21 @@ export function AcaoDialog({ acao, pgrImportacaoId, open, onOpenChange }: AcaoDi
   // ────────────────────────────────────────────────────────────
   // Handlers do MODO EDIÇÃO
   // ────────────────────────────────────────────────────────────
-  const handleUpdate = async (field: keyof PgrPlanoAcao, value: any, logMsg: string, silentToast = false) => {
+  const handleUpdate = async (
+    field: keyof PgrPlanoAcao,
+    value: any,
+    logMsg: string,
+    silentToast = false,
+    detalhesLog?: { campo?: string; de?: any; para?: any }
+  ) => {
     if (!acao) return;
     try {
       await trackSave(field, updateMutation.mutateAsync({
         id: acao.id,
         pgrImportacaoId: acao.pgr_importacao_id,
         updates: { [field]: value },
-        mensagemLog: logMsg
+        mensagemLog: logMsg,
+        detalhesLog
       }));
       if (!silentToast) toast.success("Ação atualizada");
     } catch (err: any) {
@@ -354,10 +374,54 @@ export function AcaoDialog({ acao, pgrImportacaoId, open, onOpenChange }: AcaoDi
           /* FORMULÁRIO DE EDIÇÃO (COM ABAS)                          */
           /* ======================================================== */
           <div className="space-y-4 py-2">
-            {/* Header Resumo da Ação */}
+            {/* Header Resumo da Ação (Editável) */}
             <div className="space-y-2">
-              <Label>Descrição da Ação (O que?)</Label>
-              <div className="p-3 bg-muted rounded-md text-sm">{acao.acao}</div>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="edit-acao-texto" className="flex items-center font-medium">
+                  Descrição da Ação (O que?) <SaveIndicator field="acao" />
+                </Label>
+                <span className="text-xs text-muted-foreground" data-testid="edit-acao-char-count">
+                  {acaoTextoEdit.length}/2000 caracteres
+                </span>
+              </div>
+              <Textarea
+                id="edit-acao-texto"
+                value={acaoTextoEdit}
+                onChange={(e) => {
+                  setAcaoTextoEdit(e.target.value);
+                  if (e.target.value.trim().length >= 1) {
+                    setAcaoErro("");
+                  }
+                }}
+                onBlur={() => {
+                  const textoLimpo = acaoTextoEdit.trim();
+                  if (!textoLimpo) {
+                    setAcaoErro("A descrição da ação não pode ficar vazia.");
+                    toast.error("A descrição da ação não pode ficar vazia.");
+                    return;
+                  }
+                  if (textoLimpo === acao.acao) {
+                    return;
+                  }
+                  setAcaoErro("");
+                  handleUpdate(
+                    "acao",
+                    textoLimpo,
+                    `Alterou descrição da ação de "${acao.acao}" para "${textoLimpo}"`,
+                    false,
+                    { campo: "acao", de: acao.acao, para: textoLimpo }
+                  );
+                }}
+                maxLength={2000}
+                rows={3}
+                placeholder="Descreva a ação a ser executada..."
+                className={acaoErro ? "border-destructive focus-visible:ring-destructive" : ""}
+              />
+              {acaoErro && (
+                <p className="text-xs text-destructive flex items-center gap-1" data-testid="edit-acao-error">
+                  <AlertCircle className="w-3.5 h-3.5 inline" /> {acaoErro}
+                </p>
+              )}
             </div>
 
             {/* Seletor de Risco Relacionado */}

@@ -192,4 +192,164 @@ describe("AcaoDialog", () => {
     expect(mockUpdateMutateAsync).not.toHaveBeenCalled();
     expect(mockOnOpenChange).toHaveBeenCalledWith(false);
   });
+
+  describe("ETAPA M1 — Descrição da Ação Editável (6.1 a-f)", () => {
+    const acaoPgrMock: PgrPlanoAcao = {
+      id: "acao-pgr-01",
+      company_id: "company-123",
+      pgr_importacao_id: defaultPgrId,
+      acao: "Promover treinamentos ergonômicos e posturais",
+      por_que: "Reduzir queixas ergonômicas",
+      onde: "Geral",
+      como: "Palestras e práticas",
+      custo_estimado: 1200,
+      custo_real: 0,
+      responsavel_id: "colab-1",
+      cargo_responsavel: null,
+      prazo: "2026-12-31",
+      prioridade: "alta",
+      status: "pendente",
+      evidencia_url: null,
+      historico: [],
+      created_at: "2026-11-01T10:00:00Z",
+      updated_at: "2026-11-01T10:00:00Z",
+      risco_id: "r1",
+    };
+
+    // 6.1a: Renderiza habilitado para ação PGR
+    it("6.1a: renderiza campo de descrição habilitado e editável no modo edição para ação do PGR", () => {
+      render(
+        <AcaoDialog
+          open={true}
+          onOpenChange={mockOnOpenChange}
+          pgrImportacaoId={defaultPgrId}
+          acao={acaoPgrMock}
+        />
+      );
+
+      const textarea = screen.getByRole("textbox", { name: /Descrição da Ação \(O que\?\)/i });
+      expect(textarea).toBeInTheDocument();
+      expect(textarea).toBeEnabled();
+      expect(textarea).not.toHaveAttribute("readonly");
+      expect((textarea as HTMLTextAreaElement).value).toBe("Promover treinamentos ergonômicos e posturais");
+    });
+
+    // 6.1b: Aceita digitação e atualiza estado e contador
+    it("6.1b: aceita digitação e atualiza estado e contador de caracteres", () => {
+      render(
+        <AcaoDialog
+          open={true}
+          onOpenChange={mockOnOpenChange}
+          pgrImportacaoId={defaultPgrId}
+          acao={acaoPgrMock}
+        />
+      );
+
+      const textarea = screen.getByRole("textbox", { name: /Descrição da Ação \(O que\?\)/i });
+      fireEvent.change(textarea, { target: { value: "Revisar postos de trabalho" } });
+
+      expect((textarea as HTMLTextAreaElement).value).toBe("Revisar postos de trabalho");
+      expect(screen.getByTestId("edit-acao-char-count")).toHaveTextContent("26/2000 caracteres");
+    });
+
+    // 6.1c: Salva novo valor com rastreabilidade completa no histórico
+    it("6.1c: salva novo valor com rastreabilidade completa no histórico ao disparar blur", async () => {
+      render(
+        <AcaoDialog
+          open={true}
+          onOpenChange={mockOnOpenChange}
+          pgrImportacaoId={defaultPgrId}
+          acao={acaoPgrMock}
+        />
+      );
+
+      const textarea = screen.getByRole("textbox", { name: /Descrição da Ação \(O que\?\)/i });
+      fireEvent.change(textarea, { target: { value: "Treinar equipe em ergonomia aplicada" } });
+      fireEvent.blur(textarea);
+
+      await waitFor(() => {
+        expect(mockUpdateMutateAsync).toHaveBeenCalledWith(
+          expect.objectContaining({
+            id: "acao-pgr-01",
+            pgrImportacaoId: defaultPgrId,
+            updates: { acao: "Treinar equipe em ergonomia aplicada" },
+            mensagemLog: 'Alterou descrição da ação de "Promover treinamentos ergonômicos e posturais" para "Treinar equipe em ergonomia aplicada"',
+            detalhesLog: {
+              campo: "acao",
+              de: "Promover treinamentos ergonômicos e posturais",
+              para: "Treinar equipe em ergonomia aplicada",
+            },
+          })
+        );
+      });
+    });
+
+    // 6.1d: Rejeita campo vazio com mensagem clara e não dispara update
+    it("6.1d: validação de campo vazio exibe 'A descrição da ação não pode ficar vazia.' e não salva", async () => {
+      render(
+        <AcaoDialog
+          open={true}
+          onOpenChange={mockOnOpenChange}
+          pgrImportacaoId={defaultPgrId}
+          acao={acaoPgrMock}
+        />
+      );
+
+      const textarea = screen.getByRole("textbox", { name: /Descrição da Ação \(O que\?\)/i });
+      fireEvent.change(textarea, { target: { value: "   " } });
+      fireEvent.blur(textarea);
+
+      expect(screen.getByTestId("edit-acao-error")).toHaveTextContent(
+        "A descrição da ação não pode ficar vazia."
+      );
+      expect(mockUpdateMutateAsync).not.toHaveBeenCalled();
+    });
+
+    // 6.1e: Respeita limite máximo de 2000 caracteres no textarea
+    it("6.1e: possui limite máximo de 2000 caracteres com contador numérico", () => {
+      render(
+        <AcaoDialog
+          open={true}
+          onOpenChange={mockOnOpenChange}
+          pgrImportacaoId={defaultPgrId}
+          acao={acaoPgrMock}
+        />
+      );
+
+      const textarea = screen.getByRole("textbox", { name: /Descrição da Ação \(O que\?\)/i });
+      expect(textarea).toHaveAttribute("maxlength", "2000");
+      expect(screen.getByTestId("edit-acao-char-count")).toHaveTextContent(
+        `${acaoPgrMock.acao.length}/2000 caracteres`
+      );
+    });
+
+    // 6.1f: Ação manual / modo criação continua funcionando normalmente
+    it("6.1f: modo criação continua funcionando isoladamente sem misturar com estado de edição", async () => {
+      render(
+        <AcaoDialog
+          open={true}
+          onOpenChange={mockOnOpenChange}
+          pgrImportacaoId={defaultPgrId}
+          acao={undefined}
+        />
+      );
+
+      const textarea = screen.getByPlaceholderText(
+        "Ex: Instalação de linha de vida e treinamento para trabalho em altura..."
+      );
+      fireEvent.change(textarea, { target: { value: "Ação manual criada do zero" } });
+
+      const submitBtn = screen.getByRole("button", { name: /Criar Ação/i });
+      fireEvent.click(submitBtn);
+
+      await waitFor(() => {
+        expect(mockCreateMutateAsync).toHaveBeenCalledWith(
+          expect.objectContaining({
+            acao: "Ação manual criada do zero",
+          })
+        );
+      });
+      expect(mockUpdateMutateAsync).not.toHaveBeenCalled();
+    });
+  });
 });

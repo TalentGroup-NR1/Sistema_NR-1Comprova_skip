@@ -78,13 +78,23 @@ export interface PgrAcaoExecucao {
   } | null;
 }
 
-export function appendHistorico(historicoAtual: any[] | null, mudanca: string, autorId: string): any[] {
+export function appendHistorico(
+  historicoAtual: any[] | null,
+  mudanca: string,
+  autorId: string,
+  detalhes?: { campo?: string; de?: any; para?: any }
+): any[] {
   return [
     ...(historicoAtual || []),
     {
       data: new Date().toISOString(),
       autor_id: autorId,
-      mudanca
+      mudanca,
+      ...(detalhes?.campo ? {
+        campo: detalhes.campo,
+        de: detalhes.de,
+        para: detalhes.para
+      } : {})
     }
   ];
 }
@@ -210,12 +220,14 @@ export function useUpdateAcao() {
       id,
       pgrImportacaoId,
       updates,
-      mensagemLog
+      mensagemLog,
+      detalhesLog
     }: {
       id: string;
       pgrImportacaoId: string;
       updates: Partial<PgrPlanoAcao>;
       mensagemLog?: string;
+      detalhesLog?: { campo?: string; de?: any; para?: any };
     }) => {
       if (!user) throw new Error("Não autenticado");
       
@@ -243,7 +255,7 @@ export function useUpdateAcao() {
       
       const historicoAtual = currentData?.historico || [];
       const novoHistorico = mensagemLog 
-        ? appendHistorico(historicoAtual, mensagemLog, user.id)
+        ? appendHistorico(historicoAtual, mensagemLog, user.id, detalhesLog)
         : [...historicoAtual];
 
       const { data, error: updateErr } = await (supabase as any)
