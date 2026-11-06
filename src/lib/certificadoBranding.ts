@@ -1,3 +1,5 @@
+import QRCode from 'qrcode';
+
 export const LOGO_PLATAFORMA = '/logo.png';
 export const NOME_PLATAFORMA = 'NR-1 Comprova';
 
@@ -183,4 +185,32 @@ export function formatarDataEmissaoCurta(dataIso: string | Date | null | undefin
     month: '2-digit',
     year: 'numeric',
   }).format(dateObj);
+}
+
+/**
+ * Gera Data URL PNG em base64 a partir de uma URL ou texto para uso direto no template de impressão.
+ * Usa correção 'M', margem 1 e fundo branco puro, ideal para html2canvas e impressão sem artefatos.
+ */
+export async function gerarQrCodeDataUrl(url: string): Promise<string> {
+  if (!url || typeof url !== 'string' || !url.trim()) {
+    return '';
+  }
+
+  try {
+    return await QRCode.toDataURL(url.trim(), {
+      margin: 1,
+      width: 240,
+      errorCorrectionLevel: 'M',
+      color: {
+        dark: '#000000',
+        light: '#ffffff',
+      },
+    });
+  } catch (err: any) {
+    console.warn('[CertificateGenerator] Falha ao gerar QR Code como PNG base64:', {
+      step: 'gerar_qr_code',
+      message: err?.message || 'Erro no qrcode.toDataURL',
+    });
+    return '';
+  }
 }

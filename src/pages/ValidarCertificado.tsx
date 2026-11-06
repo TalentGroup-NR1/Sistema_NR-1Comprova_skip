@@ -1,20 +1,20 @@
 import { useState, useEffect } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useParams } from "react-router-dom";
 import { Award, CheckCircle, XCircle, Search, Loader2 } from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useValidateCertificate } from "@/hooks/useCertificates";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import { formatarDataConclusao, formatarDataEmissaoCurta } from "@/lib/certificadoBranding";
 
 export default function ValidarCertificado() {
   const [searchParams] = useSearchParams();
-  const codeFromUrl = searchParams.get("code");
+  const { code: codeParam } = useParams<{ code?: string }>();
+  const codeFromUrl = (codeParam || searchParams.get("code") || "").trim();
   
-  const [inputCode, setInputCode] = useState(codeFromUrl || "");
-  const [searchCode, setSearchCode] = useState(codeFromUrl || "");
+  const [inputCode, setInputCode] = useState(codeFromUrl);
+  const [searchCode, setSearchCode] = useState(codeFromUrl);
 
   const { data: validationResult, isLoading, isError } = useValidateCertificate(searchCode);
 
@@ -119,13 +119,13 @@ export default function ValidarCertificado() {
                     <div>
                       <p className="text-sm text-slate-500">Data de Conclusão</p>
                       <p className="font-semibold text-slate-900">
-                        {format(new Date(validationResult.data_conclusao), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+                        {formatarDataConclusao(validationResult.data_conclusao)}
                       </p>
                     </div>
                     <div>
                       <p className="text-sm text-slate-500">Data de Emissão</p>
                       <p className="font-semibold text-slate-900">
-                        {format(new Date(validationResult.issue_date), "dd/MM/yyyy", { locale: ptBR })}
+                        {formatarDataEmissaoCurta(validationResult.issue_date)}
                       </p>
                     </div>
                   </div>

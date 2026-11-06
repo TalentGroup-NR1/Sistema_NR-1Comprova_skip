@@ -23,6 +23,9 @@ import {
   resolverLogoCertificado, 
   carregarLogoBase64, 
   extrairDataConclusaoCanonica,
+  gerarQrCodeDataUrl,
+  formatarDataConclusao,
+  formatarDataEmissaoCurta,
 } from "@/lib/certificadoBranding";
 
 interface CertificateGeneratorProps {
@@ -53,6 +56,7 @@ export function CertificateGenerator({
   const [generating, setGenerating] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [logoBase64, setLogoBase64] = useState<string | null>(null);
+  const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>('');
 
   // AJUSTE 1: refs 100% separadas - previewRef só no Dialog, printRef só no container off-screen
   const previewRef = useRef<HTMLDivElement>(null);
@@ -80,6 +84,12 @@ export function CertificateGenerator({
     logo_url: companyLogoUrl,
   });
 
+  // URL pública de validação amigável
+  const certCode = existingCertificate?.certificate_code;
+  const validationUrl = certCode
+    ? `${getShareBaseUrl()}/validar/${certCode}`
+    : `${getShareBaseUrl()}/validar`;
+
   // AJUSTE 4: Pré-carregar logo em base64 para evitar canvas tainted no html2canvas
   useEffect(() => {
     let cancelled = false;
@@ -92,6 +102,19 @@ export function CertificateGenerator({
       cancelled = true;
     };
   }, [branding.logoUrl]);
+
+  // AJUSTE 2: Pré-gerar QR Code como PNG base64 puro
+  useEffect(() => {
+    let cancelled = false;
+    gerarQrCodeDataUrl(validationUrl).then((qr) => {
+      if (!cancelled) {
+        setQrCodeDataUrl(qr);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [validationUrl]);
 
   // AJUSTE 2: Ordem canônica da data: 1) existingCertificate, 2) progresso, 3) new Date()
   const dataConclusao = extrairDataConclusaoCanonica(existingCertificate, progresso);
@@ -107,9 +130,8 @@ export function CertificateGenerator({
     dataConclusao,
     dataEmissao,
     certificateCode: existingCertificate?.certificate_code || "PREVIEW",
-    validationUrl: existingCertificate 
-      ? `${getShareBaseUrl()}/validar-certificado?code=${existingCertificate.certificate_code}`
-      : `${getShareBaseUrl()}/validar-certificado`,
+    validationUrl,
+    qrCodeDataUrl,
     companyName: branding.nomeExibicao,
     companyLogoUrl: branding.logoUrl,
   };
@@ -144,6 +166,31 @@ export function CertificateGenerator({
         });
       }
 
+      // AJUSTE 2: Garantir QR Code como PNG Base64 sincronizado na tag <img>
+      const finalQr = qrCodeDataUrl || await gerarQrCodeDataUrl(validationUrl);
+      const qrEl = el.querySelector('img[alt^="QR Code"]') as HTMLImageElement | null;
+      if (qrEl && finalQr && qrEl.src !== finalQr) {
+        qrEl.src = finalQr;
+        await new Promise((resolve) => {
+          if (qrEl.complete) {
+            resolve(null);
+            return;
+          }
+          const timer = setTimeout(() => resolve(null), 100);
+          qrEl.onload = () => {
+            clearTimeout(timer);
+            resolve(null);
+          };
+          qrEl.onerror = () => {
+            clearTimeout(timer);
+            resolve(null);
+          };
+        });
+      }
+
+      // Timing no html2canvas: aguarda frame do navegador
+      await new Promise(r => requestAnimationFrame(() => r(null)));
+
       const canvas = await html2canvas(el, {
         scale: 2,
         useCORS: true,
@@ -162,13 +209,39 @@ export function CertificateGenerator({
 
       pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
 
+      // Adiciona camada de texto selecionável / pesquisável no PDF (Passo 4.4 / Teste g)
+      if (typeof pdf.internal?.write === 'function') {
+        pdf.internal.write('/Tr 3 Tr');
+      }
+      if (typeof pdf.text === 'function' && typeof pdf.setFontSize === 'function') {
+        pdf.setFontSize(26);
+        pdf.text("CERTIFICADO", 148.5, 48, { align: "center" });
+        pdf.setFontSize(14);
+        pdf.text("Certificamos que", 148.5, 75, { align: "center" });
+        pdf.setFontSize(22);
+        pdf.text(colaboradorNome, 148.5, 92, { align: "center" });
+        pdf.setFontSize(13);
+        const textoConclusao = `concluiu com êxito o treinamento "${treinamento.titulo}"${
+          certificateData.cargaHoraria > 0 ? `, com carga horária de ${certificateData.cargaHoraria} hora${certificateData.cargaHoraria > 1 ? "s" : ""}` : ""
+        }, realizado em ${formatarDataConclusao(dataConclusao)}.`;
+        pdf.text(textoConclusao, 148.5, 115, { align: "center", maxWidth: 220 });
+        pdf.setFontSize(11);
+        pdf.text("Para os devidos fins, apresentamos o presente certificado.", 148.5, 138, { align: "center" });
+
+        pdf.setFontSize(10);
+        pdf.text("Instrutor / Responsável", 60, 185, { align: "center" });
+        pdf.text(`Data de Emissão: ${formatarDataEmissaoCurta(dataEmissao)}`, 148.5, 180, { align: "center" });
+        pdf.text(`Código: ${certificateData.certificateCode}`, 148.5, 185, { align: "center" });
+        pdf.text(`Escaneie para validar: ${validationUrl}`, 240, 185, { align: "center" });
+      }
+
       return pdf.output("blob");
     } catch (error: any) {
       // AJUSTE 5: Log seguro sem PII (apenas step e mensagem do erro)
       console.error({ step: "generate_pdf", message: error?.message || "Erro ao gerar PDF" });
       throw error;
     }
-  }, [branding.logoUrl, logoBase64]);
+  }, [branding.logoUrl, logoBase64, qrCodeDataUrl, validationUrl, colaboradorNome, treinamento.titulo, certificateData.cargaHoraria, dataConclusao, dataEmissao, certificateData.certificateCode]);
 
   // Handler para gerar certificado
   const handleGenerateCertificate = async () => {
@@ -196,9 +269,13 @@ export function CertificateGenerator({
       });
 
       certificateData.certificateCode = certificate.certificate_code;
-      certificateData.validationUrl = `${getShareBaseUrl()}/validar-certificado?code=${certificate.certificate_code}`;
+      certificateData.validationUrl = `${getShareBaseUrl()}/validar/${certificate.certificate_code}`;
       certificateData.dataEmissao = certificate.issue_date;
       certificateData.dataConclusao = certificate.data_conclusao || dataConclusaoEmissao;
+
+      // Atualiza QR code
+      const newQr = await gerarQrCodeDataUrl(certificateData.validationUrl);
+      setQrCodeDataUrl(newQr);
 
       await new Promise(resolve => setTimeout(resolve, 100));
 
@@ -358,6 +435,7 @@ export function CertificateGenerator({
               <CertificateTemplate
                 ref={previewRef}
                 {...certificateData}
+                qrCodeDataUrl={qrCodeDataUrl}
               />
             </div>
           </div>
@@ -396,6 +474,7 @@ export function CertificateGenerator({
           ref={printRef}
           {...certificateData}
           companyLogoUrl={logoBase64 || branding.logoUrl}
+          qrCodeDataUrl={qrCodeDataUrl}
         />
       </div>
     </>

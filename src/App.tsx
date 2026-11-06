@@ -194,6 +194,8 @@ const App = () => (
                 </ProtectedRoute>
               } />
               <Route path="/validar-certificado" element={<ValidarCertificado />} />
+              <Route path="/validar/:code" element={<ValidarCertificado />} />
+              <Route path="/validar" element={<ValidarCertificado />} />
               <Route path="/notificacoes" element={<ProtectedRoute><Notificacoes /></ProtectedRoute>} />
               <Route path="/ficha-profissional/:colaboradorId" element={
                 <ProtectedRoute allowedRoles={['admin_master', 'admin_empresa', 'analista_rh', 'gestor_departamento']} moduleKey="/colaboradores">
