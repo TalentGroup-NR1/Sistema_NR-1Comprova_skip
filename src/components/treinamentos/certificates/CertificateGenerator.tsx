@@ -18,6 +18,7 @@ import { toast } from "sonner";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import { getShareBaseUrl } from '@/lib/appUrl';
+import { isPerfilGestaoEmpresa } from "@/lib/perfis";
 
 interface CertificateGeneratorProps {
   treinamento: Treinamento;
@@ -48,7 +49,7 @@ export function CertificateGenerator({
   const [downloading, setDownloading] = useState(false);
   const templateRef = useRef<HTMLDivElement>(null);
 
-  const isAdmin = role === "admin_master" || role === "admin_empresa" || role === "analista_rh";
+  const isAdmin = role === "admin_master" || isPerfilGestaoEmpresa(role);
 
   const { data: existingCertificate, isLoading: loadingCertificate } = useMyCertificate(
     treinamento?.id,

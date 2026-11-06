@@ -8,13 +8,14 @@ import { EmpresaCatalogoPlataforma } from "@/components/treinamentos/catalogo/Em
 import { TreinamentosRelatorios } from "@/components/treinamentos/TreinamentosRelatorios";
 import { CertificatesPanel } from "@/components/treinamentos/certificates/CertificatesPanel";
 import { Library, Settings, BarChart3, Award, Globe } from "lucide-react";
+import { isPerfilGestaoEmpresa } from "@/lib/perfis";
 
 export default function Treinamentos() {
   const { role } = useAuth();
   const [activeTab, setActiveTab] = useState("catalogo");
 
-  const isAdmin = role === "admin_master" || role === "admin_empresa" || role === "analista_rh";
-  const isCompanyAdmin = role === "admin_empresa" || role === "analista_rh";
+  const isAdmin = role === "admin_master" || isPerfilGestaoEmpresa(role);
+  const isCompanyAdmin = isPerfilGestaoEmpresa(role);
 
   return (
     <MainLayout>

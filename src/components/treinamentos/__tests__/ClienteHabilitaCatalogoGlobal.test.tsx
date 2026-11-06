@@ -72,25 +72,43 @@ describe('ETAPA 8.6 — Cliente Habilita Catálogo Global', () => {
     );
   };
 
-  it('3.1.a: Aba "Catálogo da Plataforma" é visível apenas para admin_empresa e analista_rh, e NÃO para colaborador', () => {
-    // 1) Testar como colaborador
+  it('3.1.a: Aba "Catálogo da Plataforma" — visibilidade por role (admin_empresa, analista_rh, colaborador, gestor_departamento)', () => {
+    // a) visível para admin_empresa
+    (AuthHook.useAuth as any).mockReturnValue({
+      role: 'admin_empresa',
+      user: { id: 'u-admin-empresa' },
+    });
+    (EffectiveCompanyHook.useEffectiveCompanyId as any).mockReturnValue('comp-1');
+    const { unmount: unmountAdmin } = renderWithProviders(<Treinamentos />);
+    expect(screen.getByText('Catálogo da Plataforma')).toBeInTheDocument();
+    unmountAdmin();
+
+    // b) visível para analista_rh (Administrador Operacional)
+    (AuthHook.useAuth as any).mockReturnValue({
+      role: 'analista_rh',
+      user: { id: 'u-analista-rh' },
+    });
+    const { unmount: unmountAnalista } = renderWithProviders(<Treinamentos />);
+    expect(screen.getByText('Catálogo da Plataforma')).toBeInTheDocument();
+    unmountAnalista();
+
+    // c) NÃO visível para colaborador
     (AuthHook.useAuth as any).mockReturnValue({
       role: 'colaborador',
       user: { id: 'u-colab' },
     });
-    (EffectiveCompanyHook.useEffectiveCompanyId as any).mockReturnValue('comp-1');
-
-    const { unmount } = renderWithProviders(<Treinamentos />);
+    const { unmount: unmountColab } = renderWithProviders(<Treinamentos />);
     expect(screen.queryByText('Catálogo da Plataforma')).not.toBeInTheDocument();
-    unmount();
+    unmountColab();
 
-    // 2) Testar como admin_empresa
+    // d) NÃO visível para gestor_departamento
     (AuthHook.useAuth as any).mockReturnValue({
-      role: 'admin_empresa',
-      user: { id: 'u-admin' },
+      role: 'gestor_departamento',
+      user: { id: 'u-gestor' },
     });
-    renderWithProviders(<Treinamentos />);
-    expect(screen.getByText('Catálogo da Plataforma')).toBeInTheDocument();
+    const { unmount: unmountGestor } = renderWithProviders(<Treinamentos />);
+    expect(screen.queryByText('Catálogo da Plataforma')).not.toBeInTheDocument();
+    unmountGestor();
   });
 
   it('3.1.b: Curso global em rascunho NÃO aparece no Catálogo da Plataforma para o cliente', async () => {
