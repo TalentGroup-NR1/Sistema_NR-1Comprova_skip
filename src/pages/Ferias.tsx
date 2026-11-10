@@ -1,0 +1,76 @@
+import { useState } from "react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { MainLayout } from "@/components/layout/MainLayout";
+import { ColaboradoresFeriasList, FiltroFerias } from "@/components/ferias/ColaboradoresFeriasList";
+import { FeriasColaboradorDetail } from "@/components/ferias/FeriasColaboradorDetail";
+import { FeriasDashboard } from "@/components/ferias/FeriasDashboard";
+import { AprovacoesPendentesList } from "@/components/ferias/AprovacoesPendentesList";
+import { useAuth } from "@/hooks/useAuth";
+import { useFeriasPendentesAprovacao } from "@/hooks/useFerias";
+
+export default function Ferias() {
+  const [selectedColaboradorId, setSelectedColaboradorId] = useState<string | null>(null);
+  const [tab, setTab] = useState("dashboard");
+  const [filtroFerias, setFiltroFerias] = useState<FiltroFerias>("todas");
+  const { role } = useAuth();
+  const isReadOnly = role === 'gestor_departamento' || role === 'colaborador';
+  const { data: pendentes } = useFeriasPendentesAprovacao();
+
+  if (selectedColaboradorId) {
+    return (
+      <MainLayout>
+        <FeriasColaboradorDetail
+          colaboradorId={selectedColaboradorId}
+          onBack={() => setSelectedColaboradorId(null)}
+          readOnly={isReadOnly}
+        />
+      </MainLayout>
+    );
+  }
+
+  return (
+    <MainLayout>
+      <Tabs value={tab} onValueChange={setTab} className="space-y-4">
+        <div className="w-full overflow-x-auto pb-1">
+          <TabsList className="w-auto min-w-full sm:min-w-0">
+            <TabsTrigger value="dashboard">Visão Geral</TabsTrigger>
+            <TabsTrigger value="aprovacoes" className="gap-2">
+              Aprovações Pendentes
+              {pendentes && pendentes.length > 0 && (
+                <Badge variant="destructive" className="h-5 min-w-5 px-1.5">{pendentes.length}</Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="colaboradores">Colaboradores</TabsTrigger>
+          </TabsList>
+        </div>
+
+        <TabsContent value="dashboard">
+          <FeriasDashboard
+            onGoAprovacoes={() => setTab("aprovacoes")}
+            onGoColaboradoresVencidas={() => {
+              setFiltroFerias("vencidas");
+              setTab("colaboradores");
+            }}
+            onGoColaboradoresAVencer={() => {
+              setFiltroFerias("a_vencer");
+              setTab("colaboradores");
+            }}
+          />
+        </TabsContent>
+
+        <TabsContent value="aprovacoes">
+          <AprovacoesPendentesList />
+        </TabsContent>
+
+        <TabsContent value="colaboradores">
+          <ColaboradoresFeriasList
+            onSelectColaborador={setSelectedColaboradorId}
+            filtroFerias={filtroFerias}
+            onLimparFiltro={() => setFiltroFerias("todas")}
+          />
+        </TabsContent>
+      </Tabs>
+    </MainLayout>
+  );
+}

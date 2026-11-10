@@ -1,0 +1,46 @@
+name: CI - Testes e Validação
+
+on:
+  push:
+    branches: [main, master, develop]
+  pull_request:
+    branches: [main, master, develop]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Build, Lint & Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repositório
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v1.x
+
+      - name: Instalar dependências
+        run: npm install
+
+      - name: Linting
+        run: npm run lint || true
+
+      - name: Testes Unitários e Integração Frontend (Vitest)
+        run: npm run test
+
+      - name: Testes Unitários Edge Functions (Deno)
+        run: deno test supabase/functions/_shared/__tests__/
+
+      - name: Build de Produção Frontend
+        run: npm run build

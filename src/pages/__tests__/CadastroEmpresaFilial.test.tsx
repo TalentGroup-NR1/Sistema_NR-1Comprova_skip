@@ -1,0 +1,516 @@
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import CadastroEmpresa from "../CadastroEmpresa";
+import { BrowserRouter } from "react-router-dom";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { toast } from "sonner";
+
+const mockNavigate = vi.fn();
+vi.mock("react-router-dom", async () => {
+  const actual = await vi.importActual("react-router-dom");
+  return {
+    ...actual,
+    useNavigate: () => mockNavigate,
+  };
+});
+
+const mockUseAuth = vi.fn();
+vi.mock("@/hooks/useAuth", () => ({
+  useAuth: () => mockUseAuth(),
+}));
+
+const mockInvoke = vi.fn();
+vi.mock("@/integrations/supabase/client", () => ({
+  supabase: {
+    functions: {
+      invoke: (...args: any[]) => mockInvoke(...args),
+    },
+    storage: {
+      from: vi.fn(),
+    },
+  },
+}));
+
+vi.mock("sonner", () => ({
+  toast: {
+    success: vi.fn(),
+    error: vi.fn(),
+  },
+}));
+
+describe("CadastroEmpresa — Fluxo Simplificado (4 Campos) e Filial", () => {
+  let queryClient: QueryClient;
+
+  beforeEach(() => {
+    queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    vi.clearAllMocks();
+
+    global.ResizeObserver = class ResizeObserver {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    };
+  });
+
+  it("renderiza exatamente os 4 campos essenciais (sem stepper, sem campos de endereço/logo e sem checkbox de termos)", () => {
+    mockUseAuth.mockReturnValue({
+      user: null,
+      isAuthenticated: false,
+      isAdminEmpresa: false,
+      isAdminMaster: false,
+    });
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <BrowserRouter>
+          <CadastroEmpresa />
+        </BrowserRouter>
+      </QueryClientProvider>
+    );
+
+    // 4 Campos essenciais
+    expect(screen.getByLabelText(/Razão social/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/CNPJ/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Nome completo do administrador/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/E-mail do administrador/i)).toBeInTheDocument();
+
+    // Checkbox de termos removido (não deve existir)
+    expect(screen.queryByLabelText(/Termos de Uso/i)).toBeNull();
+    expect(screen.queryByRole("checkbox")).toBeNull();
+
+    // Validação que campos removidos NÃO existem
+    expect(screen.queryByLabelText(/CEP/i)).toBeNull();
+    expect(screen.queryByLabelText(/Logradouro/i)).toBeNull();
+    expect(screen.queryByLabelText(/Bairro/i)).toBeNull();
+    expect(screen.queryByLabelText(/Telefone/i)).toBeNull();
+    expect(screen.queryByLabelText(/Segmento/i)).toBeNull();
+    expect(screen.queryByLabelText(/Logo da marca/i)).toBeNull();
+    expect(screen.queryByLabelText(/Cor da marca/i)).toBeNull();
+
+    // Exatamente 4 inputs de texto/email e nenhum checkbox
+    const inputs = screen.getAllByRole("textbox");
+    expect(inputs).toHaveLength(4);
+  });
+
+  it("envia payload reduzido com apenas os 4 campos essenciais e termos para register-company", async () => {
+    mockUseAuth.mockReturnValue({
+      user: null,
+      isAuthenticated: false,
+      isAdminEmpresa: false,
+      isAdminMaster: false,
+    });
+
+    mockInvoke.mockResolvedValueOnce({
+      data: { success: true, company_id: "comp-123" },
+      error: null,
+    });
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <BrowserRouter>
+          <CadastroEmpresa />
+        </BrowserRouter>
+      </QueryClientProvider>
+    );
+
+    fireEvent.change(screen.getByLabelText(/Razão social/i), {
+      target: { value: "Empresa Piloto Ltda" },
+    });
+    fireEvent.change(screen.getByLabelText(/CNPJ/i), {
+      target: { value: "12.345.678/0001-95" },
+    });
+    fireEvent.change(screen.getByLabelText(/Nome completo do administrador/i), {
+      target: { value: "Administrador Piloto" },
+    });
+    fireEvent.change(screen.getByLabelText(/E-mail do administrador/i), {
+      target: { value: "admin@piloto.com.br" },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /Cadastrar Empresa/i }));
+
+    await waitFor(() => {
+      expect(mockInvoke).toHaveBeenCalledTimes(1);
+      expect(mockInvoke).toHaveBeenCalledWith("register-company", {
+        body: expect.objectContaining({
+          razao_social: "Empresa Piloto Ltda",
+          cnpj: "12.345.678/0001-95",
+          admin_nome: "Administrador Piloto",
+          admin_email: "admin@piloto.com.br",
+          aceite_termos: true,
+        }),
+      });
+    });
+
+    // Confirma que não foram enviados campos de logo, cor ou endereço
+    const sentBody = mockInvoke.mock.calls[0][1].body;
+    expect(sentBody).not.toHaveProperty("logo");
+    expect(sentBody).not.toHaveProperty("cep");
+    expect(sentBody).not.toHaveProperty("logradouro");
+    expect(sentBody).not.toHaveProperty("telefone");
+    expect(sentBody).not.toHaveProperty("segmento");
+  });
+
+  it("renderiza modo filial e auto-popula dados quando usuário logado é admin_empresa", () => {
+    mockUseAuth.mockReturnValue({
+      user: {
+        id: "admin-user-123",
+        email: "admin.matriz@empresa.com",
+        user_metadata: { full_name: "Administrador Matriz" },
+      },
+      isAuthenticated: true,
+      isAdminEmpresa: true,
+      isAdminMaster: false,
+    });
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <BrowserRouter>
+          <CadastroEmpresa />
+        </BrowserRouter>
+      </QueryClientProvider>
+    );
+
+    expect(screen.getByText("Adicionar filial / nova empresa")).toBeInTheDocument();
+    expect(
+      screen.getByText(/Cadastre uma nova empresa vinculada à sua conta atual de administrador/i)
+    ).toBeInTheDocument();
+  });
+
+  it("renderiza modo empresa (fora do fluxo de filial) com campos vazios e box azul quando usuário é super admin / admin_master", () => {
+    mockUseAuth.mockReturnValue({
+      user: {
+        id: "super-admin-user",
+        email: "josenildo.santos@talentgroup.com.br",
+        user_metadata: { full_name: "Josenildo Santos" },
+      },
+      isAuthenticated: true,
+      isAdminEmpresa: false,
+      isAdminMaster: true,
+      isSuperAdmin: true,
+    });
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <BrowserRouter>
+          <CadastroEmpresa />
+        </BrowserRouter>
+      </QueryClientProvider>
+    );
+
+    // Título e subtítulo normais de empresa (não filial)
+    expect(screen.getByText("Cadastrar nova empresa")).toBeInTheDocument();
+    expect(screen.queryByText("Adicionar filial / nova empresa")).toBeNull();
+    expect(
+      screen.getByText("Preencha os dados essenciais abaixo para enviar o convite ao administrador.")
+    ).toBeInTheDocument();
+
+    // Botão de envio padrão
+    expect(
+      screen.getByRole("button", { name: /Cadastrar Empresa e Enviar Convite/i })
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Cadastrar Filial/i })).toBeNull();
+
+    // Campos de admin_nome e admin_email devem permanecer VAZIOS (não auto-popula com dados do super admin)
+    const nomeInput = screen.getByLabelText(/Nome completo do administrador/i) as HTMLInputElement;
+    const emailInput = screen.getByLabelText(/E-mail do administrador/i) as HTMLInputElement;
+    expect(nomeInput.value).toBe("");
+    expect(emailInput.value).toBe("");
+
+    // Box azul de convite presente, box verde de filial ausente
+    expect(
+      screen.getByText(/📧 Convite por e-mail e perfil posterior/i)
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/🏢 Vínculo direto à sua conta/i)).toBeNull();
+  });
+
+  it("quando invite_sent=true exibe mensagem de sucesso com e-mail do destinatário e orientação de spam", async () => {
+    mockUseAuth.mockReturnValue({
+      user: null,
+      isAuthenticated: false,
+      isAdminEmpresa: false,
+      isAdminMaster: false,
+    });
+
+    mockInvoke.mockResolvedValueOnce({
+      data: { success: true, company_id: "comp-456", invite_sent: true, is_branch: false },
+      error: null,
+    });
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <BrowserRouter>
+          <CadastroEmpresa />
+        </BrowserRouter>
+      </QueryClientProvider>
+    );
+
+    fireEvent.change(screen.getByLabelText(/Razão social/i), {
+      target: { value: "Empresa Cliente Boa Ltda" },
+    });
+    fireEvent.change(screen.getByLabelText(/CNPJ/i), {
+      target: { value: "11.222.333/0001-44" },
+    });
+    fireEvent.change(screen.getByLabelText(/Nome completo do administrador/i), {
+      target: { value: "Diretor Comercial" },
+    });
+    fireEvent.change(screen.getByLabelText(/E-mail do administrador/i), {
+      target: { value: "diretor@empresacliente.com.br" },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /Cadastrar Empresa/i }));
+
+    await waitFor(() => {
+      expect(toast.success).toHaveBeenCalledTimes(1);
+    });
+
+    const successMessage = (toast.success as any).mock.calls[0][0];
+    expect(successMessage).toContain("diretor@empresacliente.com.br");
+    expect(successMessage).toMatch(/spam/i);
+    expect(successMessage).not.toContain("entregue na caixa de entrada");
+    expect(toast.error).not.toHaveBeenCalled();
+    expect(mockNavigate).toHaveBeenCalledWith("/empresas");
+  });
+
+  it("quando invite_sent=false ou email_convite_erro presente exibe alerta de erro claro e nunca mensagem de sucesso", async () => {
+    mockUseAuth.mockReturnValue({
+      user: null,
+      isAuthenticated: false,
+      isAdminEmpresa: false,
+      isAdminMaster: false,
+    });
+
+    mockInvoke.mockResolvedValueOnce({
+      data: {
+        success: true,
+        company_id: "comp-789",
+        invite_sent: false,
+        email_convite_erro: "Serviço de e-mail indisponível",
+        is_branch: false,
+      },
+      error: null,
+    });
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <BrowserRouter>
+          <CadastroEmpresa />
+        </BrowserRouter>
+      </QueryClientProvider>
+    );
+
+    fireEvent.change(screen.getByLabelText(/Razão social/i), {
+      target: { value: "Empresa Com Falha Ltda" },
+    });
+    fireEvent.change(screen.getByLabelText(/CNPJ/i), {
+      target: { value: "22.333.444/0001-55" },
+    });
+    fireEvent.change(screen.getByLabelText(/Nome completo do administrador/i), {
+      target: { value: "Gerente TI" },
+    });
+    fireEvent.change(screen.getByLabelText(/E-mail do administrador/i), {
+      target: { value: "gerente@empresafalha.com.br" },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /Cadastrar Empresa/i }));
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledTimes(1);
+    });
+
+    const errorMessage = (toast.error as any).mock.calls[0][0];
+    expect(errorMessage).toContain("gerente@empresafalha.com.br");
+    expect(errorMessage).toMatch(/falha|não foi possível/i);
+    expect(toast.success).not.toHaveBeenCalled();
+    expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  it("quando filial cadastrada por Super Admin → redireciona para /empresas (não /dashboard) e personaliza toast", async () => {
+    mockUseAuth.mockReturnValue({
+      user: { id: "super-1", email: "admin.master@talentgroup.com.br" },
+      isAuthenticated: true,
+      isAdminEmpresa: false,
+      isAdminMaster: true,
+      isSuperAdmin: true,
+    });
+
+    mockInvoke.mockResolvedValueOnce({
+      data: { success: true, company_id: "comp-branch-1", is_branch: true },
+      error: null,
+    });
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <BrowserRouter>
+          <CadastroEmpresa />
+        </BrowserRouter>
+      </QueryClientProvider>
+    );
+
+    fireEvent.change(screen.getByLabelText(/Razão social/i), {
+      target: { value: "TG UNITI SERVIÇOS LTDA" },
+    });
+    fireEvent.change(screen.getByLabelText(/CNPJ/i), {
+      target: { value: "39.453.650/0001-28" },
+    });
+    fireEvent.change(screen.getByLabelText(/Nome completo do administrador/i), {
+      target: { value: "Gabriela Gomes de Mattos" },
+    });
+    fireEvent.change(screen.getByLabelText(/E-mail do administrador/i), {
+      target: { value: "gmattos@talentgroup.com.br" },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /Cadastrar Empresa/i }));
+
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith("/empresas");
+    });
+
+    expect(toast.success).toHaveBeenCalledWith(
+      expect.stringContaining("vinculada a gmattos@talentgroup.com.br"),
+      expect.anything()
+    );
+  });
+
+  it("quando filial cadastrada por Admin Empresa → redireciona para / (não /dashboard) e personaliza toast", async () => {
+    mockUseAuth.mockReturnValue({
+      user: { id: "admin-empresa-1", email: "gmattos@talentgroup.com.br", user_metadata: { full_name: "Gabriela Gomes" } },
+      isAuthenticated: true,
+      isAdminEmpresa: true,
+      isAdminMaster: false,
+      isSuperAdmin: false,
+    });
+
+    mockInvoke.mockResolvedValueOnce({
+      data: { success: true, company_id: "comp-branch-2", is_branch: true },
+      error: null,
+    });
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <BrowserRouter>
+          <CadastroEmpresa />
+        </BrowserRouter>
+      </QueryClientProvider>
+    );
+
+    fireEvent.change(screen.getByLabelText(/Razão social/i), {
+      target: { value: "TG UNITI SERVIÇOS LTDA" },
+    });
+    fireEvent.change(screen.getByLabelText(/CNPJ/i), {
+      target: { value: "39.453.650/0001-28" },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /Cadastrar Filial/i }));
+
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith("/");
+    });
+
+    expect(toast.success).toHaveBeenCalledWith(
+      expect.stringContaining("vinculada à sua conta"),
+      expect.anything()
+    );
+  });
+
+  it("quando Edge Function retorna erro 409 com context.json() → toast exibe a mensagem específica do backend", async () => {
+    mockUseAuth.mockReturnValue({
+      user: null,
+      isAuthenticated: false,
+      isAdminEmpresa: false,
+      isAdminMaster: false,
+    });
+
+    mockInvoke.mockResolvedValueOnce({
+      data: null,
+      error: {
+        message: "Edge Function returned a non-2xx status code",
+        context: {
+          json: async () => ({ success: false, error: "CNPJ já cadastrado" }),
+        },
+      },
+    });
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <BrowserRouter>
+          <CadastroEmpresa />
+        </BrowserRouter>
+      </QueryClientProvider>
+    );
+
+    fireEvent.change(screen.getByLabelText(/Razão social/i), {
+      target: { value: "TG UNITI SERVIÇOS LTDA" },
+    });
+    fireEvent.change(screen.getByLabelText(/CNPJ/i), {
+      target: { value: "39.453.650/0001-28" },
+    });
+    fireEvent.change(screen.getByLabelText(/Nome completo do administrador/i), {
+      target: { value: "Gabriela Gomes de Mattos" },
+    });
+    fireEvent.change(screen.getByLabelText(/E-mail do administrador/i), {
+      target: { value: "gmattos@talentgroup.com.br" },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /Cadastrar Empresa/i }));
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith("CNPJ já cadastrado");
+    });
+
+    expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  it("quando Edge Function retorna erro sem body JSON → toast exibe fallback genérico sem quebrar", async () => {
+    mockUseAuth.mockReturnValue({
+      user: null,
+      isAuthenticated: false,
+      isAdminEmpresa: false,
+      isAdminMaster: false,
+    });
+
+    mockInvoke.mockResolvedValueOnce({
+      data: null,
+      error: {
+        message: "Falha de conexão com a Edge Function",
+        context: {
+          json: async () => {
+            throw new Error("stream closed");
+          },
+        },
+      },
+    });
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <BrowserRouter>
+          <CadastroEmpresa />
+        </BrowserRouter>
+      </QueryClientProvider>
+    );
+
+    fireEvent.change(screen.getByLabelText(/Razão social/i), {
+      target: { value: "TG UNITI SERVIÇOS LTDA" },
+    });
+    fireEvent.change(screen.getByLabelText(/CNPJ/i), {
+      target: { value: "39.453.650/0001-28" },
+    });
+    fireEvent.change(screen.getByLabelText(/Nome completo do administrador/i), {
+      target: { value: "Gabriela Gomes de Mattos" },
+    });
+    fireEvent.change(screen.getByLabelText(/E-mail do administrador/i), {
+      target: { value: "gmattos@talentgroup.com.br" },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /Cadastrar Empresa/i }));
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith("Falha de conexão com a Edge Function");
+    });
+
+    expect(mockNavigate).not.toHaveBeenCalled();
+  });
+});
+
+
