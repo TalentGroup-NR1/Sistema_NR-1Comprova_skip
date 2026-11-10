@@ -1,1 +1,0 @@
-ALTER TABLE public.companies ADD COLUMN IF NOT EXISTS empresa_cliente TEXT;

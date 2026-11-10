@@ -1,1 +1,0 @@
-ALTER TABLE public.feedbacks_colaboradores ADD COLUMN alerta BOOLEAN NOT NULL DEFAULT false;

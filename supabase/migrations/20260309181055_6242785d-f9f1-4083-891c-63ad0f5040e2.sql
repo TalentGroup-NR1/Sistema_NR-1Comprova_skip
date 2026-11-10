@@ -1,2 +1,0 @@
-ALTER TABLE beneficios_materiais DROP CONSTRAINT beneficios_materiais_tipo_check;
-ALTER TABLE beneficios_materiais ADD CONSTRAINT beneficios_materiais_tipo_check CHECK (tipo::text = ANY (ARRAY['pdf','ppt','video','link']::text[]));

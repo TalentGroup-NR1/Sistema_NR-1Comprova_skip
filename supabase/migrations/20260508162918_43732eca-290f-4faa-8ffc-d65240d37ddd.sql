@@ -1,1 +1,0 @@
-ALTER FUNCTION public.fechar_periodo_ponto(uuid, date, date, uuid[]) SET search_path = public, extensions;
