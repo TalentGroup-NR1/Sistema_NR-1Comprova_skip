@@ -272,3 +272,4 @@ describe('ETAPA C2 — Redesign profissional do certificado, QR Code e Validaç�
     expect(assinaturaLinha.style.borderTop).toContain('1px solid');
   });
 });
+
